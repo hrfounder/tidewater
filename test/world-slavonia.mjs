@@ -11,6 +11,8 @@ import { Terrain } from '../src/world/Terrain.js';
 import { computeShoreField } from '../src/world/ShoreField.js';
 import { Material } from '../src/engine/render/Material.js';
 import { PROGRESS_VIEWS } from '../src/regions/slavonia/views.js';
+import { GROUND_SURFACE } from '../src/regions/slavonia/GroundSurface.js';
+import { buildPlatforms } from '../src/regions/slavonia/Platforms.js';
 
 const out = process.argv[ 2 ] && ! process.argv[ 2 ].startsWith( '--' ) ? process.argv[ 2 ] : '/tmp';
 const small = process.argv.includes( '--small' );
@@ -32,13 +34,15 @@ console.log( 'water cover', ( wet / data.water.length * 100 ).toFixed( 2 ), '%' 
 const H = await worldHarness( { sun: [ 0.5, 0.42, 0.45 ], ...( small ? { width: 960, height: 540 } : {} ) } );
 const shore = computeShoreField( data, { res: 512, swellDir: [ 0, 1 ] } );
 const gpu = new TerrainGPU( data, shore );
-const terrain = new Terrain( { scene: H.scene, terrainData: data, terrainGPU: gpu } );
+const terrain = new Terrain( { scene: H.scene, terrainData: data, terrainGPU: gpu, surface: GROUND_SURFACE } );
 terrain.material.appliesHillShadow = true;
 H.before.push( ( cam ) => terrain.update( cam ) );
 // stand-in for the water (the game's water surface is not in this harness): a flat, glossy,
 // dark olive plane at the patch's water level
 const water = new H.E.Mesh( new H.E.PlaneGeometry( data.size, data.size ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
 H.scene.add( water );
+const platforms = buildPlatforms( { terrain: data, scene: H.scene } );
+console.log( 'fishing platforms', platforms ? platforms.userData.count : 0 );
 
 // the fixed progress views (regions/slavonia/views.js); `ground` heights are above the ground there
 const views = {};

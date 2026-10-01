@@ -85,6 +85,13 @@ everything else:
   (`public/world/bosut/`).
 
 ### M2: Streaming world (engine)
+- [x] Slavonian ground shader (`regions/slavonia/GroundSurface.js`, Terrain's `surface` option): mown
+  grass banks, meadow, strip fields, gardens, forest (canopy tone from afar until the trees exist),
+  wet silt at the waterline and the river bed, all from the land-cover masks.
+- [x] `?region=slavonia` loads the tiles in the real game (`regions/slavonia/world.js`). App skips the
+  island's village, plants, rocks, debris, reef, breakers, whale and shore wildlife (null and guarded),
+  sets calm, turbid water, turns the surf off, and places the start and the boat by the bridge. The
+  debug and bench views become the progress views.
 - [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to
   the patch's water level. It feeds the existing terrain pipeline unchanged, because the shared
   queries moved into `world/terrain/Heightfield.js`, which the island's `TerrainData` now extends.
@@ -100,9 +107,11 @@ everything else:
 - [ ] Map screen and minimap from the tiles.
 
 ### M3: Rivers and lakes
-- [ ] Cut the channels at full resolution (1 m) from the river centrelines when the patch loads,
-  carried in the tiles as vectors with level, width and profile. On the 10 m tiles a 30 m channel is
-  only three samples wide, so its banks alias into steps.
+- [x] Cut the channels at full resolution (1 m) from the river centrelines when the patch loads
+  (`TileTerrain.cutChannels`, lines in `rivers.json` with water level and bank top). The tiles hold
+  the ground without the line channels.
+- [x] River levels are a least-squares downstream-falling fit. A running minimum dragged whole
+  rivers down to the lowest spot upstream.
 - [ ] Regulated channels from cross-section profiles along the data centrelines: bed, mown grass
   slopes, berm and the road on top. This is how the Bosut looks through the villages (see the local
   photos in TARGETS.md). Wilder banks between the villages.

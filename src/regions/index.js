@@ -9,11 +9,12 @@ import * as slavoniaFish from './slavonia/fish.js';
 //   name      display name
 //   fish      { FISH, habitatAt } (see regions/caribbean/fish.js)
 //   saveKey   localStorage key of the player's progress (each region keeps its own)
+//   world     'island' (the generated island) or 'tiles' (real-world map tiles, regions/slavonia/world.js)
 //   playable  false while the region is still being built: it can be selected for development,
 //             the default stays on a playable one
 export const REGIONS = {
-	caribbean: { id: 'caribbean', name: 'Tidewater Island', fish: caribbeanFish, saveKey: 'tidewater.save.v1', playable: true },
-	slavonia: { id: 'slavonia', name: 'Slavonia: Drava, Sava, Dunav', fish: slavoniaFish, saveKey: 'tidewater.slavonia.save.v1', playable: false },
+	caribbean: { id: 'caribbean', name: 'Tidewater Island', fish: caribbeanFish, saveKey: 'tidewater.save.v1', world: 'island', playable: true },
+	slavonia: { id: 'slavonia', name: 'Slavonia: Drava, Sava, Dunav', fish: slavoniaFish, saveKey: 'tidewater.slavonia.save.v1', world: 'tiles', playable: false },
 };
 
 export const DEFAULT_REGION = 'caribbean';

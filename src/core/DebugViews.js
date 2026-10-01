@@ -1,4 +1,5 @@
 import { Vector3 } from '../engine/math/index.js';
+import { PROGRESS_VIEWS } from '../regions/slavonia/views.js';
 
 // Named review cameras used to check every change from the same set of angles.
 // window.__view( name ) jumps there; window.__views lists them.
@@ -38,6 +39,22 @@ export const VIEWS = {
 };
 
 export function installDebugViews( app ) {
+
+	// the tiles world (?region=slavonia): its fixed progress views replace the island's, by the same
+	// names as in regions/slavonia/views.js (the bench shoots them: ?region=slavonia&bench&shots=...)
+	if ( app.tiles ) {
+
+		for ( const k of Object.keys( VIEWS ) ) delete VIEWS[ k ];
+		for ( const [ k, v ] of Object.entries( PROGRESS_VIEWS ) ) {
+
+			const [ x, y, z ] = v.pos;
+			const p = new Vector3( x, v.ground ? app.terrainData.heightAt( x, z ) + y : y, z );
+			const e = new Vector3( ...v.target ).sub( p ).normalize();
+			VIEWS[ k ] = { p: p.toArray(), yaw: Math.atan2( - e.x, - e.z ), pitch: Math.asin( e.y ), time: 15.0 };
+
+		}
+
+	}
 
 	window.__views = Object.keys( VIEWS );
 	// the current camera as a VIEWS entry (paste it back as a named view): __pose()

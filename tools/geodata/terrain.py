@@ -95,6 +95,20 @@ def push_pull( z, valid ):
     return np.where( valid, z, est ).astype( np.float32 )
 
 
+def falling_fit( y ):
+
+    """Least-squares non-increasing fit of y (pool adjacent violators)."""
+    vals, wts, lens = [], [], []
+    for v in y:
+        vals.append( float( v ) ); wts.append( 1.0 ); lens.append( 1 )
+        while len( vals ) > 1 and vals[ - 2 ] < vals[ - 1 ]:
+            w = wts[ - 2 ] + wts[ - 1 ]
+            vals[ - 2 ] = ( vals[ - 2 ] * wts[ - 2 ] + vals[ - 1 ] * wts[ - 1 ] ) / w
+            wts[ - 2 ] = w; lens[ - 2 ] += lens[ - 1 ]
+            vals.pop(); wts.pop(); lens.pop()
+    return np.repeat( vals, lens ).astype( np.float32 )
+
+
 def hillshade( z, res, exag=6 ):
 
     gy, gx = np.gradient( z, res )
@@ -215,8 +229,9 @@ def main():
             g0 = sample( dtm, px, py )
             for dx, dy in ( ( 1, 0 ), ( - 1, 0 ), ( 0, 1 ), ( 0, - 1 ) ):
                 g0 = np.minimum( g0, sample( dtm, px + dx * wid / 2, py + dy * wid / 2 ) )
-            lvl = ndimage.uniform_filter1d( g0 - free, size=max( 3, int( 300 / res ) ), mode='nearest' )
-            lvl = np.minimum.accumulate( lvl )  # never rises downstream
+            # never rises downstream: the best non-increasing fit (a running minimum would drag the
+            # whole river down to the lowest spot anywhere upstream)
+            lvl = falling_fit( ndimage.uniform_filter1d( g0 - free, size=max( 3, int( 300 / res ) ), mode='nearest' ) )
             # bank top: the ground beside the channel on both sides (perpendicular to the line)
             tx, ty = np.gradient( px ), np.gradient( py )
             tn = np.maximum( np.hypot( tx, ty ), 1e-6 )

@@ -14,9 +14,11 @@ import { Heightfield } from '../../world/terrain/Heightfield.js';
 // line's slope up to the bank top, then easing into the surrounding ground. The tiles are 10 m data
 // and would alias a 30 m channel into steps.
 //
-// Fields as TerrainData where the terrain shaders read them: the material masks are empty for now
-// (no beach sand, reef or footpaths here); `cover` holds the ESA WorldCover class of each texel and
-// `water` the water level above the datum (NaN where dry).
+// Fields as TerrainData where the terrain shaders read them. `cover` holds the ESA WorldCover class of
+// each texel and `water` the water level above the datum (NaN where dry). The material masks carry
+// this region's ground for GroundSurface.js, in the island's channel names:
+//   sand -> cropland, path -> built-up, gully -> forest, scarp -> bare mud on the channel banks
+// (softened over a few metres: the land cover is 10 m data).
 
 const MAGIC = 0x31545754; // 'TWT1'
 
@@ -50,6 +52,33 @@ function cr( t, w ) {
 	w[ 1 ] = 1.5 * t3 - 2.5 * t2 + 1;
 	w[ 2 ] = - 1.5 * t3 + 2 * t2 + 0.5 * t;
 	w[ 3 ] = 0.5 * t3 - 0.5 * t2;
+
+}
+
+// separable box blur of a res x res byte mask, radius r (in place)
+function blur( m, res, r ) {
+
+	const tmp = new Float32Array( res );
+	for ( let pass = 0; pass < 2; pass ++ ) {
+
+		for ( let a = 0; a < res; a ++ ) {
+
+			// pass 0: rows, pass 1: columns
+			const at = pass ? ( b ) => b * res + a : ( b ) => a * res + b;
+			let acc = 0;
+			for ( let b = - r; b <= r; b ++ ) acc += m[ at( Math.min( res - 1, Math.max( 0, b ) ) ) ];
+			for ( let b = 0; b < res; b ++ ) {
+
+				tmp[ b ] = acc / ( 2 * r + 1 );
+				acc += m[ at( Math.min( res - 1, b + r + 1 ) ) ] - m[ at( Math.max( 0, b - r ) ) ];
+
+			}
+
+			for ( let b = 0; b < res; b ++ ) m[ at( b ) ] = Math.round( tmp[ b ] );
+
+		}
+
+	}
 
 }
 
@@ -98,7 +127,20 @@ export class TileTerrain extends Heightfield {
 
 		if ( datum === undefined ) {
 
-			// the water in the middle of the patch (median level), else the lowest ground
+			// the level of the water line nearest the centre (the river the patch is about)
+			let best = Infinity;
+			for ( const l of rivers ) if ( ! l.dry ) for ( const [ e, nn, lvl ] of l.pts ) {
+
+				const d2 = ( e - center[ 0 ] ) ** 2 + ( nn - center[ 1 ] ) ** 2;
+				if ( d2 < best ) { best = d2; datum = lvl; }
+
+			}
+
+		}
+
+		if ( datum === undefined ) {
+
+			// else the water in the middle of the patch (median level), else the lowest ground
 			const lv = [];
 			const q = Math.round( size / 4 / step );
 			const mc = Math.round( ( center[ 0 ] - e0 ) / step ), mr = Math.round( ( n1 - center[ 1 ] ) / step );
@@ -184,8 +226,22 @@ export class TileTerrain extends Heightfield {
 
 		}
 
+		// land cover masks, softened (the cover is 10 m blocks)
+		for ( let k = 0; k < n; k ++ ) {
+
+			const c = this.cover[ k ];
+			this.sand[ k ] = c === 40 ? 255 : 0;
+			this.path[ k ] = c === 50 ? 255 : 0;
+			this.gully[ k ] = c === 10 || c === 20 ? 255 : 0;
+
+		}
+
+		const r = Math.max( 1, Math.round( 7 / this.texel ) );
+		for ( const m of [ this.sand, this.path, this.gully ] ) blur( m, res, r );
+
 		this.lines = rivers;
 		this.cutChannels( rivers );
+		blur( this.scarp, res, 1 );
 		this.buildMinMax();
 
 	}
@@ -254,6 +310,10 @@ export class TileTerrain extends Heightfield {
 
 				heights[ k ] = bestL[ k ] - depth + Math.max( 0, bestD[ k ] - bh ) / slope;
 				this.water[ k ] = ! dry && bestD[ k ] < width / 2 ? bestL[ k ] : NaN;
+				// bare mud from the bed up to a little above the waterline; grass above
+				const above = heights[ k ] - bestL[ k ];
+				this.scarp[ k ] = Math.round( 255 * Math.min( 1, Math.max( 0, ( 0.7 - above ) / 0.5 ) ) );
+				this.sand[ k ] = this.path[ k ] = this.gully[ k ] = 0;
 
 			} else {
 
@@ -264,6 +324,34 @@ export class TileTerrain extends Heightfield {
 			}
 
 		}
+
+	}
+
+	// signed distance (m) to the nearest water's edge: > 0 over water, < 0 on land (searched out to
+	// 120 m; farther land reports -120). The island's coastDistance, for the audio.
+	coastDistance( x, z ) {
+
+		const wetAt = ( px, pz ) => {
+
+			const i = Math.floor( ( px - this.origin ) / this.texel ), j = Math.floor( ( pz - this.origin ) / this.texel );
+			if ( i < 0 || j < 0 || i >= this.res || j >= this.res ) return false;
+			const w = this.water[ j * this.res + i ];
+			return w === w;
+
+		};
+		const wet = wetAt( x, z );
+		for ( let r = 2; r <= 120; r *= 1.35 ) {
+
+			for ( let a = 0; a < 16; a ++ ) {
+
+				const ang = a / 16 * Math.PI * 2;
+				if ( wetAt( x + Math.cos( ang ) * r, z + Math.sin( ang ) * r ) !== wet ) return { d: wet ? r : - r, beachZone: 0 };
+
+			}
+
+		}
+
+		return { d: wet ? 120 : - 120, beachZone: 0 };
 
 	}
 

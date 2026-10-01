@@ -5,12 +5,54 @@ Later, they will also turn it into game tiles. Areas are defined in `areas.py` i
 world uses the Croatian national grid, HTRS96/TM (EPSG:3765), so areas added later join up seamlessly.
 
 ```sh
-pip install pyarrow s3fs rasterio numpy pillow pyproj shapely
+pip install pyarrow s3fs rasterio numpy pillow pyproj shapely scipy
 python3 tools/geodata/fetch.py bosut              # ~1 GB into tools/geodata/cache/bosut/ (not committed)
 python3 tools/geodata/overview.py bosut           # map: land cover, relief, water, roads, buildings, names
 python3 tools/geodata/satellite.py bosut          # Sentinel-2 true colour mosaic
 python3 tools/geodata/overview.py bosut out.png 2000 45.225,18.75,6    # 6 km close-up (lat, lon, km)
+python3 tools/geodata/terrain.py bosut 10         # bare-earth terrain + water bodies at 10 m (~10 min)
+python3 tools/geodata/tiles.py bosut              # all 1 km world tiles -> cache/bosut/tiles/
+python3 tools/geodata/tiles.py bosut core 45.225,18.75,4   # the playable core -> public/world/bosut/
+node test/world-slavonia.mjs /tmp --small         # render the core through the engine's terrain (headless)
 ```
+
+## Terrain (`terrain.py`)
+
+![Surface model (left) and bare earth with water (right)](../../docs/slavonia/img/terrain-dsm-vs-dtm.jpg)
+
+1. **Bare earth.** Cells under forest, shrubs and buildings (from WorldCover, plus a 30 m margin) are
+   refilled from the open ground around them. Mounds the land cover missed, such as tree groups and
+   hedges, are found against the large-scale surface and refilled too. About half the area is refilled.
+   Fields, levees, old river channels and the loess edge keep the original data.
+2. **Water levels.**
+   - Lakes and ponds take the level the elevation model flattened them to.
+   - Rivers and canals are joined by name and take a level profile along their centreline. OSM lines
+     run downstream, and the level never rises downstream. The Bosut falls from 80.6 to 77 m through
+     the area, and the Sava from 81.8 to 73 m.
+3. **Channels.** Every river, canal, stream and ditch is cut in with a trapezoid section by class, and
+   the named rivers have measured widths: Bosut 32 m, Sava 190 m. Lakes get basins that deepen away
+   from the shore. Dry (intermittent) ditches are cut but stay dry.
+
+The outputs are in `cache/<area>/terrain/`: `dtm.tif`, `water.tif` (water level or NaN) and `water.json`
+(the bodies).
+
+Limits to fix later:
+- **Depths and bank slopes are typical values per class, not measured.** The Bosut's real
+  cross-section in the villages is a regulated trapezoid (see the local photos in
+  docs/slavonia/TARGETS.md), and it should replace the generic one there.
+- **Rivers without a mapped area get a fixed width.** The Sava's real width varies.
+- **Levels come from a 30 m model,** so they are good to about half a metre. Fine for the look; tune
+  them against the photos at the fishing spots.
+
+## World tiles (`tiles.py`)
+
+The tiles are 1 km squares on the HTRS96/TM grid, named by their south-west corner (`t_<east>_<north>.bin`),
+with 101 × 101 samples at 10 m. Neighbouring tiles share their edge samples. Each tile holds the
+ground height and the water level (u16, cm above sea level, 0 = dry), and the land cover class (u8).
+The format is documented in the script header, and `src/regions/slavonia/TileTerrain.js` reads it.
+
+The full area is about 1,700 tiles (~85 MB), which is too much for git. Only the playable core goes
+into `public/world/`. The rest will need hosting outside the repository once the game streams it.
 
 ## Sources
 

@@ -68,17 +68,27 @@ everything else:
 - [x] Fetch Overture Maps (water, roads, buildings, land use, bridges, places), the Copernicus 30 m
   elevation, ESA WorldCover and Sentinel-2 for an area (`tools/geodata/fetch.py`).
 - [x] Overview map and satellite renders (`overview.py`, `satellite.py`), and the target images.
-- [ ] **Bare-earth terrain.** Remove forest canopy and buildings from the surface model using the
-  land cover, fill from the surrounding ground, and add the river channels, levees and lake basins
-  from the water geometry.
-- [ ] **Water bodies.** A level for each lake, a level profile and centreline for each river, typical
-  depth profiles (cut bank, point bar), and a flow speed per river: the Sava is fast, the Bosut slow,
-  the canals almost still.
-- [ ] **Tile format.** Per tile: a heightmap, a land-cover/material map, water bodies, road meshes,
-  building lists and scatter seeds. Small binary files, gzip-friendly, versioned.
-- [ ] Choose the starting core tile set around Rokovci and Andrijaševci for the first playable build.
+- [x] **Bare-earth terrain** (`terrain.py`). Forest canopy and buildings are removed from the surface
+  model using the land cover and refilled from the surrounding ground. River channels and lake basins
+  are cut in from the water geometry.
+- [x] **Water bodies.** A level for each lake, and a downstream-falling level profile for each river,
+  joined by name. Trapezoid channels by class.
+- [ ] Water body refinements: the measured Bosut cross-section in the villages, cut banks and point
+  bars on the Sava, and a flow speed per river (the Sava is fast, the Bosut slow, the canals almost
+  still).
+- [x] **Tile format** (`tiles.py`, `TWT1`). 1 km tiles on the HTRS96/TM grid with 101 × 101 samples
+  at 10 m: ground height and water level (u16, cm) and land cover (u8), about 50 KB a tile. The full
+  area is about 1,700 tiles (~85 MB) and stays out of git. A playable core block is exported to
+  `public/world/<area>/` with an `index.json` that carries the data credits.
+- [ ] Roads, buildings and scatter seeds in the tiles.
+- [x] First core block: 5 × 5 km around the Bosut between Rokovci and Andrijaševci
+  (`public/world/bosut/`).
 
 ### M2: Streaming world (engine)
+- [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to
+  the patch's water level. It feeds the existing terrain pipeline unchanged, because the shared
+  queries moved into `world/terrain/Heightfield.js`, which the island's `TerrainData` now extends.
+  `test/world-slavonia.mjs` renders it headless.
 - [ ] Tiled terrain with CDLOD over streamed tiles, and a floating origin.
 - [ ] The region selects the world: island (Caribbean) or tiles (Slavonia). The `WORLD` layout,
   ShoreSim, Breakers, Reef and Whale become region-provided or optional.
@@ -88,6 +98,9 @@ everything else:
 - [ ] Map screen and minimap from the tiles.
 
 ### M3: Rivers and lakes
+- [ ] Cut the channels at full resolution (1 m) from the river centrelines when the patch loads,
+  carried in the tiles as vectors with level, width and profile. On the 10 m tiles a 30 m channel is
+  only three samples wide, so its banks alias into steps.
 - [ ] Regulated channels from cross-section profiles along the data centrelines: bed, mown grass
   slopes, berm and the road on top. This is how the Bosut looks through the villages (see the local
   photos in TARGETS.md). Wilder banks between the villages.

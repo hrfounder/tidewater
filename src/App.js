@@ -191,6 +191,9 @@ export class App {
 			G.windDir.value.set( ...w.windDir ).normalize();
 			G.waterAbsorption.value.set( ...w.absorption );
 			G.waterScattering.value.set( ...w.scattering );
+			this.fft.foamBias.value = w.foam.bias;
+			this.fft.foamGain.value = w.foam.gain;
+			this.fft.foamAdd.value = w.foam.add;
 
 		}
 

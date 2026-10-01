@@ -25,6 +25,11 @@ export const WORLD = {
 
 	village: { center: new THREE.Vector3( 40, 0, - 118 ), radius: 95 },
 
+	// the two stalls (FishStand, Chandlery). Each faces ( sin yaw, cos yaw ); a region moves them by
+	// writing into these objects, which the stalls hold by reference
+	stand: { x: 49.9, z: - 74.6, yaw: 1.45 }, // beside the boardwalk up from the pier foot, facing it
+	chandlery: { x: 85.5, z: - 60.5, yaw: - 1.9 }, // faces the beach and the pier
+
 	reef: { center: new THREE.Vector3( - 78, 0, 58 ), radius: 58 },
 
 	spawn: { position: new THREE.Vector3( 18, 0, - 60 ), yaw: Math.PI }, // kept clear of rocks, plants and debris

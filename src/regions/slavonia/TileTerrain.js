@@ -182,7 +182,9 @@ export class TileTerrain extends Heightfield {
 		this.gully = new Uint8Array( n );
 		this.rubble = new Uint8Array( n );
 		this.scarp = new Uint8Array( n );
-		this.seagrass = null;
+		// the lowland has no bare rock, seabed rubble or seagrass: the masks stay zero, so that
+		// everything reading a TerrainData (the bake, the minimap) finds the same fields here
+		this.seagrass = new Uint8Array( n );
 		this.pads = [];
 		this.paths = [];
 		this.rockSites = [];

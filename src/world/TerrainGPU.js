@@ -26,6 +26,7 @@ import { detailBinding } from './terrain/TerrainShading.js';
 // WGSL module (`terrainGPU.module`, prefix `terrain`), usable from any stage unless noted:
 //   terrainUvOf( xz: vec2f ) -> vec2f                   domain uv (0..1) of a world xz
 //   terrainHeightAt( xz: vec2f ) -> f32                 exact bilinear height (terrainParams.outside beyond it)
+//   terrainInside( xz: vec2f ) -> f32                   1 inside the mapped domain, 0 beyond it
 //   terrainNormalRock( xz: vec2f ) -> vec4f             macro normal xz (-1..1), rock mask, AO — fragment only
 //                                                       (implicit derivatives); terrainNormalRockLevel( xz, level )
 //   terrainNormalAt( xz: vec2f ) -> vec3f               unit macro normal (mip 0, any stage)
@@ -243,15 +244,25 @@ fn terrainHeightAt( xz: vec2f ) -> f32 {
 	return select( h, terrainParams.outside, outside );
 }
 
-// filtered normal (xz components), rock mask, ambient occlusion
+// 1 well inside the mapped domain, 0 outside it, over a 48 m skirt. Every map here is sampled with a
+// clamped sampler, which repeats the edge texel outward forever: without this the last row of the
+// data is drawn as straight bands reaching to the horizon. A region whose ground carries on past its
+// patch (regions/slavonia) uses this to take over beyond the data.
+fn terrainInside( xz: vec2f ) -> f32 {
+	let uv = terrainUvOf( xz );
+	let d = min( min( uv.x, uv.y ), min( 1.0 - uv.x, 1.0 - uv.y ) ) * terrainParams.size;
+	return smoothstep( 0.0, 48.0, d );
+}
+
+// filtered normal (xz components), rock mask, ambient occlusion; beyond the domain, flat and open
 fn terrainNormalRock( xz: vec2f ) -> vec4f {
 	let s = textureSample( terrainNormalTex, smpLinearClamp, terrainUvOf( xz ) );
-	return vec4f( s.xy * 2.0 - 1.0, s.z, s.w );
+	return mix( vec4f( 0.0, 0.0, 0.0, 1.0 ), vec4f( s.xy * 2.0 - 1.0, s.z, s.w ), terrainInside( xz ) );
 }
 // explicit mip (e.g. in the vertex stage)
 fn terrainNormalRockLevel( xz: vec2f, level: f32 ) -> vec4f {
 	let s = textureSampleLevel( terrainNormalTex, smpLinearClamp, terrainUvOf( xz ), level );
-	return vec4f( s.xy * 2.0 - 1.0, s.z, s.w );
+	return mix( vec4f( 0.0, 0.0, 0.0, 1.0 ), vec4f( s.xy * 2.0 - 1.0, s.z, s.w ), terrainInside( xz ) );
 }
 fn terrainNormalAt( xz: vec2f ) -> vec3f {
 	let nr = terrainNormalRockLevel( xz, 0.0 );
@@ -261,10 +272,10 @@ fn terrainNormalAt( xz: vec2f ) -> vec3f {
 // loose sand, worn ground / paths, gullies (land) or seagrass (seabed), seabed rubble (the
 // eroded beach scarp face on land)
 fn terrainSplat( xz: vec2f ) -> vec4f {
-	return textureSample( terrainSplatTex, smpLinearClamp, terrainUvOf( xz ) );
+	return textureSample( terrainSplatTex, smpLinearClamp, terrainUvOf( xz ) ) * terrainInside( xz );
 }
 fn terrainSplatLevel( xz: vec2f, level: f32 ) -> vec4f {
-	return textureSampleLevel( terrainSplatTex, smpLinearClamp, terrainUvOf( xz ), level );
+	return textureSampleLevel( terrainSplatTex, smpLinearClamp, terrainUvOf( xz ), level ) * terrainInside( xz );
 }
 
 // shore field: (T, dirX, dirZ, exposure), bilinear via loads (float32 data)

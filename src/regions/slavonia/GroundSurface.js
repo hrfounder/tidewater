@@ -28,9 +28,13 @@ export const GROUND_SURFACE = /* wgsl */`
 	let dM = terDetail( ${ rot2( 'xz', 1.3 ) } / 6.7 + 0.21 );
 	let dF = terDetail( ${ rot2( 'xz', 2.4 ) } / 0.63 + 0.53 );
 
-	let fieldW = smoothstep( 0.35, 0.65, sp.x );
-	let builtW = smoothstep( 0.35, 0.65, sp.y );
-	let forestW = smoothstep( 0.35, 0.65, sp.z );
+	// Beyond the mapped patch the land cover runs out (terrainSplat fades to zero there), but the
+	// Pannonian plain does not: the same farmland carries on to the horizon. Out there the cover is
+	// grown from the parcel grid below instead of the data.
+	let inside = terrainInside( xz );
+	var fieldW = smoothstep( 0.35, 0.65, sp.x );
+	var builtW = smoothstep( 0.35, 0.65, sp.y );
+	var forestW = smoothstep( 0.35, 0.65, sp.z );
 	let mudW = sat( sp.w * 1.4 );
 	let under = smoothstep( 0.05, -0.15, h );
 
@@ -45,9 +49,16 @@ export const GROUND_SURFACE = /* wgsl */`
 	grass = grass * mix( 1.0, stripe * 0.12 + 0.94, mowK * smoothstep( 8.0, 40.0, camDist ) );
 
 	// ---- strip fields: a parcel grid stretched along one direction (long narrow strips), each
-	// parcel a crop: green maize / soy, golden stubble, brown ploughed soil
-	let fd = ${ rot2( 'xz', 0.62 ) };
-	let cell = floor( vec2f( fd.x / 34.0, fd.y / 260.0 ) + vec2f( 0.0, macroA * 0.8 ) );
+	// parcel a crop: green maize / soy, golden stubble, brown ploughed soil. Each village laid its
+	// strips out on its own bearing, so the grid's angle and width drift over a few kilometres
+	// rather than ruling one pattern across the whole plain.
+	let block = floor( xz / 2600.0 );
+	let blockR = fract( sin( dot( block, vec2f( 41.3, 17.7 ) ) ) * 24634.6345 );
+	let ang = 0.62 + ( blockR - 0.5 ) * 1.4;
+	let ca = cos( ang ); let sa = sin( ang );
+	let fd = vec2f( xz.x * ca - xz.y * sa, xz.x * sa + xz.y * ca );
+	let parcelW = 26.0 + blockR * 26.0;
+	let cell = floor( vec2f( fd.x / parcelW, fd.y / 260.0 ) + vec2f( 0.0, macroA * 0.8 ) ) + block * 7.0;
 	let pick = fract( sin( dot( cell, vec2f( 12.9898, 78.233 ) ) ) * 43758.5453 );
 	let crop = mix( ${ S( 0.17, 0.27, 0.08 ) }, ${ S( 0.28, 0.35, 0.12 ) }, dM.w );
 	let stubble = mix( ${ S( 0.5, 0.44, 0.28 ) }, ${ S( 0.6, 0.52, 0.34 ) }, dN.y );
@@ -72,6 +83,13 @@ export const GROUND_SURFACE = /* wgsl */`
 	let silt = mix( ${ S( 0.27, 0.24, 0.19 ) }, ${ S( 0.36, 0.32, 0.25 ) }, dM.w ) * ( ( dN.y - 0.45 ) * 0.2 + 1.0 );
 	let wetLine = smoothstep( 0.45, 0.0, h ) * ( 1.0 - under );
 	let bed = mix( ${ S( 0.2, 0.19, 0.15 ) }, ${ S( 0.27, 0.25, 0.19 ) }, dM.w * 0.6 + macroB * 0.4 );
+
+	// the plain beyond the data: most parcels are worked, with woods in the hollows and grass between
+	let farForest = smoothstep( 0.6, 0.78, terDetail( ${ rot2( 'xz', 1.7 ) } / 760.0 ).w );
+	let farField = smoothstep( 0.78, 0.62, pick ) * ( 1.0 - farForest );
+	fieldW = mix( farField, fieldW, inside );
+	forestW = mix( farForest, forestW, inside );
+	builtW = builtW * inside;
 
 	// ---- combine
 	var albedo = grass;

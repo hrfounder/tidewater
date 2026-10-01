@@ -89,6 +89,8 @@ everything else:
   the patch's water level. It feeds the existing terrain pipeline unchanged, because the shared
   queries moved into `world/terrain/Heightfield.js`, which the island's `TerrainData` now extends.
   `test/world-slavonia.mjs` renders it headless.
+
+  ![First in-engine view: the Bosut channel near Rokovci on the real terrain, with the island's ground shader](img/engine-first-terrain.jpg)
 - [ ] Tiled terrain with CDLOD over streamed tiles, and a floating origin.
 - [ ] The region selects the world: island (Caribbean) or tiles (Slavonia). The `WORLD` layout,
   ShoreSim, Breakers, Reef and Whale become region-provided or optional.

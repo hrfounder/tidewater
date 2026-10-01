@@ -57,9 +57,24 @@ in the environment's network settings to have images pulled in with their licenc
 
 ## 4. Local photos (provided by the project owner)
 
-Reference only: these show what to match and do not ship in the game. Locations are in the
-Andrijaševci / Rokovci / Vinkovci area. Exact spots are still to be confirmed, and should be added to
-the file names once known.
+Reference only: these show what to match and do not ship in the game.
+
+**Where the river photos were taken.** Mostly near **Most Bosut**, the road bridge between Rokovci (north
+bank) and Andrijaševci (south bank), at 45.22730, 18.74159 (HTRS96/TM 676024, 5012149). They are from
+the south-east side: the riverside park (Adrenalinski park Bosut) on the south bank just east of the
+bridge. Here the Bosut runs roughly east to west. **St Roch's church** (Crkva sv. Roka, Rokovci) stands
+about 200 m north of the bridge, and is the onion-dome tower seen across the water. **St Andrew's**
+(Crkva sv. Andrije, Andrijaševci) is about 190 m south.
+
+The playable core block (`public/world/bosut/`) is centred on this bridge, and `test/world-slavonia.mjs`
+has camera views at the approximate photo positions (`photoBridge`, `photoChurch`).
+
+Progress against the winter photo (left), shown on the right:
+
+![Photo vs engine, first terrain pass](img/compare-bridge-v0.jpg)
+
+The landform and the river line are there. Next are the bridge, the platforms, the reeds, the
+trees, the houses and the real water surface.
 
 ### The Bosut
 
@@ -174,7 +189,7 @@ These anchor the first hand-built locations:
 
 | Place | Where | Notes |
 |---|---|---|
-| Adrenalinski park Bosut | Rokovci–Andrijaševci, 45.2266, 18.7432 | On the Bosut between the twin villages |
+| **Most Bosut and the park** | Rokovci–Andrijaševci, bridge 45.2273, 18.7416; park 45.2266, 18.7432 | **First hand-built spot.** The local photos are from here. |
 | Ribička kuća | on the Rakovac, 45.2587, 18.7075 | Anglers' house and campground |
 | ŠRD "Strušac" | Retkovci, 45.2002, 18.6495 | Sport fishing club |
 | Banja lake | Vinkovci, 45.2876, 18.7848 | 18 ha, in town |

@@ -8,6 +8,7 @@ import { TileTerrain } from '../src/regions/slavonia/TileTerrain.js';
 import { TerrainGPU } from '../src/world/TerrainGPU.js';
 import { Terrain } from '../src/world/Terrain.js';
 import { computeShoreField } from '../src/world/ShoreField.js';
+import { Material } from '../src/engine/render/Material.js';
 
 const out = process.argv[ 2 ] && ! process.argv[ 2 ].startsWith( '--' ) ? process.argv[ 2 ] : '/tmp';
 const small = process.argv.includes( '--small' );
@@ -32,12 +33,22 @@ const gpu = new TerrainGPU( data, shore );
 const terrain = new Terrain( { scene: H.scene, terrainData: data, terrainGPU: gpu } );
 terrain.material.appliesHillShadow = true;
 H.before.push( ( cam ) => terrain.update( cam ) );
+// stand-in for the water (the game's water surface is not in this harness): a flat, glossy,
+// dark olive plane at the patch's water level
+const water = new H.E.Mesh( new H.E.PlaneGeometry( data.size, data.size ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
+H.scene.add( water );
 
-// views around the patch centre (the Bosut between Rokovci and Andrijaševci)
+// The patch is centred on Most Bosut, the road bridge between Rokovci (north) and Andrijaševci
+// (south). x = east, z = south (m). The river runs roughly east to west here; the park with the
+// fishing platforms is on the south bank east of the bridge, St Roch's church (Rokovci) 200 m north.
+// The photo views stand where docs/slavonia/photos/bosut-* were taken (approximately).
 const at = ( x, z, up ) => [ x, data.heightAt( x, z ) + up, z ];
 const views = {
 	aerial: { pos: [ 300, 420, 700 ], target: [ 0, 0, 0 ] },
-	low: { pos: at( 120, 160, 25 ), target: [ - 60, 0, - 120 ] },
+	// bosut-winter-platforms-bridge.jpg: upstream of the bridge, looking west along the water to it
+	photoBridge: { pos: at( 150, - 58, 1.7 ), target: [ 0, 1.5, - 4 ], fov: 60 },
+	// bosut-spring-anglers-church-reflection.jpg: from the park bank across the water to the church
+	photoChurch: { pos: at( 125, - 4, 1.6 ), target: [ 42, 12, - 196 ], fov: 60 },
 };
 const only = process.argv.find( ( a ) => a.startsWith( '--view=' ) );
 for ( const [ k, v ] of Object.entries( views ) ) {

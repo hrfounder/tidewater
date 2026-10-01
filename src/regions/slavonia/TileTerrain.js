@@ -55,6 +55,33 @@ function cr( t, w ) {
 
 }
 
+// The centrelines come from a skeleton of the 10 m water raster, so they carry corners the river
+// does not: the points sit 10 m apart and some turn by up to 20 degrees, which the channel cut then
+// prints into the banks as facets. Three passes of a 5-point moving average over the easting and
+// northing (the ends held, the water level left alone, since it is already a falling fit) take the
+// raster's staircase out and leave the meander.
+function smoothLine( line ) {
+
+	const P = line.pts;
+	if ( P.length < 5 ) return line;
+	let cur = P.map( ( p ) => p.slice() );
+	for ( let pass = 0; pass < 3; pass ++ ) {
+
+		const next = cur.map( ( p ) => p.slice() );
+		for ( let i = 2; i < cur.length - 2; i ++ ) for ( let c = 0; c < 2; c ++ ) {
+
+			next[ i ][ c ] = ( cur[ i - 2 ][ c ] + cur[ i - 1 ][ c ] * 4 + cur[ i ][ c ] * 6 + cur[ i + 1 ][ c ] * 4 + cur[ i + 2 ][ c ] ) / 16;
+
+		}
+
+		cur = next;
+
+	}
+
+	return { ...line, pts: cur };
+
+}
+
 // separable box blur of a res x res byte mask, radius r (in place)
 function blur( m, res, r ) {
 
@@ -241,8 +268,8 @@ export class TileTerrain extends Heightfield {
 		const r = Math.max( 1, Math.round( 7 / this.texel ) );
 		for ( const m of [ this.sand, this.path, this.gully ] ) blur( m, res, r );
 
-		this.lines = rivers;
-		this.cutChannels( rivers );
+		this.lines = rivers.map( smoothLine );
+		this.cutChannels( this.lines );
 		blur( this.scarp, res, 1 );
 
 		// Beyond the patch the plain carries on: the height reported outside the domain is the median

@@ -33,17 +33,22 @@ export class Terrain {
 	// surface: WGSL of the material's surface stage (default: the island's); a region with other
 	// ground (regions/slavonia/GroundSurface.js) passes its own. It may use the terrain module and
 	// the material module below (terDetail, terGustAt, terWetFoam, terMeadowW).
-	constructor( { scene, terrainData, terrainGPU, gridSize = 40, rangeFactor = 2.0, sunShadow = true, renderer = null, surface = TERRAIN_SURFACE } ) {
+	// extent: how far the mesh reaches, in metres (default: the heightmap's own domain). Past the
+	// domain the heightfield reports its `outside` height, so an inland region draws the plain its
+	// patch sits in out to the horizon instead of ending at a cliff with the water plane beyond.
+	constructor( { scene, terrainData, terrainGPU, gridSize = 40, rangeFactor = 2.0, sunShadow = true, renderer = null, surface = TERRAIN_SURFACE, extent = terrainData.size } ) {
 
 		this.data = terrainData;
 		this.gpu = terrainGPU;
 		this.surface = surface;
-		const half = terrainData.size / 2;
+		const half = extent / 2;
+		// one more level per doubling, so the finest node stays leafSize across any extent
+		const leafSize = 8;
 
 		this.lod = new CDLOD( {
-			gridSize, leafSize: 8, levels: 9,
+			gridSize, leafSize, levels: Math.round( Math.log2( extent / leafSize ) ) + 1,
 			heightBounds: ( x0, z0, x1, z1 ) => terrainData.boundsFor( x0, z0, x1, z1 ),
-			center: { x: - half, z: - half, size: terrainData.size },
+			center: { x: - half, z: - half, size: extent },
 			rangeFactor,
 			prefix: 'terrainLod',
 		} );

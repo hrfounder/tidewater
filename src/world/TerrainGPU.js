@@ -25,7 +25,7 @@ import { detailBinding } from './terrain/TerrainShading.js';
 //
 // WGSL module (`terrainGPU.module`, prefix `terrain`), usable from any stage unless noted:
 //   terrainUvOf( xz: vec2f ) -> vec2f                   domain uv (0..1) of a world xz
-//   terrainHeightAt( xz: vec2f ) -> f32                 exact bilinear height (-90 outside the domain)
+//   terrainHeightAt( xz: vec2f ) -> f32                 exact bilinear height (terrainParams.outside beyond it)
 //   terrainNormalRock( xz: vec2f ) -> vec4f             macro normal xz (-1..1), rock mask, AO — fragment only
 //                                                       (implicit derivatives); terrainNormalRockLevel( xz, level )
 //   terrainNormalAt( xz: vec2f ) -> vec3f               unit macro normal (mip 0, any stage)
@@ -85,6 +85,9 @@ export class TerrainGPU {
 			origin: [ 'f32', terrain.origin ],
 			size: [ 'f32', terrain.size ],
 			res: [ 'f32', res ],
+			// the height reported beyond the domain, the same value the heightfield uses on the CPU:
+			// the island's deep ocean floor, or the level of the plain an inland patch sits in
+			outside: [ 'f32', terrain.outside ],
 			shoreRes: [ 'f32', 1 ],
 			sunBake: [ 'vec3f', new Vector3( 0, 1, 0 ) ],
 			sunBaked: [ 'f32', 0 ], // 0 until the first bake: everything lit
@@ -235,9 +238,9 @@ fn terrainHeightAt( xz: vec2f ) -> f32 {
 	let c = textureLoad( terrainHeightTex, ii + vec2i( 0, 1 ), 0 ).x;
 	let d = textureLoad( terrainHeightTex, ii + vec2i( 1, 1 ), 0 ).x;
 	let h = mix( mix( a, b, t.x ), mix( c, d, t.x ), t.y );
-	// outside the domain: deep ocean floor
+	// beyond the domain: the heightfield's own outside height (TerrainParams)
 	let outside = f.x < 0.0 || f.y < 0.0 || f.x > res - 1.0 || f.y > res - 1.0;
-	return select( h, -90.0, outside );
+	return select( h, terrainParams.outside, outside );
 }
 
 // filtered normal (xz components), rock mask, ambient occlusion
@@ -284,7 +287,11 @@ fn terrainShoreSample( xz: vec2f ) -> vec4f {
 // occluder distance
 fn terrainSunShadowAt( P: vec3f ) -> f32 {
 	let N = f32( textureDimensions( terrainSunShadowTex ).x );
-	let st = clamp( terrainUvOf( P.xz ) * N - 0.5, vec2f( 0.0 ), vec2f( N - 1.001 ) );
+	let raw = terrainUvOf( P.xz ) * N - 0.5;
+	// the horizon is baked over the domain only: beyond it nothing of the terrain casts a shadow, and
+	// clamping to the edge texel instead would drag that edge's horizon across the whole plain
+	if ( raw.x < 0.0 || raw.y < 0.0 || raw.x > N - 1.0 || raw.y > N - 1.0 ) { return 1.0; }
+	let st = clamp( raw, vec2f( 0.0 ), vec2f( N - 1.001 ) );
 	let i = vec2i( floor( st ) );
 	let t = fract( st );
 	let s = mix(

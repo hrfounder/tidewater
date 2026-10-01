@@ -88,10 +88,21 @@ everything else:
 - [x] Slavonian ground shader (`regions/slavonia/GroundSurface.js`, Terrain's `surface` option): mown
   grass banks, meadow, strip fields, gardens, forest (canopy tone from afar until the trees exist),
   wet silt at the waterline and the river bed, all from the land-cover masks.
-- [ ] (built, not yet verified in a browser: no GPU in the dev container) `?region=slavonia` loads the tiles in the real game (`regions/slavonia/world.js`). App skips the
+- [x] `?region=slavonia` loads the tiles in the real game (`regions/slavonia/world.js`). App skips the
   island's village, plants, rocks, debris, reef, breakers, whale and shore wildlife (null and guarded),
-  sets calm, turbid water, turns the surf off, and places the start and the boat by the bridge. The
-  debug and bench views become the progress views.
+  sets calm, turbid water, turns the surf off, and places the start, the boat and the two stalls by
+  the bridge. The debug and bench views become the progress views. Verified on an RTX 3080 at 180 fps
+  (2026-10-02).
+- [x] Inland water. The world has one water plane at the datum, so anywhere the ground sits at or
+  below it is wet, and the patch read as an island in a sea. Three things reported the wrong height
+  outside the patch: `TileTerrain` gave 0 (now the median of its own dry ground), `Terrain` drew the
+  mesh only over the data (now an `extent`, 131 km for Slavonia, past the horizon of the highest
+  view), and the GPU's `terrainHeightAt` returned the island's -90 m ocean floor (now a
+  `TerrainParams.outside` uniform, the same value the CPU heightfield uses). The sun shadow is baked
+  over the patch only, so beyond it the ground is lit rather than taking the edge texel's horizon.
+  Only the carved channels are wet, and the ground shader carries the strip fields out to the horizon.
+- [ ] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no
+  foam), but the water still reads as a lake surface: no current, no reflection of the banks.
 - [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to
   the patch's water level. It feeds the existing terrain pipeline unchanged, because the shared
   queries moved into `world/terrain/Heightfield.js`, which the island's `TerrainData` now extends.

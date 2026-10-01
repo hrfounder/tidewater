@@ -171,7 +171,7 @@ export class TileTerrain extends Heightfield {
 		this.res = res;
 		this.texel = size / res;
 		this.origin = - size / 2;
-		this.outside = 0;
+		this.outside = 0; // replaced below, once the ground is known
 		const n = res * res;
 		this.heights = new Float32Array( n );
 		this.water = new Float32Array( n );
@@ -244,6 +244,17 @@ export class TileTerrain extends Heightfield {
 		this.lines = rivers;
 		this.cutChannels( rivers );
 		blur( this.scarp, res, 1 );
+
+		// Beyond the patch the plain carries on: the height reported outside the domain is the median
+		// of the dry ground inside it. The world's one water plane sits at the datum, so leaving this
+		// at the datum would flood everything outside the tiles and turn the patch into an island in
+		// a sea; at the level of the surrounding fields the plane stays buried under the land and only
+		// the carved channels are wet.
+		const dry = [];
+		for ( let k = 0; k < n; k += 7 ) if ( ! ( this.water[ k ] === this.water[ k ] ) ) dry.push( this.heights[ k ] );
+		dry.sort( ( a, b ) => a - b );
+		this.outside = dry.length ? dry[ dry.length >> 1 ] : 1;
+
 		this.buildMinMax();
 
 	}

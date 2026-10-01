@@ -49,6 +49,14 @@ export const WATER = {
 	scattering: [ 0.22, 0.26, 0.14 ],
 };
 
+// How far the ground mesh reaches. The patch is 2 km of real data; past it the heightfield reports
+// the plain's own level, and the Slavonian lowland really does run flat to the horizon, so the mesh
+// carries on rather than ending at a cliff with the water plane showing beyond it. The water grid
+// follows the camera, so the ground has to outrun the view: from the highest progress view (650 m)
+// the horizon is about 90 km away, and 131 km of plain keeps the sea out of every shot. Past the
+// data the ground is flat, so the far nodes are the coarsest the quadtree has.
+export const TERRAIN_EXTENT = 131072;
+
 export { GROUND_SURFACE };
 
 // hand-built places in the patch (call once the terrain exists)

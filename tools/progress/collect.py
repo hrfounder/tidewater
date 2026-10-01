@@ -2,7 +2,7 @@
 
 Takes the directory the collector wrote the bench's raw BGRA shots into.
 """
-import os, sys, re, glob, struct, subprocess
+import io, os, sys, re, glob, struct, subprocess
 from PIL import Image
 
 ROOT = os.path.abspath( os.path.join( os.path.dirname( __file__ ), '..', '..' ) )
@@ -27,7 +27,7 @@ for p in shots:
     names.append( ( view, name ) )
 readme = os.path.join( OUT, 'README.md' )
 if not os.path.exists( readme ):
-    open( readme, 'w' ).write( '''# Progress timelapse
+    io.open( readme, 'w', encoding='utf-8' ).write( '''# Progress timelapse
 
 Every build step is captured from the same fixed views (`src/regions/slavonia/views.js`), in the real
 game on a GPU, one folder per view (see README.md for the three steps). `python3 tools/progress/timelapse.py` plays a
@@ -37,5 +37,5 @@ view's series back as an animated GIF.
 |---|---|---|---|
 ''' )
 links = ' · '.join( f'[{v}]({v}/{n})' for v, n in names )
-open( readme, 'a' ).write( f'| {stamp.replace( "_", " " )} | `{sha}{"+" if dirty else ""}` | {label} | {links} |\n' )
+io.open( readme, 'a', encoding='utf-8' ).write( f'| {stamp.replace( "_", " " )} | `{sha}{"+" if dirty else ""}` | {label} | {links} |\n' )
 print( f'filed {len( names )} views as {stamp}_{slug}' )

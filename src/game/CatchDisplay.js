@@ -1,7 +1,7 @@
 import { Matrix4, Quaternion, Vector3 } from '../engine/index.js';
 import { FishProps } from '../world/fish/FishProps.js';
 import { SPECIES } from '../world/fish/FishSpecies.js';
-import { FISH, FISH_IDS, fishLengthCm } from './FishTable.js';
+import { FISH_IDS, fishLengthCm, fishModel } from './FishTable.js';
 
 // Real fish (the world's fish models and wet skin, world/fish/FishProps) for the game:
 //  - the fish you just landed, hanging from the line by the gills and flapping, for a moment
@@ -34,14 +34,14 @@ export class CatchDisplay {
 		_f.makeTranslation( PARK.x, PARK.y, PARK.z );
 		for ( const id of FISH_IDS ) {
 
-			const model = FISH[ id ].model;
+			const model = fishModel( id );
 			fp.add( 'whole', model, _f, 'gill', 0.3, { anchor: FishProps.gillAnchor( model ), cloudy: 0.1, wet: 1 } );
 			this.slot[ id ] = i ++;
 
 		}
 
 		// stall fish: { species, frame (Matrix4, world), L, pose ('side' | 'sideFlip') }
-		for ( const s of stall ) fp.add( 'whole', FISH[ s.species ].model, s.frame, s.pose || 'side', s.L, { cloudy: 0.5, wet: 0.7 } );
+		for ( const s of stall ) fp.add( 'whole', fishModel( s.species ), s.frame, s.pose || 'side', s.L, { cloudy: 0.5, wet: 0.7 } );
 		for ( const s of stall.filter( ( x ) => x.ice ) ) fp.add( 'ice', null, s.ice, 'flat', 0.5, { seed: 0.3, flags: 0 } );
 		this.mesh = fp.build();
 		this.mesh.name = 'GameFish';
@@ -59,7 +59,7 @@ export class CatchDisplay {
 		if ( this.shown !== species ) this.hide();
 		this.shown = species;
 		this.t += dt;
-		const model = FISH[ species ].model;
+		const model = fishModel( species );
 		const L = fishLength( species, kg );
 		// struggling: the body curls side to side, the jaw works, the whole fish swings on the line
 		const flap = Math.sin( this.t * 11 ) * 0.9 * Math.exp( - this.t * 0.5 );

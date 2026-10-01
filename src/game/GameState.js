@@ -1,7 +1,8 @@
 import { FISH, fishValue, fishLengthCm } from './FishTable.js';
+import { REGION } from '../regions/index.js';
 import { defaultUpgrades, gearStats, nextLevel, UPGRADES, FUEL_PRICE } from './Gear.js';
 
-const SAVE_KEY = 'tidewater.save.v1';
+const SAVE_KEY = REGION.saveKey;
 
 // Everything the player owns: wallet, the fish in the cooler / hold, the fish log and the gear
 // levels. Saved to localStorage (per browser) after every change; storage can be missing or throw

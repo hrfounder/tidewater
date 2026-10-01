@@ -1,22 +1,9 @@
 import { FISH, FISH_IDS } from './FishTable.js';
+import { REGION } from '../regions/index.js';
 
-// Where the bobber is and what lives there.
-//   depth     water depth under the bobber (m)
-//   reefDist  horizontal distance to the reef edge (m, < 0 inside it)
-//   pierDist  horizontal distance to the pier (piles / head) (m)
-// Returns weights per water type (they overlap: a spot can be both pier and bay).
-export function habitatAt( { depth, reefDist, pierDist } ) {
-
-	const h = { shallows: 0, reef: 0, pier: 0, bay: 0, deep: 0 };
-	if ( depth < 0.25 ) return h; // on the sand
-	h.shallows = smooth( 3.5, 1.0, depth );
-	h.reef = smooth( 12, - 6, reefDist ) * smooth( 0.8, 2.5, depth );
-	h.pier = smooth( 9, 2, pierDist ) * smooth( 0.6, 2, depth );
-	h.bay = smooth( 1.5, 4, depth ) * ( 1 - smooth( 18, 30, depth ) );
-	h.deep = smooth( 16, 28, depth );
-	return h;
-
-}
+// Where the float is and what lives there: weights per water type of the active region, from
+// a spot description (the region's habitatAt documents both).
+export const habitatAt = REGION.fish.habitatAt;
 
 // 1 at the species' favourite time, less at others; hour 0..24
 export function activity( pref, hour ) {
@@ -85,12 +72,5 @@ export function biteDelay( habitat, hour, rng = Math.random ) {
 	const light = hour > 6 && hour < 19 ? 1 : 0.8;
 	const mean = 8 / ( Math.min( rich, 1.6 ) * light );
 	return 2 + - Math.log( 1 - rng() * 0.98 ) * mean * 0.6;
-
-}
-
-function smooth( e0, e1, x ) {
-
-	const t = Math.min( 1, Math.max( 0, ( x - e0 ) / ( e1 - e0 ) ) );
-	return t * t * ( 3 - 2 * t );
 
 }

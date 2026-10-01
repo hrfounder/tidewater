@@ -2,7 +2,7 @@ import { Scene, PerspectiveCamera, Matrix4, Quaternion, Vector3, Vector4 } from 
 import { GPU, Texture, MeshRenderer, FullscreenPass, createViewUniforms, setFrameCamera, UniformBlock } from '../engine/webgpu.js';
 import { FishProps } from '../world/fish/FishProps.js';
 import { ACES_WGSL } from '../post/PostFX.js';
-import { FISH, FISH_IDS, fishLengthCm } from './FishTable.js';
+import { FISH, FISH_IDS, fishLengthCm, fishModel } from './FishTable.js';
 
 // Studio portraits of the catchable fish: the real game models (world/fish, through FishProps) in a
 // neutral photo studio, side-on and horizontal (nose left, as in a field guide).
@@ -45,7 +45,7 @@ export class FishPortrait {
 		_f.makeTranslation( PARK.x, PARK.y, PARK.z );
 		FISH_IDS.forEach( ( id, i ) => {
 
-			fp.add( 'whole', FISH[ id ].model, _f, 'side', 0.3, { cloudy: 0.08, wet: 1, seed: 0.37 } );
+			fp.add( 'whole', fishModel( id ), _f, 'side', 0.3, { cloudy: 0.08, wet: 1, seed: 0.37 } );
 			this.slot[ id ] = i;
 
 		} );

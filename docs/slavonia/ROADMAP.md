@@ -1,128 +1,166 @@
-# Slavonia: a freshwater fishing sim on the Drava, Sava and Dunav
+# Slavonia: an open-world fishing sim on the Bosut, Spačva, Sava and beyond
 
-The goal is to turn Tidewater into a realistic fishing sim set in the lowlands of Slavonia and Baranja
-in eastern Croatia: the rivers Drava, Sava and Dunav (Danube), their side arms, oxbows and floodplain lakes
-(Kopački rit), the willow and poplar forest along the banks, and the villages behind the dykes.
+The final product is a big, continuous open world built from real geography. It covers realistic rivers
+and lakes, real towns and villages, and travel between fishing sites by road (car, tractor) and by water
+(boat).
 
-This file is the plan and the record of decisions. Update it as milestones land.
+The first area is the player's home ground: **Vinkovci, Andrijaševci and Rokovci, the Bosut, the Spačva
+forest and the Sava at Županja**. That is 44 × 38 km (`tools/geodata/areas.py`, `bosut`). The world uses
+real coordinates, so later areas join up with it rather than becoming separate maps: Vukovar and the
+Danube to the east, Osijek, the Drava and Kopački rit to the north, and Slavonski Brod up the Sava.
+
+![The first area](img/bosut-map.jpg)
+
+This file is the plan and the record of decisions. Update it as milestones land. Visual references are in
+[TARGETS.md](TARGETS.md), and the data pipeline is in [tools/geodata](../../tools/geodata/README.md).
 
 ## Principles
 
 - **Regions, not a rewrite.** Anything specific to a place lives in `src/regions/<id>/`. The engine, sky,
   post-processing, fishing mechanics, UI and save system stay shared. `?region=slavonia` selects the new
-  region. The Caribbean island stays the default and keeps working until Slavonia is playable, so `main`
-  is never broken halfway through the port.
-- **Move systems behind the region one at a time.** When a system becomes region-specific, its
-  Caribbean data moves into `regions/caribbean/` unchanged. The shared code keeps its API, and its
-  tests keep passing.
-- **Reuse the simulations.** The FFT wave model works for lakes and wide rivers with a short fetch and
-  light wind. The shallow-water shore sim and boat wake carry over. Only the ocean-only parts are
-  dropped for this region: swell, plunging breakers and surf.
-- **One water level.** The engine has a single global water plane (`G.seaLevel`). Slavonia is flat:
-  the Drava falls about 0.2 m per km, so the level changes by less than half a metre across the 2 km map.
-  Rivers, oxbows and lakes share the plane. The river's current is a flow field over the plane, not a
-  slope.
-- **Real data, marked when unverified.** Species, sizes and length-weight relations come from published
-  values (FishBase-style). Numbers that still need checking say so in a comment, for example prices and
-  any fishing regulations.
+  region. The Caribbean island stays the default until Slavonia plays better, so `main` is never broken
+  halfway through the port.
+- **Real data first, hand-built where it matters.** Terrain, water, roads, buildings and land cover are
+  generated from open data. Hand-built detail goes into the fishing spots, the town centres, the bridges
+  and the harbours. Nothing in the world should contradict the real map.
+- **Data is processed offline and deterministically.** `tools/geodata` turns the raw data into game tiles.
+  The browser only streams the tiles, and the raw data is never committed.
+- **Reuse the simulations.** The FFT waves work for lakes and the wide Sava, with a short fetch and
+  light wind. The shallow-water shore sim and the boat wake carry over. Swell, breakers and surf are
+  ocean-only and off in this region.
+- **Every number gets checked.** Species data, sizes and prices come from published values, and anything
+  unverified says so in a comment. Fishing rules (closed seasons, minimum sizes, licences) must be
+  checked against current Croatian law before they go in.
+- **Test what can be tested headlessly.** Run the logic and data tests in node. Shots of the engine come
+  from the bench (`?bench&shots=`), and the targets in TARGETS.md are the visual check.
+
+## Engine changes an open world needs
+
+The engine was built for a 2 km island. These are the structural changes, in the order they block
+everything else:
+
+1. **Streaming tiles.** Terrain, water, vegetation, buildings and roads load and unload in tiles around
+   the player, for example 1 km tiles with the farther tiles at lower detail. The CDLOD code
+   (`core/CDLOD.js`) already does the terrain LOD for one heightmap. It needs a tiled source.
+2. **Precision.** Positions are kept relative to a floating origin near the camera. At 20+ km from
+   the origin, float32 world positions lose millimetres, and TAA and motion vectors jitter.
+3. **Water at many levels.** The engine has one global water plane (`G.seaLevel`). Here the Sava, the
+   Bosut, the canals and every lake have their own level, and the rivers slope gently. Water needs
+   per-body surfaces (a level per lake, a level profile along each river) and per-body depth, flow,
+   colour and turbidity.
+4. **Vehicles on roads.** The road meshes follow the terrain, bridges cross water, and car and tractor
+   physics run on them. The existing boat controller covers the rivers.
+5. **Instanced towns.** About 108,000 buildings in the first area. Most can come from a handful of
+   procedural archetypes (Šokac street house, newer two-storey house, apartment block, barn, church,
+   industrial hall), merged per tile and LODed down to impostors.
 
 ## Milestones
 
 ### M0: Foundation (done)
 - [x] Region system: `src/regions/index.js` and `?region=`, with a separate save per region.
-- [x] Caribbean fish table and habitat model moved into `regions/caribbean/fish.js`, unchanged.
-- [x] Slavonian species table with 20 species and Croatian names: carp, wels, pike, zander, asp,
-  barbel, sterlet, bream, tench, chub, ide, perch, roach, bleak, burbot, Prussian carp, grass and
-  silver carp, brown bullhead and pumpkinseed.
-- [x] River and lake habitats: shallows, weeds, current, slack, still, snags and deep. Spots are
-  described by depth, flow, river, weeds and cover.
+- [x] Caribbean fish table and habitats moved into `regions/caribbean/` unchanged.
+- [x] Slavonian species table: 20 species with Croatian names, length-weight relations and stand-in
+  models.
+- [x] River and lake habitats: shallows, weeds, current, slack, still, snags and deep.
 - [x] Tests: `test/region-slavonia.mjs`.
 
-### M1: Make the world region-driven, with no visual change to the Caribbean region
-- [ ] `region.layout` replaces `WORLD` (world/WorldLayout.js). Hardcoded positions move into it: the
-  village houses, STAND, CHANDLERY, the ShoreSim centre, the Breakers stations and the minimap origin.
-- [ ] `region.water`: absorption and scattering (`G.waterAbsorption`/`waterScattering`), wind, the
-  OceanFFT systems (fetch, swell share, cascade sizes, depth), ShoreWaves amplitude and period, and
-  SeaDetail. Ocean-only systems are toggled by the region: breakers, swell, the whale and marine snow.
-- [ ] Decouple `FishSchools` from `Reef`, which owns every swimming fish today. Then the reef can be
-  optional.
-- [ ] Guard the systems App.js builds unconditionally (Reef, Breakers, Wildlife updates) so a region
-  can leave them out.
-- [ ] The game asks the region for the habitat at a point (`Game.habitatAtPoint`). The Caribbean
-  version keeps using the reef and pier distances.
-- [ ] Pull location strings (vendor names, loading texts, guide) into the region.
+### M1: Geodata pipeline (in progress)
+- [x] Fetch Overture Maps (water, roads, buildings, land use, bridges, places), the Copernicus 30 m
+  elevation, ESA WorldCover and Sentinel-2 for an area (`tools/geodata/fetch.py`).
+- [x] Overview map and satellite renders (`overview.py`, `satellite.py`), and the target images.
+- [ ] **Bare-earth terrain.** Remove forest canopy and buildings from the surface model using the
+  land cover, fill from the surrounding ground, and add the river channels, levees and lake basins
+  from the water geometry.
+- [ ] **Water bodies.** A level for each lake, a level profile and centreline for each river, typical
+  depth profiles (cut bank, point bar), and a flow speed per river: the Sava is fast, the Bosut slow,
+  the canals almost still.
+- [ ] **Tile format.** Per tile: a heightmap, a land-cover/material map, water bodies, road meshes,
+  building lists and scatter seeds. Small binary files, gzip-friendly, versioned.
+- [ ] Choose the starting core tile set around Rokovci and Andrijaševci for the first playable build.
 
-### M2: Floodplain terrain
-- [ ] Split `TerrainData` into the shared grid, queries and masks plus a region "shape" strategy.
-  The island shape covers `_coast`, `_base`, the ridges, beach, cliffs, stacks and reef platform.
-- [ ] A Slavonian shape: a meandering main channel 150–300 m wide and 6–12 m deep, with a cut bank
-  and a point bar; an oxbow lake; a side arm; flood levees; the dyke; and flat fields behind it. Edges
-  fade to land, not to -90 m.
-- [ ] Stone groynes (*naperi*) on the river: the classic Danube fishing spots.
-- [ ] Flow field: a texture of current speed and direction, from the channel's centreline and width
-  with eddies behind the groynes and bends. It feeds the habitat (`flow`), the drift of the float
-  and line, floating debris, the boat, and the water shader's advected foam lines.
-- [ ] Consider real geography: Copernicus DEM / EU-DEM and OSM river lines for a specific reach,
-  for example the Drava–Dunav confluence at Aljmaš or Kopački rit. They need procedural detail at 1 m.
+### M2: Streaming world (engine)
+- [ ] Tiled terrain with CDLOD over streamed tiles, and a floating origin.
+- [ ] The region selects the world: island (Caribbean) or tiles (Slavonia). The `WORLD` layout,
+  ShoreSim, Breakers, Reef and Whale become region-provided or optional.
+- [ ] Decouple `FishSchools` from `Reef`, which owns every swimming fish today.
+- [ ] Per-body water surfaces and levels. The FFT waves get lake and river settings, and the ocean-only
+  systems switch off.
+- [ ] Map screen and minimap from the tiles.
 
-### M3: Freshwater fish models
-- [ ] Anatomy in `world/fish/FishSpecies.js` and skin patterns in `FishMaterial.js` for the 20
-  species. Several share body plans: the cyprinids (roach, ide, chub, bleak, asp), carps (carp,
-  Prussian carp, grass carp, silver carp), percids (perch, zander), pike, catfish (wels, bullhead,
-  burbot) and the sturgeon.
-- [ ] New geometry: barbels (carp, barbel, wels, sterlet, burbot), the sterlet's scutes and
-  heterocercal tail, and the wels's long anal fin.
-- [ ] Swimming fish in the river: schools of bleak in the current, carp grubbing in the shallows,
-  and asp striking at the surface.
+### M3: Rivers and lakes
+- [ ] Flow field per river (speed and direction from the centreline, width and bends, eddies at
+  bridges and snags). It feeds the habitats, the drift of the float and line, floating leaves and
+  debris, and the boat.
+- [ ] Turbid green-brown water: about 0.5–1 m visibility in the Bosut, more in the gravel pits, with
+  muddy Sava water after rain.
+- [ ] Banks: clay cut banks, willow roots, reed and cattail beds, water lilies, anglers' clearings
+  and footpaths, wooden fishing platforms.
 
-### M4: Water look
-- [ ] Turbid, green-brown water (visibility 0.5–1.5 m in the rivers, clearer in the oxbows):
-  absorption and scattering, caustics strength, and the underwater fog.
-- [ ] Lake waves: short fetch and light wind, with the existing FFT and the shore sim on the banks.
-- [ ] Floating leaves, foam lines and driftwood that follow the flow; mist over the oxbows at dawn.
+### M4: Roads, vehicles and travel
+- [ ] Road meshes by class from the data: asphalt and markings for the A3/D55/D46, narrow village roads,
+  gravel and dirt field tracks. Bridges from the data (245 in the area), including the Sava bridge at
+  Županja.
+- [ ] Car, then tractor with trailer, then bicycle. Fuel, parking at fishing spots, carrying gear.
+- [ ] Boats: a flat-bottomed čamac with an outboard on the Sava and the wider Bosut, launched from slips.
+- [ ] Fast travel between discovered spots, and a map screen.
+- [ ] Later: local traffic, buses and trains on the Vinkovci lines.
 
-### M5: Landscape and life
-- [ ] Vegetation: white willow, black and white poplar, pedunculate oak (Slavonian oak), reeds,
-  cattails, water lilies and duckweed, plus maize and sunflower fields behind the dyke.
-- [ ] Birds: grey heron, great egret, cormorant, white-tailed eagle, white stork and kingfisher.
-  Frogs and mosquitoes at dusk.
-- [ ] The village: Slavonian gable-end houses facing the street, a *čarda* (the riverside fish
-  restaurant, which buys the catch), a fishermen's hut on stilts, and a wooden *čamac* (flat-bottomed
-  boat) in place of the motor boat.
-- [ ] Soundscape: the river, the wind in the reeds and poplars, frogs, cuckoos, church bells.
+### M5: Towns and villages
+- [ ] Building archetypes from footprints: Šokac gable-end houses facing the street with a porch
+  (*ganak*) and gate, newer houses, barns, corn cribs, apartment blocks (Vinkovci, Županja),
+  churches, schools and industrial halls.
+- [ ] Street dressing: fences and gates, wells, benches, power poles (1,240 in the data), bus stops
+  and street lights.
+- [ ] Hand-built centres: Vinkovci (Korzo, the Bosut promenade, the churches, the railway station),
+  Županja (centre and Sava front), and Andrijaševci and Rokovci.
+- [ ] Shops and places: tackle shops, bars and the fishing clubs from the data. The fish market or
+  restaurant that buys the catch.
 
-### M6: Fishing realism
-- [ ] Techniques: float, feeder/ledger, carp rigs, spinning, and the catfish clonk (*bućkalica*)
-  from the boat. Baits change what bites.
-- [ ] Seasons and water temperature: spring floods, summer low water, autumn fog.
-- [ ] Regulations: closed seasons (*lovostaj*), minimum sizes (*lovna mjera*) and licences per
-  water. These must be checked against the current Croatian freshwater fishing rules before they go in.
-- [ ] Economy in euros. Gear names for river fishing.
+### M6: Land and life
+- [ ] Fields from the satellite parcels: strip fields with crops by season (maize, wheat,
+  sunflower, soy), field margins and tree lines.
+- [ ] Forest: pedunculate oak (Spačva), ash, hornbeam, white willow and poplar along the water, and
+  orchards behind the houses.
+- [ ] Birds and animals: herons, egrets, cormorants, storks, kingfishers, deer and wild boar in Spačva,
+  frogs and mosquitoes at dusk.
+- [ ] Soundscape: the river, the wind in the poplars, frogs, church bells, distant tractors and the A3.
 
-### M7: Switch the default
-- [ ] When Slavonia plays better than the island, make it the default region. Then decide whether
-  to keep the Caribbean region.
+### M7: Freshwater fish models
+- [ ] Anatomy and skin patterns for the 20 species, replacing the stand-ins. Most share body plans:
+  cyprinids, carps, percids, pike, catfish and the sturgeon.
+- [ ] New geometry: barbels, the sterlet's scutes and tail, and the wels's long anal fin.
+- [ ] Swimming fish in the rivers and lakes.
+
+### M8: Fishing realism
+- [ ] Techniques: float, feeder/ledger, carp rigs, spinning, and the catfish clonk (*bućkalica*) from
+  the boat. Baits change what bites.
+- [ ] Seasons, water temperature and water levels: spring high water, summer low water, autumn fog.
+- [ ] Regulations: closed seasons, minimum sizes and licences. Verify these first.
+- [ ] Economy in euros, with river-fishing gear.
+
+### M9: Grow the world
+- [ ] Vukovar and the Danube, then Osijek, the Drava and Kopački rit, then Slavonski Brod up the Sava.
+- [ ] When Slavonia plays better than the island, make it the default region.
 
 ## Where the island is baked in
 
-The coupling map, made while planning M1/M2:
+The coupling map for M2:
 
 - `WORLD` (world/WorldLayout.js) is read by about 20 modules: terrain, reef, pier, fish, rocks, debris,
-  vegetation scatter, birds, crabs, game, minimap, audio, player and boat. Terrain.js bakes
-  `swellDir` and the reef into its WGSL as literals.
+  vegetation scatter, birds, crabs, game, minimap, audio, player and boat. Terrain.js bakes `swellDir`
+  and the reef into its WGSL as literals.
 - `TerrainData` builds the island from hardcoded ellipses (`_coast`), the bay box (`beachZoneAt`),
-  `IslandShape.RIDGES`/`SEA_STACKS`/`PATHS`, and z-ranges in `_detail`/`_features`/`_seabed`. The
-  borders fade to -90 m.
+  `IslandShape`, and z-ranges in `_detail`/`_features`/`_seabed`. The borders fade to -90 m.
 - The water globals are in `engine/render/Frame.js`: `seaLevel`, `waterAbsorption`,
-  `waterScattering`, `windSpeed` and `windDir`. OceanFFT systems use the `local` and `swell` defaults
-  (App.js passes no options). AppUI's clarity slider scales around the tropical defaults.
+  `waterScattering`, `windSpeed` and `windDir`. OceanFFT systems use the `local` and `swell` defaults.
+  AppUI's clarity slider scales around the tropical defaults.
 - `Reef` owns `FishSchools`, so every swimming fish. App.js updates Reef, Breakers and Wildlife
   unconditionally.
 - Fish skins are one WGSL branch per `PATTERN` id in FishMaterial.js.
 
 ## Development
 
-- `npm test`: the game logic, the Slavonian region data, and an engine smoke test (needs a WebGPU
-  adapter; in a headless Linux container, install `mesa-vulkan-drivers` for lavapipe).
-- `npm run dev`, then open `/?region=slavonia`. Until M2 this shows the island with the Slavonian
-  fish table.
+- `npm test`: the game logic, the Slavonian region data, and an engine smoke test. The smoke test
+  needs a WebGPU adapter; in a headless Linux container, install `mesa-vulkan-drivers` for lavapipe.
+- `npm run dev`, then `/?region=slavonia`. Until M2 this shows the island with the Slavonian fish.
+- Geodata: see `tools/geodata/README.md`.

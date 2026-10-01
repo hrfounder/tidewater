@@ -2,6 +2,7 @@
 // engine's terrain pipeline (TerrainGPU -> Terrain), rendered headless. Needs the exported core
 // tiles in public/world/bosut/ (tools/geodata/tiles.py bosut core ...).
 //   node test/world-slavonia.mjs [outDir] [--view=name] [--small]
+// The views are the fixed progress views; tools/progress/shoot.sh files them into the timelapse.
 import { readFileSync } from 'node:fs';
 import { worldHarness, done } from './world-harness.mjs';
 import { TileTerrain } from '../src/regions/slavonia/TileTerrain.js';
@@ -9,13 +10,14 @@ import { TerrainGPU } from '../src/world/TerrainGPU.js';
 import { Terrain } from '../src/world/Terrain.js';
 import { computeShoreField } from '../src/world/ShoreField.js';
 import { Material } from '../src/engine/render/Material.js';
+import { PROGRESS_VIEWS } from '../src/regions/slavonia/views.js';
 
 const out = process.argv[ 2 ] && ! process.argv[ 2 ].startsWith( '--' ) ? process.argv[ 2 ] : '/tmp';
 const small = process.argv.includes( '--small' );
 const dir = new URL( '../public/world/bosut/', import.meta.url );
 const index = JSON.parse( readFileSync( new URL( 'index.json', dir ) ) );
 let t = performance.now();
-const data = await TileTerrain.load( { index, center: index.center, readTile: async ( f ) => {
+const data = await TileTerrain.load( { index, center: index.center, readFile: async ( f ) => {
 
 	const b = readFileSync( new URL( f, dir ) );
 	return b.buffer.slice( b.byteOffset, b.byteOffset + b.byteLength );
@@ -38,18 +40,15 @@ H.before.push( ( cam ) => terrain.update( cam ) );
 const water = new H.E.Mesh( new H.E.PlaneGeometry( data.size, data.size ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
 H.scene.add( water );
 
-// The patch is centred on Most Bosut, the road bridge between Rokovci (north) and Andrijaševci
-// (south). x = east, z = south (m). The river runs roughly east to west here; the park with the
-// fishing platforms is on the south bank east of the bridge, St Roch's church (Rokovci) 200 m north.
-// The photo views stand where docs/slavonia/photos/bosut-* were taken (approximately).
-const at = ( x, z, up ) => [ x, data.heightAt( x, z ) + up, z ];
-const views = {
-	aerial: { pos: [ 300, 420, 700 ], target: [ 0, 0, 0 ] },
-	// bosut-winter-platforms-bridge.jpg: upstream of the bridge, looking west along the water to it
-	photoBridge: { pos: at( 150, - 58, 1.7 ), target: [ 0, 1.5, - 4 ], fov: 60 },
-	// bosut-spring-anglers-church-reflection.jpg: from the park bank across the water to the church
-	photoChurch: { pos: at( 125, - 4, 1.6 ), target: [ 42, 12, - 196 ], fov: 60 },
-};
+// the fixed progress views (regions/slavonia/views.js); `ground` heights are above the ground there
+const views = {};
+for ( const [ k, v ] of Object.entries( PROGRESS_VIEWS ) ) {
+
+	const [ x, y, z ] = v.pos;
+	views[ k ] = { ...v, pos: [ x, v.ground ? data.heightAt( x, z ) + y : y, z ] };
+
+}
+
 const only = process.argv.find( ( a ) => a.startsWith( '--view=' ) );
 for ( const [ k, v ] of Object.entries( views ) ) {
 

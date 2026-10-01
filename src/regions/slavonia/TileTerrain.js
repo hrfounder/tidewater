@@ -9,6 +9,11 @@ import { Heightfield } from '../../world/terrain/Heightfield.js';
 // `datum`: by default the level of the water in the patch, so the engine's single water plane
 // (G.seaLevel = 0) is that river's surface.
 //
+// Rivers, canals and streams come as lines (rivers.json: points with the water level and the bank top)
+// and are cut here at the patch's full resolution with a trapezoid section: flat bed, banks at the
+// line's slope up to the bank top, then easing into the surrounding ground. The tiles are 10 m data
+// and would alias a 30 m channel into steps.
+//
 // Fields as TerrainData where the terrain shaders read them: the material masks are empty for now
 // (no beach sand, reef or footpaths here); `cover` holds the ESA WorldCover class of each texel and
 // `water` the water level above the datum (NaN where dry).
@@ -50,8 +55,8 @@ function cr( t, w ) {
 
 export class TileTerrain extends Heightfield {
 
-	// index: the tiles' index.json; readTile( file ) -> Promise<ArrayBuffer>
-	static async load( { index, readTile, center, size = 2048, res = 2048, datum } ) {
+	// index: the tiles' index.json; readFile( file ) -> Promise<ArrayBuffer> (tiles, rivers.json)
+	static async load( { index, readFile, center, size = 2048, res = 2048, datum } ) {
 
 		const T = index.tile, half = size / 2;
 		const [ cE, cN ] = center;
@@ -63,15 +68,16 @@ export class TileTerrain extends Heightfield {
 
 			const t = byKey.get( e + ',' + n );
 			if ( ! t ) throw new Error( `world tile ${ e },${ n } is missing (patch outside the exported tiles)` );
-			tiles.push( readTile( t.file ).then( parseTile ) );
+			tiles.push( readFile( t.file ).then( parseTile ) );
 
 		}
 
-		return new TileTerrain( await Promise.all( tiles ), { e0, n1, cols: ( e1 - e0 ) / T, rows: ( n1 - n0 ) / T, T, center, size, res, datum } );
+		const rivers = index.rivers ? JSON.parse( new TextDecoder().decode( await readFile( index.rivers ) ) ).lines : [];
+		return new TileTerrain( await Promise.all( tiles ), { e0, n1, cols: ( e1 - e0 ) / T, rows: ( n1 - n0 ) / T, T, center, size, res, datum, rivers } );
 
 	}
 
-	constructor( tiles, { e0, n1, cols, rows, T, center, size, res, datum } ) {
+	constructor( tiles, { e0, n1, cols, rows, T, center, size, res, datum, rivers = [] } ) {
 
 		super();
 		const step = tiles[ 0 ].res, per = tiles[ 0 ].n - 1;
@@ -178,7 +184,86 @@ export class TileTerrain extends Heightfield {
 
 		}
 
+		this.lines = rivers;
+		this.cutChannels( rivers );
 		this.buildMinMax();
+
+	}
+
+	// Cut the water lines into the heightfield. Every texel takes the section of the line whose bank
+	// top it is nearest inside of (so confluences and parallel ditches don't fight), then:
+	//   bed      level - depth, flat out to the bed's half width
+	//   banks    rising at 1 : slope through the water line up to the bank top
+	//   beyond   easing from the bank top into the ground over BLEND m
+	cutChannels( lines ) {
+
+		const BLEND = 14;
+		const { res, texel, origin, heights, datum } = this;
+		const [ cE, cN ] = this.center;
+		const n = res * res;
+		const bestS = new Float32Array( n ).fill( Infinity );
+		const bestD = new Float32Array( n ), bestL = new Float32Array( n ), bestB = new Float32Array( n );
+		const bestI = new Int32Array( n ).fill( - 1 );
+		lines.forEach( ( line, li ) => {
+
+			const { width, depth, slope } = line;
+			const bh = Math.max( 0.4, width / 2 - depth * slope );
+			const P = line.pts;
+			for ( let s = 0; s + 1 < P.length; s ++ ) {
+
+				const [ ea, na, la, ba ] = P[ s ], [ eb, nb, lb, bb ] = P[ s + 1 ];
+				const ax = ea - cE, az = cN - na, bx = eb - cE, bz = cN - nb;
+				const top = bh + ( Math.max( ba, bb ) - Math.min( la, lb ) + depth ) * slope;
+				const R = top + BLEND;
+				const i0 = Math.max( 0, Math.floor( ( Math.min( ax, bx ) - R - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ax, bx ) + R - origin ) / texel ) );
+				const j0 = Math.max( 0, Math.floor( ( Math.min( az, bz ) - R - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( az, bz ) + R - origin ) / texel ) );
+				if ( i0 > i1 || j0 > j1 ) continue;
+				const dx = bx - ax, dz = bz - az, len2 = Math.max( dx * dx + dz * dz, 1e-6 );
+				for ( let j = j0; j <= j1; j ++ ) {
+
+					const z = origin + ( j + 0.5 ) * texel;
+					for ( let i = i0; i <= i1; i ++ ) {
+
+						const x = origin + ( i + 0.5 ) * texel;
+						const t = Math.min( 1, Math.max( 0, ( ( x - ax ) * dx + ( z - az ) * dz ) / len2 ) );
+						const d = Math.hypot( x - ax - dx * t, z - az - dz * t );
+						const lvl = la + ( lb - la ) * t, bank = ba + ( bb - ba ) * t;
+						const sgn = d - ( bh + ( bank - lvl + depth ) * slope ); // < 0 inside the bank tops
+						const k = j * res + i;
+						if ( sgn < bestS[ k ] && sgn < BLEND ) {
+
+							bestS[ k ] = sgn; bestD[ k ] = d; bestL[ k ] = lvl - datum; bestB[ k ] = bank - datum; bestI[ k ] = li;
+
+						}
+
+					}
+
+				}
+
+			}
+
+		} );
+		for ( let k = 0; k < n; k ++ ) {
+
+			const li = bestI[ k ];
+			if ( li < 0 ) continue;
+			const { width, depth, slope, dry } = lines[ li ];
+			const bh = Math.max( 0.4, width / 2 - depth * slope );
+			const s = bestS[ k ];
+			if ( s < 0 ) {
+
+				heights[ k ] = bestL[ k ] - depth + Math.max( 0, bestD[ k ] - bh ) / slope;
+				this.water[ k ] = ! dry && bestD[ k ] < width / 2 ? bestL[ k ] : NaN;
+
+			} else {
+
+				const t = s / BLEND, e = t * t * ( 3 - 2 * t );
+				heights[ k ] = bestB[ k ] + ( heights[ k ] - bestB[ k ] ) * e;
+				if ( this.water[ k ] === this.water[ k ] && heights[ k ] > this.water[ k ] ) this.water[ k ] = NaN;
+
+			}
+
+		}
 
 	}
 

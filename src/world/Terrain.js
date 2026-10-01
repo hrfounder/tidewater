@@ -30,10 +30,14 @@ export class Terrain {
 	// sunShadow: apply the heightfield sun shadow here (pass false if it is applied to every scene
 	// material through SceneLighting.directModulation). renderer: optional (unused: the sun shadow
 	// map is baked from update() into the frame encoder).
-	constructor( { scene, terrainData, terrainGPU, gridSize = 40, rangeFactor = 2.0, sunShadow = true, renderer = null } ) {
+	// surface: WGSL of the material's surface stage (default: the island's); a region with other
+	// ground (regions/slavonia/GroundSurface.js) passes its own. It may use the terrain module and
+	// the material module below (terDetail, terGustAt, terWetFoam, terMeadowW).
+	constructor( { scene, terrainData, terrainGPU, gridSize = 40, rangeFactor = 2.0, sunShadow = true, renderer = null, surface = TERRAIN_SURFACE } ) {
 
 		this.data = terrainData;
 		this.gpu = terrainGPU;
+		this.surface = surface;
 		const half = terrainData.size / 2;
 
 		this.lod = new CDLOD( {
@@ -107,7 +111,7 @@ export class Terrain {
 		mat.modules = modules;
 		mat.defines.HAS_WETNESS = this.wetness ? 1 : 0;
 		mat.defines.MATERIAL_SUN_MODULATION = this.sunShadow ? 1 : 0;
-		mat.surface = TERRAIN_SURFACE;
+		mat.surface = this.surface;
 		mat.needsUpdate = true;
 
 	}

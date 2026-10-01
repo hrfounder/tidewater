@@ -188,3 +188,8 @@ The coupling map for M2:
   needs a WebGPU adapter; in a headless Linux container, install `mesa-vulkan-drivers` for lavapipe.
 - `npm run dev`, then `/?region=slavonia`. Until M2 this shows the island with the Slavonian fish.
 - Geodata: see `tools/geodata/README.md`.
+- Progress timelapse: after every build step, run `tools/progress/shoot.sh "label"` and commit the
+  result. It renders the fixed views in `src/regions/slavonia/views.js` into
+  `docs/slavonia/progress/<view>/` and logs the step in `docs/slavonia/progress/README.md`.
+  `python3 tools/progress/timelapse.py` turns a view's series into a GIF. Never move a view; add new
+  ones instead.

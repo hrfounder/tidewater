@@ -16,6 +16,9 @@ Steps:
 
 Outputs in cache/<area>/terrain/:
   dtm.tif        bare-earth ground with the channels and basins (m above sea level, float32)
+  ground.tif     the same with the lake basins but without the line channels (the game cuts those)
+  water_lines.json  rivers, canals, streams and ditches: width, depth, bank slope and points
+                 [ east, north, water level, bank top ] every res metres, downstream
   water.tif      water surface level where there is water, NaN elsewhere (float32)
   water.json     the water bodies: name, class, level (or level range), width, depth
   previews       dsm vs dtm hillshades, the water map
@@ -51,7 +54,7 @@ CHANNEL = {
 }
 # named rivers measured on the imagery / known depths
 NAMED = {
-    'Bosut': ( 32, 3.5, 2.0, 2.0 ),
+    'Bosut': ( 32, 2.5, 2.0, 2.0 ),
     'Sava': ( 190, 7.0, 3.0, 3.0 ),
     'Dunav': ( 400, 9.0, 3.0, 3.0 ),
     'Spačva': ( 20, 2.5, 2.0, 1.5 ),
@@ -183,6 +186,11 @@ def main():
         water = np.where( m, np.fmax( water, lvl ), water )
         bodies.append( { 'kind': 'area', 'name': nm and nm.get( 'primary' ), 'class': cl, 'level': round( lvl, 2 ), 'depth': depth, 'cells': int( m.sum() ), 'intermittent': bool( inter ) } )
 
+    # bare earth with the lake basins but without the line channels: the game cuts those itself at
+    # full resolution from the line vectors (water_lines.json)
+    ground = np.minimum( dtm, bed ).astype( np.float32 )
+    lines_out = []
+
     # rivers, canals, streams and ditches: a level profile along the line and a trapezoid channel
     # pieces of the same named river are joined first, so its level profile runs continuously
     from shapely.ops import linemerge
@@ -209,6 +217,15 @@ def main():
                 g0 = np.minimum( g0, sample( dtm, px + dx * wid / 2, py + dy * wid / 2 ) )
             lvl = ndimage.uniform_filter1d( g0 - free, size=max( 3, int( 300 / res ) ), mode='nearest' )
             lvl = np.minimum.accumulate( lvl )  # never rises downstream
+            # bank top: the ground beside the channel on both sides (perpendicular to the line)
+            tx, ty = np.gradient( px ), np.gradient( py )
+            tn = np.maximum( np.hypot( tx, ty ), 1e-6 )
+            off = wid / 2 + dep * slope + 25
+            gl = sample( dtm, px - ty / tn * off, py + tx / tn * off )
+            gr = sample( dtm, px + ty / tn * off, py - tx / tn * off )
+            bank = ndimage.uniform_filter1d( np.maximum( np.minimum( gl, gr ), lvl + 0.3 ), size=max( 3, int( 100 / res ) ), mode='nearest' )
+            lines_out.append( { 'name': name, 'class': cl, 'width': wid, 'depth': dep, 'slope': slope, 'dry': bool( inter is True and cl in ( 'ditch', 'drain' ) ),
+                'pts': [ [ round( float( a ), 1 ), round( float( b ), 1 ), round( float( c ), 2 ), round( float( e ), 2 ) ] for a, b, c, e in zip( px, py, lvl, bank ) ] } )
             half = wid / 2 + dep * slope  # water half width + the underwater bank
             reach = half + free * slope
             # cells near the line: distance to it and the level of its nearest point
@@ -242,6 +259,9 @@ def main():
     prof = dict( driver='GTiff', height=height, width=width, count=1, dtype='float32', crs=CRS, transform=T, compress='deflate', predictor=3, tiled=True )
     with rasterio.open( os.path.join( out, 'dtm.tif' ), 'w', **prof ) as f: f.write( dtm_final, 1 )
     with rasterio.open( os.path.join( out, 'water.tif' ), 'w', **prof, nodata=np.nan ) as f: f.write( water, 1 )
+    with rasterio.open( os.path.join( out, 'ground.tif' ), 'w', **prof ) as f: f.write( ground, 1 )
+    # line vectors: points every `res` m downstream, [ east, north, water level, bank top ] (m)
+    json.dump( { 'crs': CRS, 'lines': lines_out }, open( os.path.join( out, 'water_lines.json' ), 'w' ), ensure_ascii=False )
     json.dump( { 'crs': CRS, 'origin': [ x0, y1 ], 'res': res, 'size': [ width, height ], 'bodies': bodies }, open( os.path.join( out, 'water.json' ), 'w' ), ensure_ascii=False, indent=1 )
     print( f'water: {len( bodies )} bodies, {np.isfinite( water ).mean() * 100:.2f}% of the area wet', flush=True )
 

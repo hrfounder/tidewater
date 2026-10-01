@@ -15,7 +15,9 @@ Tile file (little endian):
       u16[n*n] water surface level (cm above sea level), 0 where dry
       u8[n*n]  land cover (ESA WorldCover class)
 
-index.json lists the tiles, the grid and the data credits.
+index.json lists the tiles, the grid and the data credits; rivers.json the water lines over them
+(see terrain.py water_lines.json): the tiles hold the ground without the line channels, which the game
+cuts at full resolution.
 """
 import os, sys, json, math, struct
 import numpy as np
@@ -39,7 +41,9 @@ def main():
     area = sys.argv[ 1 ] if len( sys.argv ) > 1 else 'bosut'
     core = len( sys.argv ) > 2 and sys.argv[ 2 ] == 'core'
     src = os.path.join( HERE, 'cache', area, 'terrain' )
-    with rasterio.open( os.path.join( src, 'dtm.tif' ) ) as f:
+    # ground without the river channels (the game cuts them from rivers.json); older runs: dtm.tif
+    g = os.path.join( src, 'ground.tif' )
+    with rasterio.open( g if os.path.exists( g ) else os.path.join( src, 'dtm.tif' ) ) as f:
         dtm, T, crs = f.read( 1 ), f.transform, f.crs
     with rasterio.open( os.path.join( src, 'water.tif' ) ) as f: water = f.read( 1 )
     res = T.a
@@ -85,7 +89,23 @@ def main():
             open( os.path.join( out, name ), 'wb' ).write( body )
             tiles.append( { 'file': name, 'east': te * TILE, 'north': tn * TILE, 'wet': round( float( np.isfinite( wl ).mean() ), 4 ),
                 'min': round( float( hg.min() ), 2 ), 'max': round( float( hg.max() ), 2 ) } )
-    json.dump( { 'version': 1, 'crs': str( crs ), 'center': center, 'tile': TILE, 'samples': n, 'res': res, 'credits': CREDITS, 'tiles': tiles },
+    # the rivers, canals and streams over these tiles (+ a margin), clipped to runs of points inside
+    rivers = None
+    lp = os.path.join( src, 'water_lines.json' )
+    if os.path.exists( lp ):
+        M = 300
+        bx0, bx1, by0, by1 = e0 * TILE - M, e1 * TILE + M, n0 * TILE - M, n1 * TILE + M
+        out_lines = []
+        for l in json.load( open( lp ) )[ 'lines' ]:
+            run = []
+            for p in l[ 'pts' ] + [ None ]:
+                if p is not None and bx0 <= p[ 0 ] <= bx1 and by0 <= p[ 1 ] <= by1: run.append( p ); continue
+                if len( run ) > 1: out_lines.append( { k: v for k, v in l.items() if k != 'pts' } | { 'pts': run } )
+                run = []
+        rivers = 'rivers.json'
+        json.dump( { 'crs': str( crs ), 'lines': out_lines }, open( os.path.join( out, rivers ), 'w' ), ensure_ascii=False )
+        print( f'{len( out_lines )} water lines -> {rivers}' )
+    json.dump( { 'version': 1, 'crs': str( crs ), 'center': center, 'rivers': rivers, 'tile': TILE, 'samples': n, 'res': res, 'credits': CREDITS, 'tiles': tiles },
         open( os.path.join( out, 'index.json' ), 'w' ), ensure_ascii=False, indent=1 )
     size = sum( os.path.getsize( os.path.join( out, t[ 'file' ] ) ) for t in tiles )
     print( f'{len( tiles )} tiles of {TILE} m ({n} x {n} samples at {res} m) -> {out} ({size / 1e6:.1f} MB)' )

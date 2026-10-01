@@ -88,7 +88,7 @@ everything else:
 - [x] Slavonian ground shader (`regions/slavonia/GroundSurface.js`, Terrain's `surface` option): mown
   grass banks, meadow, strip fields, gardens, forest (canopy tone from afar until the trees exist),
   wet silt at the waterline and the river bed, all from the land-cover masks.
-- [x] `?region=slavonia` loads the tiles in the real game (`regions/slavonia/world.js`). App skips the
+- [ ] (built, not yet verified in a browser: no GPU in the dev container) `?region=slavonia` loads the tiles in the real game (`regions/slavonia/world.js`). App skips the
   island's village, plants, rocks, debris, reef, breakers, whale and shore wildlife (null and guarded),
   sets calm, turbid water, turns the surf off, and places the start and the boat by the bridge. The
   debug and bench views become the progress views.

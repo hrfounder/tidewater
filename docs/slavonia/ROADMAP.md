@@ -101,6 +101,13 @@ everything else:
   `TerrainParams.outside` uniform, the same value the CPU heightfield uses). The sun shadow is baked
   over the patch only, so beyond it the ground is lit rather than taking the edge texel's horizon.
   Only the carved channels are wet, and the ground shader carries the strip fields out to the horizon.
+- [x] Slavonian flora (`regions/slavonia/Flora.js`): white willow leaning out over the water on the
+  bank, black poplar in the fields, oak and ash in the floodplain wood, a reed bed in the shallows,
+  and tall bank meadow. The tree shape moved out of `PlantGeometry.buildTreeNear` into a species
+  spec (`buildBroadleafTree`), so a region declares its own trees; the island's is `ISLAND_TREE` and
+  is unchanged. Three seeds per species, so a bank is not one crown repeated.
+- [ ] Far crowns as impostors (the island has them); beyond the fade the ground shader's canopy tone
+  stands in.
 - [ ] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no
   foam), but the water still reads as a lake surface: no current, no reflection of the banks.
 - [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to

@@ -687,40 +687,56 @@ function emitCards( b, cards, crownC ) {
 }
 
 // Broadleaf rainforest tree: buttressed trunk forking into limbs that end in leafy lobes.
-export function buildTreeNear( seed = 21, b = new GeoBuilder() ) {
+// A broadleaf tree, described by a species spec rather than hard-coded: the island's own tree is
+// ISLAND_TREE below, and a region adds its species (regions/slavonia/Flora.js) without touching this.
+//
+//   H           nominal height, top of the highest lobe (also the wind scale)
+//   crown       { c, r } crown centre and radii: the ellipsoid the leaf clumps are pulled onto
+//   fork        where the trunk splits into limbs
+//   lobes       [ x, y, z, r ] per leafy lobe; the first five are carried by limbs from the fork,
+//               the rest branch off the middle of the nearest limb
+//   trunk       { r0, r1, taper, fin, flare } radius at the foot and at the fork, the taper with
+//               height, and the buttress fins / flare at the base
+//   limb        { r0, r1, r2, r3, rise, bow } primary and secondary limb radii, how steeply limbs
+//               rise out of the fork and how far they bow outward
+//   clump       { per, r, cards, size, flatten } leaf clumps per metre of lobe radius and their shape
+//   flexR       the radius over which the crown bends in the wind
+//   sway        { y0, y1 } the height band the wind flex ramps over
+export function buildBroadleafTree( spec, seed = 21, b = new GeoBuilder() ) {
 
 	const rand = mulberry32( seed );
-	const H = TREE_H;
-	const crownC = new THREE.Vector3( 0, 7.8, 0 );
-	const crownR = new THREE.Vector3( 5.2, 3.7, 5.2 );
-	const flex = ( p ) => Math.min( 1, Math.hypot( p.x, p.z ) / 5 ) * smooth( 3.2, 6.5, p.y );
-	const fork = new THREE.Vector3( ...TREE_FORK );
+	const H = spec.H;
+	const crownC = new THREE.Vector3( ...spec.crown.c );
+	const crownR = new THREE.Vector3( ...spec.crown.r );
+	const flex = ( p ) => Math.min( 1, Math.hypot( p.x, p.z ) / spec.flexR ) * smooth( spec.sway[ 0 ], spec.sway[ 1 ], p.y );
+	const fork = new THREE.Vector3( ...spec.fork );
+	const T = spec.trunk, L = spec.limb, C = spec.clump;
 
-	// trunk with buttress fins at the foot
+	// trunk, with buttress fins and a flare at the foot
 	const trunkR = ( f, a, c ) => {
 
 		const y = c.y;
-		const r = 0.34 - 0.1 * f;
+		const r = T.r0 - T.taper * f;
 		const fin = Math.pow( Math.max( 0, Math.cos( 4 * a + 0.4 ) ), 4 ) * Math.exp( - Math.max( y, 0 ) / 0.8 );
-		return r * ( 1 + 0.9 * fin + 0.25 * Math.exp( - Math.max( y + 0.3, 0 ) / 0.5 ) );
+		return r * ( 1 + T.fin * fin + T.flare * Math.exp( - Math.max( y + 0.3, 0 ) / 0.5 ) );
 
 	};
 
-	addBranch( b, new THREE.Vector3( 0, - 0.5, 0 ), fork, 0.34, 0.24, 10, 7, [ 0, 0, 0, 0 ], H, flex, trunkR );
+	addBranch( b, new THREE.Vector3( 0, - 0.5, 0 ), fork, T.r0, T.r1, 10, 7, [ 0, 0, 0, 0 ], H, flex, trunkR );
 
 	// limbs to the lobes (the first five from the fork, the rest from the middle of a limb)
 	const mids = [];
-	TREE_LOBES.forEach( ( L, i ) => {
+	spec.lobes.forEach( ( Lb, i ) => {
 
-		const lc = new THREE.Vector3( L[ 0 ], L[ 1 ], L[ 2 ] );
-		const end = lc.clone().addScaledVector( lc.clone().sub( crownC ).setY( 0 ).normalize(), - L[ 3 ] * 0.2 ).setY( L[ 1 ] - L[ 3 ] * 0.25 );
-		// limbs rise steeply from the fork and spread out (vase-shaped crown), with a random kink
+		const lc = new THREE.Vector3( Lb[ 0 ], Lb[ 1 ], Lb[ 2 ] );
+		const end = lc.clone().addScaledVector( lc.clone().sub( crownC ).setY( 0 ).normalize(), - Lb[ 3 ] * 0.2 ).setY( Lb[ 1 ] - Lb[ 3 ] * 0.25 );
+		// limbs rise out of the fork and spread (vase-shaped crown), with a random kink
 		const bow = ( a, e, k ) => {
 
 			const mid = a.clone().lerp( e, 0.5 );
 			const d = e.clone().sub( a );
 			const horiz = new THREE.Vector3( d.x, 0, d.z );
-			return mid.addScaledVector( horiz, - 0.28 * k ).add( new THREE.Vector3( 0, d.length() * 0.16 * k, 0 ) )
+			return mid.addScaledVector( horiz, L.bow * k ).add( new THREE.Vector3( 0, d.length() * L.rise * k, 0 ) )
 				.add( new THREE.Vector3( ( rand() - 0.5 ) * 0.5, ( rand() - 0.5 ) * 0.3, ( rand() - 0.5 ) * 0.5 ).multiplyScalar( d.length() * 0.25 ) );
 
 		};
@@ -729,7 +745,7 @@ export function buildTreeNear( seed = 21, b = new GeoBuilder() ) {
 
 			const start = fork.clone().add( new THREE.Vector3( ( rand() - 0.5 ) * 0.2, - 0.2 - rand() * 0.3, ( rand() - 0.5 ) * 0.2 ) );
 			const ctrl = bow( start, end, 1 );
-			addLimb( b, start, ctrl, end, 0.18, 0.05, 6, 5, [ 0, 0, 0, 0 ], H, flex );
+			addLimb( b, start, ctrl, end, L.r0, L.r1, 6, 5, [ 0, 0, 0, 0 ], H, flex );
 			// branching point for the secondary limbs: along the curve
 			mids.push( start.clone().multiplyScalar( 0.25 ).addScaledVector( ctrl, 0.5 ).addScaledVector( end, 0.25 ) );
 
@@ -737,22 +753,22 @@ export function buildTreeNear( seed = 21, b = new GeoBuilder() ) {
 
 			let best = mids[ 0 ];
 			for ( const m of mids ) if ( m.distanceTo( lc ) < best.distanceTo( lc ) ) best = m;
-			addLimb( b, best, bow( best, end, 0.6 ), end, 0.085, 0.03, 4, 3, [ 0, 0, 0, 0 ], H, flex );
+			addLimb( b, best, bow( best, end, 0.6 ), end, L.r2, L.r3, 4, 3, [ 0, 0, 0, 0 ], H, flex );
 
 		}
 
 	} );
 
 	const cards = [];
-	TREE_LOBES.forEach( ( L, i ) => {
+	spec.lobes.forEach( ( Lb, i ) => {
 
-		const { cards: cs, tips } = clumpCards( L, i, {
-			clumps: Math.round( 3.9 * L[ 3 ] ), clumpR: 0.82, cardsPer: 3, size: 1.45, crownC, crownR, rand, flexFn: flex, hScale: H, part: 1, flatten: 0.72,
+		const { cards: cs, tips } = clumpCards( Lb, i, {
+			clumps: Math.round( C.per * Lb[ 3 ] ), clumpR: C.r, cardsPer: C.cards, size: C.size, crownC, crownR, rand, flexFn: flex, hScale: H, part: 1, flatten: C.flatten,
 		} );
 		cards.push( ...cs );
 		// short twigs carrying each clump (from part way along the lobe's limb, not one point);
 		// only on the two lobes no crown variant drops (twigs don't follow the lobe scaling)
-		const base = new THREE.Vector3( L[ 0 ], L[ 1 ] - L[ 3 ] * 0.3, L[ 2 ] );
+		const base = new THREE.Vector3( Lb[ 0 ], Lb[ 1 ] - Lb[ 3 ] * 0.3, Lb[ 2 ] );
 		if ( i < 2 ) for ( const t of tips ) {
 
 			const from = base.clone().lerp( t.c, 0.4 + rand() * 0.25 ).add( new THREE.Vector3( rand() - 0.5, ( rand() - 0.5 ) * 0.4, rand() - 0.5 ).multiplyScalar( 0.5 ) );
@@ -764,7 +780,27 @@ export function buildTreeNear( seed = 21, b = new GeoBuilder() ) {
 	} );
 	emitCards( b, cards, crownC );
 
-	return { geometry: b.build( 14, new THREE.Vector3( 0, 6.5, 0 ) ), triangles: b.triangles };
+	return { geometry: b.build( 14, new THREE.Vector3( 0, spec.center, 0 ) ), triangles: b.triangles };
+
+}
+
+// the island's tree: the shape buildTreeNear has always had
+export const ISLAND_TREE = {
+	H: TREE_H,
+	crown: { c: [ 0, 7.8, 0 ], r: [ 5.2, 3.7, 5.2 ] },
+	fork: TREE_FORK,
+	lobes: TREE_LOBES,
+	trunk: { r0: 0.34, r1: 0.24, taper: 0.1, fin: 0.9, flare: 0.25 },
+	limb: { r0: 0.18, r1: 0.05, r2: 0.085, r3: 0.03, rise: 0.16, bow: - 0.28 },
+	clump: { per: 3.9, r: 0.82, cards: 3, size: 1.45, flatten: 0.72 },
+	flexR: 5,
+	sway: [ 3.2, 6.5 ],
+	center: 6.5,
+};
+
+export function buildTreeNear( seed = 21, b = new GeoBuilder() ) {
+
+	return buildBroadleafTree( ISLAND_TREE, seed, b );
 
 }
 

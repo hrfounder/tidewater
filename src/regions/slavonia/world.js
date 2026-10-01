@@ -2,6 +2,7 @@ import { Vector3 } from '../../engine/index.js';
 import { TileTerrain } from './TileTerrain.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
 import { buildPlatforms } from './Platforms.js';
+import { Flora } from './Flora.js';
 
 // The Slavonian world as App builds it (?region=slavonia): the real terrain from the world tiles of
 // the core block around Most Bosut (public/world/bosut/), its ground shader, calm river water, and
@@ -62,7 +63,10 @@ export { GROUND_SURFACE };
 // hand-built places in the patch (call once the terrain exists)
 export function buildPlaces( { terrain, scene } ) {
 
-	return { platforms: buildPlatforms( { terrain, scene } ) };
+	return {
+		platforms: buildPlatforms( { terrain, scene } ),
+		flora: new Flora( { scene, terrain } ),
+	};
 
 }
 

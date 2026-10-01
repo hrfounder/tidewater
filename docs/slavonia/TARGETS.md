@@ -54,13 +54,111 @@ in the environment's network settings to have images pulled in with their licenc
   Županja with the sugar factory.
 - [Category:Sava in Croatia](https://commons.wikimedia.org/wiki/Category:Sava_in_Croatia)
 
-### Wanted: local photos
 
-Photos taken on location are the best targets, because they show exactly the places being built. The
-same spot in the morning, at noon and at dusk is ideal. Wanted:
+## 4. Local photos (provided by the project owner)
 
-- The Bosut in Andrijaševci and Rokovci: the banks, the angling spots, the bridge, and the water up close.
-- The Bosut in Vinkovci: the promenade and the bridges.
+Reference only: these show what to match and do not ship in the game. Locations are in the
+Andrijaševci / Rokovci / Vinkovci area. Exact spots are still to be confirmed, and should be added to
+the file names once known.
+
+### The Bosut
+
+![Spring, anglers and the church across the water](photos/bosut-spring-anglers-church-reflection.jpg)
+
+`bosut-spring-anglers-church-reflection.jpg`: **the main target for the fishing spot.**
+- **The channel is regulated.** It is a straight, even trapezoid with mown grass slopes. It is not a
+  wild river bank.
+- **Wooden fishing platforms** run along the waterline every 10–20 m: low, plank-decked, with posts
+  in the water. Anglers sit on boxes with long poles and feeder rods, under umbrellas or shades.
+- **The water is a mirror on a calm day.** It shows almost no ripple, so the reflections of the trees,
+  houses and church dominate. The water colour reads as the sky reflection over dark olive-brown depth.
+- **The margins are reeds and cattails,** in thick clumps at the foot of the slope on the far bank.
+- **Behind the bank** stand tall ash, poplar and willow (the spring leaves are just out), a few
+  conifers and a large bare old tree.
+- **The skyline** is low houses with red and orange tile roofs, a long single-storey building, and the
+  church tower with an onion dome above everything.
+- **On the embankment top on the right** run the road, a guardrail and concrete lamp posts.
+
+![Evening on the Bosut](photos/bosut-evening-calm.jpg)
+
+`bosut-evening-calm.jpg`
+- Low golden sun and calm water reflecting the sky, with grassy banks sloping straight into the water.
+- Cattail clumps stand out from the bank. A path runs on the bank top, and a tractor is parked by a
+  house. White and yellow houses with red roofs sit on the bank top, with forest on the horizon.
+
+![Low water, overcast](photos/bosut-low-water-overcast.jpg)
+
+`bosut-low-water-overcast.jpg`: **the low-water state**.
+- The level has dropped about a metre and exposed a band of grey-brown mud and dried silt on the
+  slope. The water is shallow and dark with weed showing.
+- Heavy stratocumulus overcast. Mown lawn in the foreground, with a two-storey house and older
+  single-storey houses along the road behind.
+- Water level must be a variable (seasons, drought), and the exposed bank needs its own material.
+
+![Winter, platforms and the bridge](photos/bosut-winter-platforms-bridge.jpg)
+
+`bosut-winter-platforms-bridge.jpg`: **winter and higher water.**
+- **The water is higher and moving.** It is a wider sheet with a visible flow ripple, a grey-blue
+  sky reflection and a little current.
+- **The fishing platforms** are plank decks on posts, set into dead, straw-coloured reeds.
+- **A low concrete road bridge** crosses on thin piers.
+- **The far bank** has bare trees, dark thujas or cypresses, and a wooden shed.
+- **The ground** is short winter grass and a worn footpath on the slope.
+
+### The village
+
+![Main street](photos/village-main-street-church-parking.jpg)
+
+`village-main-street-church-parking.jpg`
+- A wide asphalt main road with a centre line. Angled parking bays with kerbed grass islands sit
+  on both sides.
+- **Houses stand gable-end to the street:** single-storey, plastered in yellow or cream, with
+  brick-trimmed window arches. Brown tile roofs, some with solar panels.
+- The church tower is cream and ochre with a clock, behind a red smoke bush (*Cotinus*).
+- Overhead lines on concrete poles, tall street-lamp masts, a pedestrian crossing sign, young
+  street trees, a yellow post box.
+- Everyday cars: Dacia, Ford, VW, Škoda. Bright summer haze, and the street fades into a flat
+  horizon.
+
+![Street with the church and an old house](photos/village-street-church-blue-house.jpg)
+
+`village-street-church-blue-house.jpg`
+- An older house painted pale blue with moulded window frames and a deep eave, right on the
+  pavement.
+- A classicist church with a tall pointed steeple, beside a brick house.
+- Flower beds of red and white begonias, a young tree on the median, and a concrete pavement with
+  a kerb.
+
+![The village from the air, autumn](photos/village-aerial-autumn.jpg)
+
+`village-aerial-autumn.jpg`: **the target for the aerial and drive-in view.**
+- A white church with an orange roof and a white spire on a green plot at a junction.
+- **Dense street rows of houses** with red and orange roofs, a few yellow two-storey buildings, and
+  long gardens and sheds behind them.
+- The river or an oxbow on the left edge, with golden autumn trees and haze to a flat horizon.
+
+### What these change in the plan
+
+- **The Bosut in the villages is a regulated channel.** Build it from a cross-section profile (bed,
+  slopes, berm, road on top) along the data's centreline, not from the 30 m elevation data. Between the
+  villages it can be wilder: reeds, willows, forest.
+- **Fishing platforms** are a key asset family: plank deck, posts, steps, in several states (new,
+  weathered, half-sunk). Place them along the banks near villages.
+- **Calm water and reflections matter more than waves** here. The water shader's
+  planar and screen-space reflection quality on a nearly flat surface is the priority, not the FFT
+  swell.
+- **The water level varies** (low summer water, high winter and spring water). It shows on the bank
+  as mud, silt and dead reed bands.
+- **The village kit** for M5:
+  - Gable-end houses with plastered colours (yellow, cream, white, pale blue), brick or moulded
+    window trims and tile roofs.
+  - Churches (onion-dome baroque and pointed classicist).
+  - Concrete poles with overhead lines, angled parking with grass islands, flower beds.
+
+## 5. Still wanted
+
+- The water up close (colour and clarity at the bank), and the platforms up close.
+- The Bosut between the villages (wild stretches), and the Bosut in Vinkovci (the promenade).
 - The Spačva forest: the oaks, a forest road, a flooded part, the Spačva river.
 - The Sava at Županja: the levee (*nasip*), the beach, and the bridge to Orašje.
 - Village streets: a Šokac house front, the gate, the church, a well, a corn crib (*kotarka*).

@@ -88,6 +88,15 @@ everything else:
 - [ ] Map screen and minimap from the tiles.
 
 ### M3: Rivers and lakes
+- [ ] Regulated channels from cross-section profiles along the data centrelines: bed, mown grass
+  slopes, berm and the road on top. This is how the Bosut looks through the villages (see the local
+  photos in TARGETS.md). Wilder banks between the villages.
+- [ ] Fishing platforms (plank decks on posts) placed along the village banks, in several states of
+  wear. The first hand-built asset family.
+- [ ] Reflections on calm water: on a still day the Bosut is a mirror, so the reflection quality on a
+  nearly flat surface matters more than the waves.
+- [ ] Variable water level (summer low water exposes mud and silt, winter and spring high water
+  spreads wider and flows faster), with bank materials following the level.
 - [ ] Flow field per river (speed and direction from the centreline, width and bends, eddies at
   bridges and snags). It feeds the habitats, the drift of the float and line, floating leaves and
   debris, and the boat.

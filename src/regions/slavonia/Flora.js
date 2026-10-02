@@ -159,11 +159,69 @@ function mulberry( a ) {
 
 }
 
+// ---------------------------------------------------------------- what is already built
+
+// A coarse grid of the ground the village has taken: building footprints with a margin for the
+// eaves and the yard path, and the roads with their shoulders. Nothing is planted there, and the
+// meadow stops at its edge, so no tree grows through a wall and no reed bed crosses a lane.
+const BUILT_TEXEL = 2;
+
+function builtMask( terrain, places ) {
+
+	const res = Math.round( terrain.size / BUILT_TEXEL );
+	const m = new Uint8Array( res * res );
+	if ( ! places ) return { m, res, texel: BUILT_TEXEL, origin: terrain.origin };
+	const [ cE, cN ] = terrain.center;
+	const mark = ( x, z, r ) => {
+
+		const i0 = Math.max( 0, Math.floor( ( x - r - terrain.origin ) / BUILT_TEXEL ) );
+		const i1 = Math.min( res - 1, Math.ceil( ( x + r - terrain.origin ) / BUILT_TEXEL ) );
+		const j0 = Math.max( 0, Math.floor( ( z - r - terrain.origin ) / BUILT_TEXEL ) );
+		const j1 = Math.min( res - 1, Math.ceil( ( z + r - terrain.origin ) / BUILT_TEXEL ) );
+		for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) m[ j * res + i ] = 255;
+
+	};
+
+	for ( const b of places.buildings || [] ) {
+
+		// the footprint's own points, each given the eaves and a metre of standing room
+		for ( const [ e, n ] of b.ring ) mark( e - cE, cN - n, 3 );
+
+	}
+
+	for ( const r of places.roads || [] ) {
+
+		const half = r.width / 2 + 1.2;
+		const pts = r.pts;
+		for ( let i = 0; i + 1 < pts.length; i ++ ) {
+
+			const ax = pts[ i ][ 0 ] - cE, az = cN - pts[ i ][ 1 ];
+			const bx = pts[ i + 1 ][ 0 ] - cE, bz = cN - pts[ i + 1 ][ 1 ];
+			const len = Math.hypot( bx - ax, bz - az );
+			const steps = Math.max( 1, Math.ceil( len / BUILT_TEXEL ) );
+			for ( let k = 0; k <= steps; k ++ ) mark( ax + ( bx - ax ) * k / steps, az + ( bz - az ) * k / steps, half );
+
+		}
+
+	}
+
+	return { m, res, texel: BUILT_TEXEL, origin: terrain.origin };
+
+}
+
+function isBuilt( built, x, z ) {
+
+	const i = Math.floor( ( x - built.origin ) / built.texel ), j = Math.floor( ( z - built.origin ) / built.texel );
+	if ( i < 0 || j < 0 || i >= built.res || j >= built.res ) return false;
+	return built.m[ j * built.res + i ] > 0;
+
+}
+
 // ---------------------------------------------------------------- scatter
 
 // Where each species stands, read off the patch itself: the height above the water, the distance to
 // the water's edge, and the land-cover masks the tiles carry (forest, cropland, built-up).
-function scatter( terrain, seed = 4201 ) {
+function scatter( terrain, taken, seed = 4201 ) {
 
 	const rand = mulberry( seed );
 	const out = { willows: [], poplars: [], oaks: [], reeds: [] };
@@ -203,6 +261,7 @@ function scatter( terrain, seed = 4201 ) {
 	for ( let z = - half; z < half; z += STEP ) for ( let x = - half; x < half; x += STEP ) {
 
 		const px = x + ( rand() - 0.5 ) * STEP, pz = z + ( rand() - 0.5 ) * STEP;
+		if ( isBuilt( taken, px, pz ) ) continue;
 		const h = terrain.heightAt( px, pz );
 		const forest = sampleMask( terrain.gully, px, pz );
 		const built = sampleMask( terrain.path, px, pz );
@@ -259,7 +318,7 @@ function rec( terrain, x, z, rand, s, qr ) {
 
 export class Flora {
 
-	constructor( { scene, terrain } ) {
+	constructor( { scene, terrain, places = null } ) {
 
 		this.terrain = terrain;
 		this.group = new THREE.Group();
@@ -267,7 +326,8 @@ export class Flora {
 		this.group.matrixAutoUpdate = false;
 
 		const t0 = performance.now();
-		const recs = scatter( terrain );
+		const built = builtMask( terrain, places );
+		const recs = scatter( terrain, built );
 		this.records = recs;
 
 		const leafMat = createPlantLeafMaterial();
@@ -311,7 +371,7 @@ export class Flora {
 		// alpha-tested foliage after the opaque ground
 		for ( const t of this.types ) for ( const m of t.meshes ) m.renderOrder = 1;
 
-		this.grass = new GrassField( { terrain, mask: buildMeadowMask( terrain ) } );
+		this.grass = new GrassField( { terrain, mask: buildMeadowMask( terrain, built ) } );
 		for ( const m of this.grass.meshes ) this.group.add( m );
 
 		this.group.updateMatrixWorld( true );
@@ -348,7 +408,7 @@ export class Flora {
 // meadow, g = short, b = flowers, a = unused).
 const MASK_TEXEL = 2;
 
-function buildMeadowMask( terrain ) {
+function buildMeadowMask( terrain, taken ) {
 
 	const res = Math.round( terrain.size / MASK_TEXEL );
 	const texel = terrain.size / res;
@@ -370,6 +430,7 @@ function buildMeadowMask( terrain ) {
 			const x = terrain.origin + ( i + 0.5 ) * texel;
 			const h = terrain.heightAt( x, z );
 			if ( h < 0.15 ) continue; // water and the wet toe of the bank: the reeds have that
+			if ( isBuilt( taken, x, z ) ) continue;
 			const crop = mask( terrain.sand, x, z );
 			const built = mask( terrain.path, x, z );
 			const forest = mask( terrain.gully, x, z );

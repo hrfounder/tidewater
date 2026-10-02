@@ -71,7 +71,7 @@ export function buildPlaces( { terrain, scene, places = null } ) {
 		bridges: buildBridges( { terrain, scene, places } ),
 		buildings: buildBuildings( { terrain, scene, places } ),
 		platforms: buildPlatforms( { terrain, scene } ),
-		flora: new Flora( { scene, terrain } ),
+		flora: new Flora( { scene, terrain, places } ),
 	};
 
 }

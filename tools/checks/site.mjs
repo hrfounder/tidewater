@@ -238,6 +238,15 @@ for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 
 }
 
+// ---- buildings the map lacks
+{
+
+	const added = buildings.list.filter( ( b ) => b.added );
+	const none = added.filter( ( b ) => ! b.frontage || ! b.kind );
+	check( none.length === 0, 'added buildings: each has its street and its kind', `${ added.length } added (${ added.map( ( b ) => `${ b.index } ${ b.seen.is || b.kind } ${ b.area.toFixed( 0 ) } m2 on ${ b.frontage ? b.frontage.road.name : '-' }` ).join( '; ' ) })` );
+
+}
+
 // ---- the railway
 {
 

@@ -237,6 +237,11 @@ A ring is worked with a survey sheet: `python tools/geodata/sheet.py bosut <x>,<
 <out.jpg>` draws the orthophoto of a square with every footprint numbered (mapped and surveyed),
 the roads, and a grid in the game's metres. What is read off it goes into `Survey.js`.
 
+Where the map lacks buildings, the sheet is turned to the row's own axes and gridded (5 m), the
+rectangles are read off it, and `tools/geodata/survey.py`'s measure reads each roof inside its
+rectangle. South of St Roch's six stood unmapped; the churchyard's ring in the model was drawn
+through the corner of one of them, and now goes round it.
+
 A landmark is checked against its photographs before it goes into the game:
 `tools/blender/look.py` renders the model from the places the photographs were taken from.
 
@@ -247,6 +252,7 @@ a record.
 
 | Record | What it is | Built by |
 |---|---|---|
+| `ADDED` | a building the map lacks, traced off the orthophoto as a rectangle, with its roof's colour read off the same picture | `site/Buildings.js`, numbered on after the map's |
 | `PARTED` | a footprint the map draws as one and that is several buildings in a row: the lines it is cut along | `site/Buildings.js`, every part a building of its own |
 | `SEEN` | per building: the kind it is, storeys, walls, roof form, a roof colour newer than the orthophoto | `build/Village.js` over its archetype |
 | `BESIDE` | a strip of parking or pavement along a stretch of road | `site/Beside.js`, graded and drawn with the road or as a slab |
@@ -309,9 +315,10 @@ Still to do, in this order:
    apse, 1412, 1413, 1415, 1417; the barn 1493), the neighbours' fences and yards, the crossing's
    markings, the trees of the street. The two-storey house across Ulica Vladimira Nazora is two
    storeys for 12 m of its 20 and lower beyond: it is built two storeys throughout.
-2. **St Roch's ring**: the houses round it, the shop (Boso), the streets' corner where the stone
-   cross and the lime stand (the fence's line there is a guess: the tree and the church's shadow
-   hide it on the orthophoto).
+2. **St Roch's ring**: the six buildings south of it that the map lacks are in (of five only the
+   roofs were seen: their walls are the rule's). Still: the mapped houses round it as they are, the
+   shop (Boso) and its yellow roof, the streets' corner where the stone cross and the lime stand
+   (the fence's line there is a guess: the tree and the church's shadow hide it on the orthophoto).
 3. **The park's newer things**, which are in the footage of 2025 and not on the orthophoto: the
    outdoor gym on its red ground, the fire pit, the benches and lamps, the bank's paved edge at the
    marina. Their places have to be judged from the frames.

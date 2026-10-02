@@ -92,7 +92,9 @@ BAYS = 4                      # along each flank, between the facade and the thr
 
 # ---- the yard, clockwise from its front left corner as seen from the street ( x, y )
 FENCE_Y = FRONT - 6.7
-YARD = [ ( NAVE_X0 - 4.2, FENCE_Y ), ( 10.0, FENCE_Y ), ( 21.0, - 13.0 ), ( 22.0, 3.0 ), ( 9.0, 12.3 ), ( 1.0, 15.9 ), ( - 8.4, 13.5 ), ( - 8.4, 0.4 ), ( NAVE_X0 - 4.2, 0.4 ) ]
+# ( past the fence the yard goes round the corner of the house behind the church on Vinkovacka ulica,
+# half a metre off its walls as traced on the orthophoto: Survey.js ADDED )
+YARD = [ ( NAVE_X0 - 4.2, FENCE_Y ), ( 10.0, FENCE_Y ), ( 21.0, - 13.0 ), ( 22.0, 3.0 ), ( 9.0, 12.3 ), ( 1.0, 15.9 ), ( - 4.5, 12.7 ), ( - 8.4, 13.5 ), ( - 8.4, 0.4 ), ( NAVE_X0 - 4.2, 0.4 ) ]
 STREET_SIDES = 5              # the first sides of YARD are fenced: the rest are the neighbours' walls
 GATE_W, GATE_AT = 3.0, 14.2   # the gate: in the front fence, this far along it (ROKOVCI-01.jpg: right of the facade, the stone cross behind it to its right)
 POST, POST_H, POST_GAP = 0.07, 1.62, 2.6

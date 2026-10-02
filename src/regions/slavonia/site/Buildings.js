@@ -24,6 +24,8 @@ const JOG = 0.3;
 export const FRONTAGE_REACH = 80;
 // side of the buckets the buildings are sorted into for `near` (m)
 const BUCKET = 32;
+// two buildings that share a wall overlap by less than this (m)
+const TOUCH = 0.2;
 // the parts of one footprint draw their random choices this far apart (more than there are footprints)
 const PART_SEED = 100003;
 
@@ -40,12 +42,13 @@ const HALL_AREA = 300, HALL_SPAN = 11, OUTBUILDING_AREA = 45;
 export class Buildings {
 
 	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } );
-	// survey: survey.json, { shifts, roofs } in the order of the map's buildings; seen: the records of
-	// Survey.js SEEN, each with a point on its building; parted: the records of Survey.js PARTED, the
-	// footprints that are several buildings.
+	// survey: survey.json, { shifts, roofs, gain } in the order of the map's buildings; seen: the
+	// records of Survey.js SEEN, each with a point on its building; parted: the records of Survey.js
+	// PARTED, the footprints that are several buildings; added: those of ADDED, the buildings the
+	// map lacks.
 	// The footprints only: `settle` does the rest, once the roads exist (the roads need the walls
 	// first, to keep clear of them).
-	constructor( places, { center, landmarks, survey, seen, parted } ) {
+	constructor( places, { center, landmarks, survey, seen, parted, added } ) {
 
 		const [ cE, cN ] = center;
 		// ( a landmark stays where the map has it: its model's script was measured against that place,
@@ -57,6 +60,21 @@ export class Buildings {
 			if ( own && own.plan ) plant( b, own, places.roads, cE, cN );
 
 		}
+
+		// a building the map lacks: its rectangle, numbered on after the map's, its roof's colour
+		// brought to the game's brightness as the survey brings the roofs it reads
+		added.forEach( ( record, k ) => {
+
+			const t = record.turn * Math.PI / 180, [ l, w ] = record.size, a = [ Math.cos( t ) * l / 2, Math.sin( t ) * l / 2 ], b = [ - Math.sin( t ) * w / 2, Math.cos( t ) * w / 2 ];
+			const ring = [ [ - 1, - 1 ], [ 1, - 1 ], [ 1, 1 ], [ - 1, 1 ] ].map( ( [ i, j ] ) => [ record.at[ 0 ] + i * a[ 0 ] + j * b[ 0 ], record.at[ 1 ] + i * a[ 1 ] + j * b[ 1 ] ] );
+			// ( it may share a wall with another: a corner counts as inside the other only from TOUCH within it )
+			const within = ( r ) => { const m = [ r.reduce( ( t, p ) => t + p[ 0 ], 0 ) / r.length, r.reduce( ( t, p ) => t + p[ 1 ], 0 ) / r.length ]; return r.map( ( p ) => { const d = Math.hypot( m[ 0 ] - p[ 0 ], m[ 1 ] - p[ 1 ] ); return [ p[ 0 ] + ( m[ 0 ] - p[ 0 ] ) * TOUCH / d, p[ 1 ] + ( m[ 1 ] - p[ 1 ] ) * TOUCH / d ]; } ); };
+			const over = this.list.find( ( o ) => within( o.ring ).some( ( p ) => inRing( ring, p[ 0 ], p[ 1 ] ) ) || within( ring ).some( ( p ) => inRing( o.ring, p[ 0 ], p[ 1 ] ) ) );
+			if ( over ) throw new Error( `the building added at ${ record.at } (${ record.source }) stands in the footprint ${ over.index }` );
+			this.list.push( shape( ring, { index: places.buildings.length + k, part: 0, name: null, class: null, roof: record.roof.map( ( v ) => Math.min( 255, Math.round( v * survey.gain ) ) ) } ) );
+			this.list[ this.list.length - 1 ].added = true;
+
+		} );
 
 		// a footprint the map draws as one and that is several buildings: cut along each line, every
 		// part a building of its own from here on

@@ -17,6 +17,25 @@ export const PARTED = [
 	{ at: [ - 12, 169 ], cuts: [ [ [ - 14.1, 156.6 ], [ - 24.9, 168.4 ] ] ], source: 'sheet 1414; drone5 f001, f002' },
 ];
 
+// Buildings the map does not have, traced off the orthophoto, each as a rectangle: `at` its middle,
+// `size` its [ length, width ] (m), `turn` the direction of its length (degrees from east toward
+// south), `roof` the colour of its roof's lit slope as that picture has it (sRGB 0-255, read by
+// tools/geodata/survey.py's own measure; the Site brings it to the game's brightness with the
+// survey's gain). SEEN says the rest of each by a point in it.
+export const ADDED = [
+	// South of St Roch's the map has nothing between the churchyard and the yard of the shop, and
+	// there stand: the house on Vinkovačka ulica behind the church; the long row along the churchyard's
+	// south side and the house at its east end, on Ulica Stjepana Radića; behind the row a wing, a
+	// house under new tiles and a lean-to under red sheet. (Traced on the sheet roch-rot, the
+	// orthophoto turned to the row's own axes with a grid of 5 m.)
+	{ at: [ 28.1, - 181.8 ], size: [ 9.4, 8.0 ], turn: 104, roof: [ 131, 117, 110 ], source: 'sheet roch-rot; drone1 at 21-24 s' },
+	{ at: [ 44.1, - 180.6 ], size: [ 22.0, 5.0 ], turn: - 17.6, roof: [ 93, 82, 78 ], source: 'sheet roch-rot' },
+	{ at: [ 60.9, - 183.8 ], size: [ 12.0, 8.0 ], turn: - 17.6, roof: [ 149, 125, 112 ], source: 'sheet roch-rot' },
+	{ at: [ 53.6, - 175.4 ], size: [ 7.0, 10.5 ], turn: - 17.6, roof: [ 125, 110, 103 ], source: 'sheet roch-rot' },
+	{ at: [ 40.7, - 172.1 ], size: [ 9.7, 8.0 ], turn: - 17.6, roof: [ 160, 116, 95 ], source: 'sheet roch-rot' },
+	{ at: [ 26.6, - 171.2 ], size: [ 10.7, 6.0 ], turn: 11, roof: [ 114, 87, 87 ], source: 'sheet roch-rot' },
+];
+
 // The buildings. `at` is a point on the building (anywhere inside its footprint); the rest is what was
 // seen of it, each optional:
 //   is        the kind of building it is: a name of ARCHETYPES (the rule goes by its footprint alone)
@@ -47,6 +66,15 @@ export const SEEN = [
 	// Matije Gupca; and the red-roofed one beside it, the same
 	{ at: [ - 81, 145 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 236, 228, 208 ] ], form: 'gable', source: 'drone5 f006; sheet andrew-ring1' },
 	{ at: [ - 92, 169 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 236, 228, 208 ] ], form: 'gable', source: 'drone5 f006; sheet andrew-ring1' },
+	// South of St Roch's, the buildings the map lacks (ADDED): the house behind the church on Vinkovačka
+	// ulica is cream under a hipped roof of old tiles (the street tour passes it); of the others only
+	// the roofs were seen, and what each is by its place in the yard
+	{ at: [ 28.1, - 181.8 ], is: 'house', storeys: 1, walls: [ 'render', [ 226, 214, 186 ] ], form: 'hip', source: 'drone1 at 21-24 s' },
+	{ at: [ 44.1, - 180.6 ], is: 'barn', source: 'sheet roch-rot' },
+	{ at: [ 60.9, - 183.8 ], is: 'house', form: 'hip', source: 'sheet roch-rot' },
+	{ at: [ 53.6, - 175.4 ], is: 'barn', source: 'sheet roch-rot' },
+	{ at: [ 40.7, - 172.1 ], is: 'house', form: 'gable', source: 'sheet roch-rot' },
+	{ at: [ 26.6, - 171.2 ], is: 'shed', source: 'sheet roch-rot' },
 	// Ring 1 round St Andrew's, off the orbit of the footage (drone5) and the sheet andrew.
 	// North-east of the church: the house on the street, ochre under a hipped roof of newer red tiles
 	// (the orthophoto's colour of its lit slope, 186, 141, 121, at the survey's gain); the row behind

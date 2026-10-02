@@ -2,6 +2,11 @@ import './core/BenchSeed.js';
 import { App } from './App.js';
 import { UI } from './ui/UI.js';
 import { AppUI } from './ui/AppUI.js';
+import { TouchControls } from './ui/TouchControls.js';
+
+// A phone draws at this share of its screen's pixels unless ?scale= says otherwise: its GPU is a
+// fraction of a desktop's, and the temporal upscaler reconstructs the rest.
+const PHONE_SCALE = 0.5;
 
 // ?bench runs in background tabs too (automation): rAF does not fire in a hidden page
 if ( /[?&]bench\b/.test( location.search ) ) {
@@ -32,6 +37,13 @@ app.init( ( p, text, until ) => ui.setLoading( p, text, until ) ).then( async ()
 		if ( app.qs.has( 'shots' ) ) window.__job = window.__bench.shots( app.qs.get( 'shots' ).split( ',' ), { tag: app.qs.get( 'tag' ) || 'shot', dt: Number( app.qs.get( 'dt' ) ) || 0, seq: Number( app.qs.get( 'seq' ) ) || 1, every: Number( app.qs.get( 'every' ) ) || 1 } );
 
 	} else app.start();
+	if ( TouchControls.wanted() ) {
+
+		window.__touch = new TouchControls( app.input, app.engine.domElement );
+		if ( ! app.qs.has( 'scale' ) ) app.setRenderScale( PHONE_SCALE );
+
+	}
+
 	ui.showStartOverlay( () => {
 
 		app.input.requestLock();

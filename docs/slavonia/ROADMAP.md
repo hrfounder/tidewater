@@ -115,6 +115,13 @@ everything else:
 - [x] Far crowns as impostors, baked from the same three crowns per species; beyond those the
   ground shader's canopy tone stands in.
 - [x] The yards: the fence and gate that close each plot to the street, and the winter's firewood.
+- [x] The leaves are the region's: the canopy's leaf stage is a parameter of
+  `createCanopyMaterial`, so Slavonia passes the greens of a floodplain in summer and the island
+  keeps its own. The far crowns take the same greens.
+- [x] Fishing reads this region's water: each fish module exports `sampleAt`, and Slavonia's reads
+  the patch's water lines for the flow, the channel, the weed and the snags. The game no longer
+  scores a cast in the Bosut against the island's reef.
+- [x] The region names its own people (Stipo and Kata) and describes its own water in the guide.
 - [ ] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no
   foam), but the water still reads as a lake surface: no current, no reflection of the banks.
 - [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to

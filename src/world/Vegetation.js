@@ -12,7 +12,7 @@ import {
 	lobeVariantGeometry, LOBE_TABLE, TREE_VARIANTS, SHRUB_VARIANTS, UNDERSTORY, buildBroadleaf, BROADLEAF, buildMonsteraMesh, buildBananas,
 } from './vegetation/PlantGeometry.js';
 import { createPlantLeafMaterial, createCanopyMaterial, createCanopyBakeMaterials, impostorColor, uCanopyNear } from './vegetation/VegMaterials.js';
-import { ImpostorAtlas, buildImpostorQuad } from './vegetation/Impostors.js';
+import { ImpostorAtlas, buildImpostorQuad, axisSphere } from './vegetation/Impostors.js';
 import { LeafAtlas } from './vegetation/LeafTextures.js';
 
 // Island vegetation: coconut palms along the back of the beach (leaning to the sea), a closed
@@ -51,35 +51,6 @@ function villageObstacles( village ) {
 	}
 
 	return { footprints, paths: paths.length ? paths : null };
-
-}
-
-// bounding sphere of a geometry around its vertical axis (impostor frames are centred on it)
-function axisSphere( geometry ) {
-
-	const p = geometry.attributes.position;
-	const v = new THREE.Vector3();
-	let y0 = Infinity, y1 = - Infinity;
-	for ( let i = 0; i < p.count; i ++ ) {
-
-		v.fromBufferAttribute( p, i );
-		y0 = Math.min( y0, v.y );
-		y1 = Math.max( y1, v.y );
-
-	}
-
-	const center = new THREE.Vector3( 0, ( y0 + y1 ) * 0.5, 0 );
-	let r = 0, rh = 0;
-	for ( let i = 0; i < p.count; i ++ ) {
-
-		v.fromBufferAttribute( p, i );
-		r = Math.max( r, v.distanceTo( center ) );
-		rh = Math.max( rh, Math.hypot( v.x, v.z ) );
-
-	}
-
-	// radius: frame size of the atlas; rh / hv: horizontal radius and half height (quad extents)
-	return { center, radius: r * 1.02, rh: rh * 1.03, hv: ( y1 - y0 ) * 0.5 * 1.03 };
 
 }
 

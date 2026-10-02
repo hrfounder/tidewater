@@ -3,7 +3,8 @@ import { VegType } from '../../world/vegetation/InstanceLOD.js';
 import { GrassField } from '../../world/vegetation/GrassField.js';
 import { GeoBuilder } from '../../world/vegetation/GeoBuilder.js';
 import { buildBroadleafTree } from '../../world/vegetation/PlantGeometry.js';
-import { createPlantLeafMaterial, createCanopyMaterial } from '../../world/vegetation/VegMaterials.js';
+import { createPlantLeafMaterial, createCanopyMaterial, createCanopyBakeMaterials, impostorColor, uCanopyNear } from '../../world/vegetation/VegMaterials.js';
+import { ImpostorAtlas, buildImpostorQuad, axisSphere } from '../../world/vegetation/Impostors.js';
 import { LeafAtlas } from '../../world/vegetation/LeafTextures.js';
 import { uCamPos, uGustOffset } from '../../world/vegetation/VegNodes.js';
 import { G } from '../../core/Globals.js';
@@ -18,14 +19,15 @@ import { G } from '../../core/Globals.js';
 //
 // Plus the bank meadow: tall grass between the fishing platforms, mown nearer the park.
 //
-// Everything is instanced; the trees are near geometry out to TREE_FADE and shrink away beyond it,
-// where the ground shader's own canopy tone carries the woods to the horizon (GroundSurface.js). Far
-// crowns as impostors are the next step, as on the island.
+// Everything is instanced: the trees are geometry near the camera and octahedral impostors beyond,
+// baked from the same crowns, as on the island; past those the ground shader's own canopy tone
+// carries the woods to the horizon (GroundSurface.js).
 
 // m: trees are geometry out to the first number and shrink away by the second, where the ground
 // shader's own canopy tone carries the woods on to the horizon
-const TREE_FADE = [ 170, 210 ];
-const POPLAR_FADE = [ 230, 280 ];
+const TREE_NEAR = 170; // m: geometry within this, an octahedral impostor beyond
+const POPLAR_NEAR = 230;
+const CANOPY_FAR = [ 2600, 2800 ]; // where the crowns finally fade into the ground's own canopy tone
 const REED_FADE = [ 55, 75 ];
 
 // ---------------------------------------------------------------- species
@@ -279,7 +281,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// willows: the bank top, within a dozen metres of the water, leaning out over it
 		if ( d > 0 && d < 13 && h > 0.2 && built < 0.4 && rand() < 0.16 ) {
 
-			const r = rec( terrain, px, pz, rand, 0.85 + rand() * 0.4, TREE_FADE[ 1 ] + 12 );
+			const r = rec( terrain, px, pz, rand, 0.85 + rand() * 0.4, CANOPY_FAR[ 1 ] + 12 );
 			// lean toward the water: the record's yaw turns the crown, the lean rides on the scale
 			out.willows.push( r );
 			continue;
@@ -289,7 +291,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// the floodplain wood
 		if ( forest > 0.5 && rand() < 0.42 ) {
 
-			out.oaks.push( rec( terrain, px, pz, rand, 0.8 + rand() * 0.5, TREE_FADE[ 1 ] + 12 ) );
+			out.oaks.push( rec( terrain, px, pz, rand, 0.8 + rand() * 0.5, CANOPY_FAR[ 1 ] + 12 ) );
 			continue;
 
 		}
@@ -297,7 +299,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// poplar rows: a line of them along the edges of the worked strips, away from the water
 		if ( crop > 0.45 && d > 25 && rand() < 0.02 ) {
 
-			out.poplars.push( rec( terrain, px, pz, rand, 0.85 + rand() * 0.35, POPLAR_FADE[ 1 ] + 12 ) );
+			out.poplars.push( rec( terrain, px, pz, rand, 0.85 + rand() * 0.35, CANOPY_FAR[ 1 ] + 12 ) );
 			continue;
 
 		}
@@ -336,6 +338,7 @@ export class Flora {
 		this.materials = [ leafMat, canopyMat ];
 
 		const reed = buildReedClump( 7 );
+		uCanopyNear.value.set( TREE_NEAR, POPLAR_NEAR );
 
 		this.types = [];
 		const add = ( t ) => {
@@ -346,23 +349,50 @@ export class Flora {
 
 		};
 
-		// Three trees of each species, grown from different seeds, and the records split between
-		// them: one crown repeated down a bank reads as wallpaper.
-		const species = ( name, spec, records, fade, seeds ) => seeds.map( ( seed, v ) => {
+		// Three trees of each species, grown from different seeds: one crown repeated down a bank
+		// reads as wallpaper. Beyond TREE_NEAR each is an octahedral impostor baked from the same
+		// three, so the woods and the bank carry on to the horizon instead of ending at a fade.
+		const geo = ( spec, seeds ) => seeds.map( ( seed ) => buildBroadleafTree( spec, seed ).geometry );
+		const willowG = geo( WILLOW, [ 101, 137, 173 ] );
+		const poplarG = geo( POPLAR, [ 211, 251, 283 ] );
+		const oakG = geo( OAK, [ 307, 349, 389 ] );
 
-			const part = records.filter( ( r, i ) => i % seeds.length === v );
+		// an atlas holds two groups, so the broadleaves share one and the poplar has its own
+		const bake = () => createCanopyBakeMaterials( this.leafAtlas );
+		this.atlases = [
+			new ImpostorAtlas( [
+				{ variants: oakG, ...axisSphere( oakG[ 0 ] ) },
+				{ variants: willowG, ...axisSphere( willowG[ 0 ] ) },
+			], bake() ),
+			new ImpostorAtlas( [
+				{ variants: poplarG, ...axisSphere( poplarG[ 0 ] ) },
+				{ variants: poplarG, ...axisSphere( poplarG[ 0 ] ) },
+			], bake() ),
+		];
+
+		// the variant rides on the record's seed, as it does on the island
+		const impostorMat = ( atlas, group1, near ) => atlas.createMaterial( {
+			isGroup1: () => ( group1 ? 'true' : 'false' ),
+			variantOf: ( seed ) => `floor( fract( ${ seed } * 7.13 ) * 3.0 )`,
+			colorOf: ( { seed, cr, leaf, bright, isGroup1 } ) => `${ impostorColor }( ${ seed }, ${ cr }, ${ leaf }, ${ bright }, ${ isGroup1 } )`,
+			nearDist: () => `${ near.toFixed( 1 ) }`,
+		} );
+
+		const species = ( name, geos, records, near, atlas, group1 ) => geos.map( ( g, v ) => {
+
+			const part = records.filter( ( r, i ) => i % geos.length === v );
 			if ( ! part.length ) return null;
-			const geo = buildBroadleafTree( spec, seed ).geometry;
 			return add( new VegType( `${ name }${ v }`, part, {
-				fade, margin: 12, sortNear: true,
-				near: [ { geometry: geo, material: canopyMat, castShadow: true, name: `flora-${ name }-${ v }` } ],
+				nearRange: near, margin: 12, sortNear: true, sortFar: true, farRefresh: 16,
+				near: [ { geometry: g, material: canopyMat, castShadow: true, name: `flora-${ name }-${ v }` } ],
+				far: { parts: [ { geometry: buildImpostorQuad(), material: impostorMat( atlas, group1, near ), name: `flora-${ name }-far-${ v }` } ], fade: CANOPY_FAR },
 			} ) );
 
 		} ).filter( Boolean );
 
-		this.willows = species( 'willow', WILLOW, recs.willows, TREE_FADE, [ 101, 137, 173 ] );
-		this.poplars = species( 'poplar', POPLAR, recs.poplars, POPLAR_FADE, [ 211, 251, 283 ] );
-		this.oaks = species( 'oak', OAK, recs.oaks, TREE_FADE, [ 307, 349, 389 ] );
+		this.willows = species( 'willow', willowG, recs.willows, TREE_NEAR, this.atlases[ 0 ], true );
+		this.poplars = species( 'poplar', poplarG, recs.poplars, POPLAR_NEAR, this.atlases[ 1 ], false );
+		this.oaks = species( 'oak', oakG, recs.oaks, TREE_NEAR, this.atlases[ 0 ], false );
 		this.reeds = add( new VegType( 'reeds', recs.reeds, {
 			fade: REED_FADE, margin: 10, sortNear: true,
 			near: [ { geometry: reed.geometry, material: leafMat, castShadow: false, name: 'flora-reed' } ],
@@ -384,7 +414,12 @@ export class Flora {
 
 	update( dt, camera ) {
 
-		if ( ! this.leafAtlas.baked ) this.leafAtlas.bake();
+		if ( ! this.leafAtlas.baked ) {
+
+			this.leafAtlas.bake();
+			for ( const a of this.atlases ) a.bake( true );
+
+		}
 
 		camera.updateMatrixWorld();
 		const p = camera.getWorldPosition( this._camPos );

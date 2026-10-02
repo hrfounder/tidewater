@@ -57,6 +57,35 @@ fn vegOctEncode( d: vec3f ) -> vec2f {
 `;
 
 // Bakes and draws the impostors of a set of plant groups (group 0 trees, group 1 shrubs).
+// bounding sphere of a geometry around its vertical axis (impostor frames are centred on it)
+export function axisSphere( geometry ) {
+
+	const p = geometry.attributes.position;
+	const v = new THREE.Vector3();
+	let y0 = Infinity, y1 = - Infinity;
+	for ( let i = 0; i < p.count; i ++ ) {
+
+		v.fromBufferAttribute( p, i );
+		y0 = Math.min( y0, v.y );
+		y1 = Math.max( y1, v.y );
+
+	}
+
+	const center = new THREE.Vector3( 0, ( y0 + y1 ) * 0.5, 0 );
+	let r = 0, rh = 0;
+	for ( let i = 0; i < p.count; i ++ ) {
+
+		v.fromBufferAttribute( p, i );
+		r = Math.max( r, v.distanceTo( center ) );
+		rh = Math.max( rh, Math.hypot( v.x, v.z ) );
+
+	}
+
+	// radius: frame size of the atlas; rh / hv: horizontal radius and half height (quad extents)
+	return { center, radius: r * 1.02, rh: rh * 1.03, hv: ( y1 - y0 ) * 0.5 * 1.03 };
+
+}
+
 export class ImpostorAtlas {
 
 	// groups: [ { variants: [ BufferGeometry ], center: Vector3 (on the plant axis), radius (frame

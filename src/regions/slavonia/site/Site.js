@@ -5,6 +5,7 @@ import { buildPlots } from './Plots.js';
 import { Occupancy } from './Occupancy.js';
 import { layPark } from './Park.js';
 import { layFences } from './Fences.js';
+import { layBeside } from './Beside.js';
 
 // The Site: one plain-data model of the place, made once from the map data of the block. Every
 // system reads the Site. None reads the map files, and none asks another system what it did
@@ -15,6 +16,7 @@ import { layFences } from './Fences.js';
 //   roads           the road graph: nodes, and roads between them with their class and level (Roads.js)
 //   buildings       the footprints: true ring, the rectangles it is made of, the street it faces,
 //                   what kind of building it is, and a landmark's grounds (Buildings.js)
+//   beside          the parking and the pavements along the roads, where they were surveyed (Beside.js)
 //   plots           the strip of land each street-front building stands on (Plots.js)
 //   occupancy       who owns each square metre, once the ground is cut (Occupancy.js)
 //   park            where the game's fixed things and the anglers' platforms stand (Park.js)
@@ -24,20 +26,22 @@ import { layFences } from './Fences.js';
 export { waterDatum };
 
 // index: the tiles' index.json; water, places: water.json and places.json of the block; survey: its
-// survey.json, what was measured on the orthophoto (tools/geodata/survey.py);
+// survey.json, what was measured on the orthophoto (tools/geodata/survey.py); seen, beside: what was
+// seen by eye of its buildings and along its roads (Survey.js);
 // ground( x, z ): the height of the dry ground, before anything is cut into it;
 // landmarks: the buildings that have a model of their own, by name in lower case (Landmarks.js),
 // each with the plan its model carries (build/Models.js), if it has one
-export function buildSite( { index, water, places, survey, ground, datum, landmarks } ) {
+export function buildSite( { index, water, places, survey, seen, beside, ground, datum, landmarks } ) {
 
 	const center = index.center;
-	const buildings = new Buildings( places, { center, landmarks, survey } );
+	const buildings = new Buildings( places, { center, landmarks, survey, seen } );
 	const roads = new Roads( places, { center, ground, walls: buildings, survey } );
 	buildings.settle( { roads, ground, landmarks } );
 	return {
 		center, datum,
 		water: new Water( water, { center, datum } ),
 		roads, buildings,
+		beside: layBeside( roads, beside ),
 		plots: buildPlots( buildings, roads ),
 		occupancy: null, park: null, fences: null,
 	};

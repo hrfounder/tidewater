@@ -121,9 +121,11 @@ const LONGHOUSE_WIDTH = 8.5, LONGHOUSE_RATIO = 1.6;
 // an outbuilding of this footprint or more is a barn (m2)
 const BARN_AREA = 70;
 
-// the archetype a building of the Site is built by, or null (a landmark has a model; a church waits for one)
+// the archetype a building of the Site is built by, or null (a landmark has a model; a church waits
+// for one): the one it was seen to be (Survey.js), or the one its footprint makes it
 export function archetypeOf( b ) {
 
+	if ( b.seen.is && b.kind !== 'landmark' && b.kind !== 'church' ) return ARCHETYPES[ b.seen.is ];
 	if ( b.kind === 'hall' ) return ARCHETYPES.hall;
 	if ( b.kind === 'outbuilding' ) return b.area >= BARN_AREA ? ARCHETYPES.barn : ARCHETYPES.shed;
 	if ( b.kind !== 'house' ) return null;

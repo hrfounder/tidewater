@@ -43,6 +43,8 @@ export class Occupancy {
 
 		}
 
+		// what was surveyed beside the roads: parking is road, a pavement is built on
+		for ( const strip of site.beside ) fillPolygon( grid, strip.ring, ( k ) => claim( k, strip.of === 'asphalt' ? ROAD : BUILDING ) );
 		for ( const b of site.buildings.list ) if ( b.grounds ) {
 
 			fillPolygon( grid, b.grounds.ring, ( k ) => claim( k, YARD ) );

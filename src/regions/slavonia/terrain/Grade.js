@@ -1,4 +1,4 @@
-import { overRoads, SHOULDER } from '../site/Roads.js';
+import { overRoads, project, SHOULDER } from '../site/Roads.js';
 import { toWorld } from '../site/Buildings.js';
 import { gridOf } from '../site/Raster.js';
 
@@ -15,6 +15,8 @@ import { gridOf } from '../site/Raster.js';
 //   roads   the bed is levelled across at the road's own level, with its camber, and meets the
 //           ground beside it over the verge. The terrain mesh is the road. Bridges are left out:
 //           their decks are built, not graded.
+//   beside  the parking and the pavements along a road lie at the level of its edge; parking is
+//           drawn as the road is, by the same outline.
 //
 // The roads also leave their outline in the terrain for the ground shader to draw them from
 // (GroundSurface.js): a signed distance to the carriageway's edge, one field for paved roads and one
@@ -180,6 +182,35 @@ export function gradeRoads( terrain, roads, water ) {
 
 }
 
+// Level the strips beside the roads (site/Beside.js) and add the asphalt ones to the roads' outline.
+export function gradeBeside( terrain, strips ) {
+
+	const { res, texel, origin, heights: H } = terrain;
+	const reach = Math.max( ROAD_RANGE, VERGE );
+	for ( const strip of strips ) {
+
+		const ring = strip.ring, xs = ring.map( ( p ) => p[ 0 ] ), zs = ring.map( ( p ) => p[ 1 ] );
+		const i0 = Math.max( 0, Math.floor( ( Math.min( ...xs ) - reach - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ...xs ) + reach - origin ) / texel ) );
+		const j0 = Math.max( 0, Math.floor( ( Math.min( ...zs ) - reach - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( ...zs ) + reach - origin ) / texel ) );
+		for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) {
+
+			const x = origin + ( i + 0.5 ) * texel, z = origin + ( j + 0.5 ) * texel, k = j * res + i;
+			const out = outside( ring, x, z );
+			if ( out > reach ) continue;
+			// at the level of the road's edge beside it
+			const f = project( strip.road, x, z ), w = 1 - smoothstep( 0, VERGE, out );
+			if ( w > 0 ) H[ k ] += ( f.y - CAMBER * strip.road.half - H[ k ] ) * w;
+			if ( strip.of !== 'asphalt' ) continue;
+			const v = out > 0 ? Math.max( 0, 0.5 - out / ( 2 * ROAD_RANGE ) ) : 1;
+			if ( v > terrain.road[ k ] ) terrain.road[ k ] = v;
+			if ( out === 0 ) terrain.cropland[ k ] = terrain.built[ k ] = terrain.forest[ k ] = 0;
+
+		}
+
+	}
+
+}
+
 // metres between the samples of the current's grid: the flow turns over tens of metres
 const FLOW_CELL = 8;
 
@@ -212,6 +243,7 @@ export function gradeTerrain( terrain, site ) {
 	water.bind( terrain, cutWater( { heights: terrain.heights, ...gridOf( terrain ) }, water, terrain, under ) );
 	cutWater( terrain.far, water );
 	gradeRoads( terrain, site.roads, water );
+	gradeBeside( terrain, site.beside );
 	terrain.flow = flowGrid( terrain, water );
 	terrain.finish();
 

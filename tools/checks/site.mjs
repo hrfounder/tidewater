@@ -4,7 +4,7 @@
 import { Polygon } from './polygon.mjs';
 import { load, readJSON, check, finish } from './load.mjs';
 import { insideBuilding, toWorld } from '../../src/regions/slavonia/site/Buildings.js';
-import { reachOf, ROAD_CLASSES } from '../../src/regions/slavonia/site/Roads.js';
+import { reachOf, project, ROAD_CLASSES } from '../../src/regions/slavonia/site/Roads.js';
 import { plotCorners } from '../../src/regions/slavonia/site/Plots.js';
 import { FREE, YARD, WATER, ROAD, BUILDING } from '../../src/regions/slavonia/site/Occupancy.js';
 
@@ -180,6 +180,18 @@ for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 	for ( const paving of b.grounds.paved ) { const P = new Polygon( [ paving ] ); for ( let z = P.z0; z <= P.z1; z += 0.5 ) for ( let x = P.x0; x <= P.x1; x += 0.5 ) if ( P.contains( x, z ) ) over = Math.max( over, T.heightAt( x, z ) - b.floor ); }
 	for ( const w of b.grounds.walls ) for ( const [ x, z ] of along( [ w.a, w.b ], 0.5 ) ) off = Math.max( off, Math.abs( T.heightAt( x, z ) - b.floor ) );
 	check( over < 0.03 && off < 0.25, `${ b.name }: its grounds on the level`, `the ground at most ${ ( over * 100 ).toFixed( 1 ) } cm over the paving's bed and within ${ ( off * 100 ).toFixed( 1 ) } cm of the level along the fence; ${ b.grounds.walls.length } stretches of fence and wall, ${ b.grounds.paved.length } pavings` );
+
+}
+
+// ---- what lies beside the roads: each strip against the buildings and against its own road
+{
+
+	const B = site.beside, area = ( ring ) => Math.abs( ring.reduce( ( s, p, i ) => { const q = ring[ ( i + 1 ) % ring.length ]; return s + p[ 0 ] * q[ 1 ] - q[ 0 ] * p[ 1 ]; }, 0 ) ) / 2;
+	const through = B.filter( ( s ) => [ ...s.inner, ...s.outer ].some( ( [ x, z ] ) => buildings.near( x, z, buildings.radius ).some( ( b ) => insideBuilding( b, x, z, - 0.2 ) ) ) );
+	// a strip that starts at the carriageway's edge lies against it: the ground between is road
+	let gap = 0;
+	for ( const s of B ) for ( const [ x, z ] of s.inner ) gap = Math.max( gap, Math.abs( T.heightAt( x, z ) - project( s.road, x, z ).y ) );
+	check( through.length === 0 && gap < 0.15, 'parking and pavements beside the roads', `${ B.length } strips, ${ B.filter( ( s ) => s.of === 'asphalt' ).reduce( ( a, s ) => a + area( s.ring ), 0 ).toFixed( 0 ) } m2 of parking and ${ B.filter( ( s ) => s.of === 'paving' ).reduce( ( a, s ) => a + area( s.ring ), 0 ).toFixed( 0 ) } m2 of pavement; ${ through.length } run through a building${ through.map( ( s ) => ` (${ s.of } beside ${ s.road.name || s.road.class } from ${ s.inner[ 0 ].map( Math.round ) })` ).join( '' ) }; their inner edge lies within ${ ( gap * 100 ).toFixed( 0 ) } cm of the road's level` );
 
 }
 

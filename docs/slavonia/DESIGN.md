@@ -195,7 +195,42 @@ Removed when their replacement lands: `TileTerrain`'s channel cut and flow, `riv
 - Cadastral parcels from DGU for real plots, if and when you can supply them.
 - The yard fence around St Roch's and the kerb lines: not in the map data; a photo of each would do.
 
-## 11. State (2026-10-02, evening)
+## 11. The twin: what the map does not know (2026-10-02, night)
+
+The goal moved from "a believable village on the right map" to a twin: every building and yard as
+it is, built outward from the landmarks a ring at a time. The map (Overture / OpenStreetMap) is no
+longer the truth, only the list of what there is. Three more sources sit on top of it, each
+overriding the one before, and the Site is still the only thing anything reads:
+
+| Source | What it gives | Where |
+|---|---|---|
+| the map | which buildings and roads exist, their outlines, names, how roads join | `places.json` (`tools/geodata/places.py`) |
+| the orthophoto, measured | where each footprint really stands, each roof's colour, each paved road's line and width | `survey.json` (`tools/geodata/survey.py`) |
+| what was seen by eye | per building: its kind, storeys, walls, roof form; beside the roads: parking and pavements | `src/regions/slavonia/Survey.js` |
+| a landmark's model | its true plan, what cannot be walked through, its grounds: fence, paving, trees | the model's custom properties (`tools/blender/*.py` PLAN) |
+
+The orthophoto is the State Geodetic Administration's (DGU geoportal WMS, layer
+`DOF_LIDAR_2022_2023`, in the tiles' own grid, sharp to about 0.25 m). It showed that the mapped
+footprints lie up to five metres from the buildings (median 3.7 m, mostly to the north-east) and the
+road lines two to three metres beside the asphalt, and that the map leaves St Andrew's apse out.
+The pictures stay outside the repository; only measurements are kept.
+
+How a footprint is moved, and why it is held back: the fit compares the colour inside and outside
+each wall. It cannot tell a roof from its shadow, and put the hall with the solar panels (mapped
+right) onto its shadow. So a footprint moves only on strong evidence of its own, or with its street,
+never toward the shadow and never onto surveyed asphalt; 630 of 3065 stay where the map has them.
+This is good to a metre or so, not to a decimetre. The land registry's own outlines and parcels
+(`tools/geodata/cadastre.py`, DGU's INSPIRE services) would replace both the fit and the invented
+plots; the service gave no answer on the day and nothing reads it yet.
+
+A ring is worked with a survey sheet: `python tools/geodata/sheet.py bosut <x>,<z> <half side>
+<out.jpg>` draws the orthophoto of a square with every footprint numbered (mapped and surveyed),
+the roads, and a grid in the game's metres. What is read off it goes into `Survey.js`.
+
+A landmark is checked against its photographs before it goes into the game:
+`tools/blender/look.py` renders the model from the places the photographs were taken from.
+
+## 12. State (2026-10-02, night)
 
 Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
 
@@ -205,34 +240,38 @@ Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
 | M1 | the Site: water, road graph, footprints, plots, occupancy | `src/regions/slavonia/site/` | `tools/checks/site.mjs` |
 | M2 | dry ground in the tiles; water, pads and roads cut into a 4 km metre patch; roads drawn by the ground shader | `terrain/`, `GroundSurface.js`, `tools/geodata/` | `tools/checks/terrain.mjs` |
 | M3 | buildings by archetype, kit openings, roofs with valleys, colliders | `build/`, `tools/blender/kit.py` | `tools/checks/village.mjs` |
-| M4 (part) | bridges along their roads; St Roch's on its footprint, fronting the street its entry names | `build/Bridges.js`, `Landmarks.js` | `village.mjs`, `site.mjs` |
-| M6 | plants from the habitat table and the occupancy map | `flora/` | `tools/checks/flora.mjs` |
-
-Also fixed on the way, in the engine's water: the strip of undrawn water along the bank (the "line
-that walks the shoreline") and the shearing of the waves by the current.
+| M4 | bridges along their roads; St Roch's; St Andrew's with its yard, from the footage and the orthophoto | `build/Bridges.js`, `Landmarks.js`, `tools/blender/st_andrew.py` | `village.mjs`, `site.mjs` |
+| M5 | fences and gates along the plots' street lines; anglers' platforms | `site/Fences.js`, `site/Park.js` | `village.mjs` |
+| M6 | plants from the habitat table and the occupancy map; a landmark's surveyed trees | `flora/` | `tools/checks/flora.mjs` |
+| T1 | the survey of the orthophoto: footprints, roofs, roads | `tools/geodata/survey.py`, `survey.json` | `site.mjs` |
+| T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row and the hall | `Survey.js`, `site/Beside.js` | `site.mjs` |
 
 Still to do, in this order:
 
-1. **Fishing platforms** on the park bank (the first pass's were removed with it; the game's text
-   speaks of them).
-2. **M5** fences and gates along the plots' street lines.
-3. **M4** St Andrew's church (`docs/slavonia/andrijasevci`), and what St Roch's still lacks.
-4. **M7** colour by numbers against the photographs; the road's surface (the asphalt reads as
-   paving); what floats on the water to show the current.
+1. **Ring 1 round St Andrew's**: the rest of its neighbours (walls, storeys, fences, yards), the
+   crossing's markings, the trees of the street.
+2. **St Roch's again**, as St Andrew's was done: the footage shows a rounded east end, a ridge
+   turret, an iron fence, a paved forecourt with a stone cross and a large tree, which the model
+   lacks; then its ring.
+3. **The named places**: the municipality (yellow, two storeys), the school (two storeys, red roof)
+   and its park (the outdoor gym, the paths), the marina's pontoons and the excursion boat's
+   landing, the restaurant by the bridge. The bridge's railing is grey in the footage, not blue.
+4. **The cadastre**, when the service answers: parcels for yards, the registry's outlines.
+5. **M7** colour by numbers; what floats on the water to show the current.
 
-Frame cost in the game's bench (2560x1267, an RTX 3080, measured in one session against the first
-pass at `4bd741d`): bridge 15.2 ms (was 18.4), aerial 15.4 (15.0), village view 13.2 (12.3). The two
-that are over draw the far trees, which the first pass never did (its tree records made every
-impostor zero tall); the grass is the largest single cost there (1.6 ms).
+Known and left: one house at 840,-1181, at the block's edge, stands half a metre onto a lane
+(`site.mjs` reports it).
 
 How things are run:
 
 - Checks: `node tools/checks/terrain.mjs`, `site.mjs`, `village.mjs`, `flora.mjs`.
-- Headless render: `node test/world-slavonia.mjs <dir> --small [--look=name:x,y,z:tx,ty,tz[:fov]]`.
-- In the game: `npm run dev` (port 5189), `?region=slavonia`. Shots: `node tools/progress/collector.mjs
-  <dir>`, then `?region=slavonia&bench&shots=<views>&tag=game`, then `python tools/progress/collect.py
-  <dir> <stamp> "<label>"`. Timings: `await __bench.run( { views: [ ... ] } )` on a `&bench` page.
-- Blender through the `mcp__Blender__*` tools; the kit: `tools/blender/kit.py`.
-- Geodata: `tools/geodata/terrain.py bosut`, `tiles.py bosut core 45.22730,18.74159,12`,
-  `places.py bosut 45.22730,18.74159,4` (the cache is on F:).
+- Headless render: `node test/world-slavonia.mjs <dir> --view=<name>` or `--look=name:x,y,z:tx,ty,tz[:fov]`.
+- In the game: `npm run dev` (port 5189), `?region=slavonia`; on a phone `npm run dev:lan` (5192).
+  Shots: `node tools/progress/collector.mjs <dir>`, then `?region=slavonia&bench&shots=<views>&tag=game`,
+  then `python tools/progress/collect.py <dir> <stamp> "<label>"`.
+- Published build: `npm run deploy` after every push (the `deploy` branch, served as it is).
+- Blender through the `mcp__Blender__*` tools: `tools/blender/kit.py`, `st_roch.py`, `st_andrew.py`, `look.py`.
+- Geodata: `terrain.py bosut`, `tiles.py bosut core 45.22730,18.74159,12`, `places.py bosut 45.22730,18.74159,4`,
+  `survey.py bosut 45.22730,18.74159,4`, `sheet.py`, `cadastre.py` (the cache is on F:).
+- Reference footage: frames of the five drone videos in `F:/tidewater-data/ref/drone1..5`.
 - Untracked: `docs/slavonia/rokovci/`, `docs/slavonia/andrijasevci/` (your reference photos).

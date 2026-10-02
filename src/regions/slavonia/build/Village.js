@@ -25,6 +25,9 @@ const LEAN = { share: 0.3, depth: 4.5, drop: 0.25, pitch: 20, wall: 1.9 };
 const CHIMNEY = { side: 0.5, above: 0.55, cap: 0.07 };
 // a window keeps this far from the corners of its wall and from the eaves (m)
 const CORNER = 0.6, HEAD = 0.25;
+// a pavement beside a road: its kerb's height over the ground (m), and the colour of its setts (the
+// red-grey concrete setts of the pavements round St Andrew's, by eye off the orthophoto: sRGB)
+const PAVING = { kerb: 0.12, colour: [ 170, 146, 136 ] };
 // half the thickness of the wall round a landmark's grounds, as the player meets it (m)
 const WALL_HALF = 0.15;
 // the steps up to a door: this deep, a tread's width wider than the door on each side (m)
@@ -149,6 +152,34 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
+	// the pavements beside the roads: each a slab a kerb's height over the ground it lies on, its two
+	// long edges and its ends closed down to the ground
+	const paving = { color: lin( PAVING.colour ), rough: 0.9, surface: SURFACE.concrete, seed: 0.35 };
+	let pavements = 0;
+	for ( const strip of site.beside ) {
+
+		if ( strip.of !== 'paving' ) continue;
+		pavements ++;
+		const top = ( [ x, z ] ) => [ x, terrain.heightAt( x, z ) + PAVING.kerb, z ], foot = ( [ x, z ] ) => [ x, terrain.heightAt( x, z ) - FOOTING, z ];
+		const n = strip.inner.length, width = Math.hypot( strip.outer[ 0 ][ 0 ] - strip.inner[ 0 ][ 0 ], strip.outer[ 0 ][ 1 ] - strip.inner[ 0 ][ 1 ] );
+		let along = 0;
+		for ( let k = 0; k + 1 < n; k ++ ) {
+
+			const a = strip.inner[ k ], c = strip.inner[ k + 1 ], d = strip.outer[ k + 1 ], e = strip.outer[ k ];
+			const len = Math.hypot( c[ 0 ] - a[ 0 ], c[ 1 ] - a[ 1 ] ), B = builder( a[ 0 ], a[ 1 ] );
+			B.paint( paving );
+			// ( wound so that the slab's top faces up whichever side of its road the strip lies on )
+			const quad = strip.side > 0 ? [ a, c, d, e ] : [ e, d, c, a ], uv = strip.side > 0 ? [ [ 0, along ], [ 0, along + len ], [ width, along + len ], [ width, along ] ] : [ [ width, along ], [ width, along + len ], [ 0, along + len ], [ 0, along ] ];
+			B.polygon( quad.map( top ).reverse(), uv.slice().reverse() );
+			for ( const [ p, q ] of [ [ a, c ], [ d, e ] ] ) B.polygon( [ foot( p ), foot( q ), top( q ), top( p ) ], [ [ 0, 0 ], [ len, 0 ], [ len, PAVING.kerb + FOOTING ], [ 0, PAVING.kerb + FOOTING ] ] );
+			along += len;
+
+		}
+
+		for ( const [ p, q ] of [ [ strip.inner[ 0 ], strip.outer[ 0 ] ], [ strip.inner[ n - 1 ], strip.outer[ n - 1 ] ] ] ) builder( p[ 0 ], p[ 1 ] ).paint( paving ).polygon( [ foot( p ), foot( q ), top( q ), top( p ) ], [ [ 0, 0 ], [ width, 0 ], [ width, PAVING.kerb + FOOTING ], [ 0, PAVING.kerb + FOOTING ] ] );
+
+	}
+
 	const gate = models.kit.get( 'gate_yard' );
 	for ( const g of site.fences.gates ) {
 
@@ -176,7 +207,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, triangles };
+	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, pavements, triangles };
 
 }
 
@@ -246,14 +277,17 @@ function raise( B, b, A, kit, terrain ) {
 
 	const rnd = random( b.index ), pick = ( list ) => list[ Math.floor( rnd() * list.length ) ];
 	const F = frame( b ), seed = rnd();
-	const storeys = A.storeys[ 0 ] + Math.floor( rnd() * ( A.storeys[ 1 ] - A.storeys[ 0 ] + 1 ) );
+	// ( every pick is made whether or not the survey then says otherwise: what is not surveyed of a
+	// building must not change with what is )
+	const lotStoreys = A.storeys[ 0 ] + Math.floor( rnd() * ( A.storeys[ 1 ] - A.storeys[ 0 ] + 1 ) ), storeys = b.seen.storeys || lotStoreys;
 	const ground = Math.min( ...b.ring.map( ( [ x, z ] ) => terrain.heightAt( x, z ) ) ) - FOOTING;
 	const floorY = b.floor + A.plinth, eaveY = floorY + storeys * A.storey;
 
 	// ---- the building's own paint
 	let lot = rnd() * A.walls.reduce( ( s, w ) => s + w[ 2 ], 0 );
 	const [ wallSurface, wallColours ] = A.walls.find( ( w ) => ( lot -= w[ 2 ] ) < 0 ) || A.walls[ 0 ];
-	const wall = { color: lin( pick( wallColours ) ), rough: 0.92, surface: wallSurface, seed };
+	const wallPicked = pick( wallColours );
+	const wall = b.seen.walls ? { color: lin( b.seen.walls[ 1 ] ), rough: 0.92, surface: SURFACE[ b.seen.walls[ 0 ] ], seed } : { color: lin( wallPicked ), rough: 0.92, surface: wallSurface, seed };
 	const trim = { color: lin( pick( A.trim ) ), rough: 0.9, surface: SURFACE.render, seed };
 	const joinery = { color: lin( pick( A.joinery ) ), rough: 0.55, surface: SURFACE.plain, seed };
 	// the roof as the survey saw it, or as the archetype has it where it was not seen (the pick is
@@ -280,7 +314,7 @@ function raise( B, b, A, kit, terrain ) {
 	const tan = Math.tan( ( A.roof.tiled && cover.surface === SURFACE.tile ? A.roof.tiled : A.roof.pitch ) * Math.PI / 180 );
 	const roofs = new Map( pieces.map( ( p ) => [ p,
 		hosts.has( p ) ? leanTo( p, hosts.get( p ), { topY: eaveY - LEAN.drop, tan: Math.tan( LEAN.pitch * Math.PI / 180 ), lowest: floorY + LEAN.wall, eave: A.roof.eave / 2, verge: A.roof.verge } )
-		: A.roof.form === 'hip' && pieces.length === 1 ? hip( p, { eaveY, tan, eave: A.roof.eave } )
+		: ( b.seen.form || A.roof.form ) === 'hip' && pieces.length === 1 ? hip( p, { eaveY, tan, eave: A.roof.eave } )
 		: gable( p, gabled, axes, { eaveY, tan, eave: A.roof.eave, verge: A.roof.verge } ) ] ) );
 	const all = [ ...roofs.values() ];
 	let top = eaveY;

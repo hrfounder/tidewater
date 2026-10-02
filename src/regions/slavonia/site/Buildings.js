@@ -1,6 +1,8 @@
 // The buildings of the Site, from the mapped footprints, each set where the survey of the orthophoto
 // found its roof (the map's footprints lie metres from the buildings: tools/geodata/survey.py) and
-// carrying what the survey saw of it: `seen`, { roof: [ r, g, b ] sRGB or null }. Each one keeps its
+// carrying what was seen of it: `seen`, { roof: [ r, g, b ] sRGB or null } from the orthophoto, and
+// whatever a record of Survey.js adds (is, storeys, walls, form: the kind of building, its storeys,
+// its walls, its roof's form). Each one keeps its
 // true ring, and what the ring is made of: village footprints are rectilinear (99 % of them have every wall within 5 degrees
 // of one pair of axes), so a footprint is cut into the rectangles it is built from, one for a plain
 // house, two or three for an L or a T. Coordinates are the patch's metres: x = east, z = south.
@@ -36,10 +38,11 @@ const HALL_AREA = 300, HALL_SPAN = 11, OUTBUILDING_AREA = 45;
 export class Buildings {
 
 	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } );
-	// survey: survey.json, { shifts, roofs } in the order of the map's buildings.
+	// survey: survey.json, { shifts, roofs } in the order of the map's buildings; seen: the records of
+	// Survey.js SEEN, each with a point on its building.
 	// The footprints only: `settle` does the rest, once the roads exist (the roads need the walls
 	// first, to keep clear of them).
-	constructor( places, { center, landmarks, survey } ) {
+	constructor( places, { center, landmarks, survey, seen } ) {
 
 		const [ cE, cN ] = center;
 		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN, survey.shifts[ index ], survey.roofs[ index ] ) );
@@ -47,6 +50,14 @@ export class Buildings {
 
 			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
 			if ( own && own.plan ) plant( b, own, places.roads, cE, cN );
+
+		}
+
+		for ( const record of seen ) {
+
+			const b = this.list.find( ( b ) => inRing( b.ring, record.at[ 0 ], record.at[ 1 ] ) );
+			if ( ! b ) throw new Error( `the survey has a building at ${ record.at } (${ record.source }), and no footprint is there` );
+			Object.assign( b.seen, record );
 
 		}
 
@@ -89,6 +100,7 @@ export class Buildings {
 			const key = ( b.name || '' ).toLowerCase();
 			b.kind = landmarks.has( key ) ? 'landmark'
 				: b.class === 'church' ? 'church'
+				: b.seen.is === 'hall' ? 'hall'
 				: b.area >= HALL_AREA && 2 * Math.min( b.pieces[ 0 ].hu, b.pieces[ 0 ].hv ) >= HALL_SPAN ? 'hall'
 				: b.area < OUTBUILDING_AREA || this.hidden( b ) ? 'outbuilding'
 				: 'house';
@@ -183,6 +195,21 @@ export class Buildings {
 		return false;
 
 	}
+
+}
+
+// is the point inside the ring?
+function inRing( ring, x, z ) {
+
+	let inside = false;
+	for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
+
+		const a = ring[ j ], b = ring[ i ];
+		if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) inside = ! inside;
+
+	}
+
+	return inside;
 
 }
 

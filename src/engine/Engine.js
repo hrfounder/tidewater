@@ -62,10 +62,15 @@ export class Engine {
 
 		const w = this.container.clientWidth || window.innerWidth, h = this.container.clientHeight || window.innerHeight;
 		const dpr = this.renderScale;
-		this.canvas.width = Math.max( 1, Math.floor( w * dpr ) );
-		this.canvas.height = Math.max( 1, Math.floor( h * dpr ) );
-		this.canvas.style.width = w + 'px';
-		this.canvas.style.height = h + 'px';
+		const width = Math.max( 1, Math.floor( w * dpr ) ), height = Math.max( 1, Math.floor( h * dpr ) );
+		// ( asked again for the size it already has: a phone settling after a turn asks several times )
+		if ( width === this.canvas.width && height === this.canvas.height && this.camera.aspect === w / h ) return;
+		this.canvas.width = width;
+		this.canvas.height = height;
+		// The canvas is as large as its container by rule, never by a size written into it: a size in
+		// pixels would outlive the screen it was measured on, and a phone turned round lays the page
+		// out to fit the widest thing in it, which would be the canvas of the screen before.
+		this.canvas.style.width = this.canvas.style.height = '100%';
 		this.camera.aspect = w / h;
 		this.camera.updateProjectionMatrix();
 		FrameUniforms.fields.outputResolution.value.set( this.canvas.width, this.canvas.height );

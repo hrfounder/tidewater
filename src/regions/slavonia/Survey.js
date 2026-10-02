@@ -19,6 +19,10 @@ export const SEEN = [
 	// the long yellow row on the street north-west of St Andrew's, brick at its corners and round its
 	// door, under a dark red hipped roof
 	{ at: [ - 62, 139 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 228, 186, 96 ] ], form: 'hip', source: 'drone1 at 63-72 s; sheet andrew-ring1' },
+	// across that street from the row: the long house with the dark roof, its cream gable to Ulica
+	// Matije Gupca; and the red-roofed one beside it, the same
+	{ at: [ - 81, 145 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 236, 228, 208 ] ], form: 'gable', source: 'drone5 f006; sheet andrew-ring1' },
+	{ at: [ - 92, 169 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 236, 228, 208 ] ], form: 'gable', source: 'drone5 f006; sheet andrew-ring1' },
 	// the hall behind it, yellow under a dark roof with solar panels on its south-east slope
 	{ at: [ - 45, 130 ], is: 'hall', walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone5 f009, f010; sheet andrew-ring1' },
 ];

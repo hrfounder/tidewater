@@ -25,7 +25,11 @@ import { SURFACE } from './VillageMaterial.js';
 
 const TILE_ROOFS = [ [ 142, 94, 76 ], [ 128, 86, 72 ], [ 114, 82, 72 ], [ 100, 74, 66 ], [ 152, 102, 80 ] ];
 const SHEET_ROOFS = [ [ 120, 122, 124 ], [ 96, 60, 52 ], [ 86, 92, 96 ] ];
-const RENDER = [ [ 236, 230, 214 ], [ 232, 216, 170 ], [ 226, 196, 120 ], [ 204, 214, 226 ], [ 228, 190, 160 ], [ 200, 214, 186 ], [ 176, 172, 164 ], [ 240, 238, 232 ] ];
+// Rendered walls, each colour as often as it is seen. Counted on the houses that can be told apart in
+// the footage round St Andrew's (drone5 f004, f006, f009, f012: some thirty): white and cream six in
+// ten, yellow and ochre two, peach one, grey one in twenty; blue and green are single houses.
+const often = ( list ) => list.flatMap( ( [ colour, times ] ) => Array( times ).fill( colour ) );
+const RENDER = often( [ [ [ 240, 238, 232 ], 6 ], [ [ 236, 230, 214 ], 6 ], [ [ 232, 216, 170 ], 2 ], [ [ 226, 196, 120 ], 2 ], [ [ 228, 190, 160 ], 2 ], [ [ 176, 172, 164 ], 1 ], [ [ 204, 214, 226 ], 1 ], [ [ 200, 214, 186 ], 1 ] ] );
 const ROUGH_RENDER = [ [ 176, 172, 164 ], [ 198, 190, 172 ], [ 214, 206, 188 ] ];
 const CLAY = [ [ 170, 96, 64 ], [ 156, 86, 60 ] ];
 const WEATHERED_BOARDS = [ [ 112, 96, 78 ], [ 96, 86, 74 ], [ 128, 104, 78 ] ];

@@ -3,8 +3,10 @@ import { VegType } from '../../world/vegetation/InstanceLOD.js';
 import { GrassField } from '../../world/vegetation/GrassField.js';
 import { GeoBuilder } from '../../world/vegetation/GeoBuilder.js';
 import { buildBroadleafTree } from '../../world/vegetation/PlantGeometry.js';
-import { createPlantLeafMaterial, createCanopyMaterial, createCanopyBakeMaterials, impostorColor, uCanopyNear } from '../../world/vegetation/VegMaterials.js';
+import { createPlantLeafMaterial, createCanopyMaterial, createCanopyBakeMaterials, uCanopyNear } from '../../world/vegetation/VegMaterials.js';
+import { vegModule } from '../../world/vegetation/VegNodes.js';
 import { ImpostorAtlas, buildImpostorQuad, axisSphere } from '../../world/vegetation/Impostors.js';
+import { ShaderModule } from '../../engine/gpu/Shader.js';
 import { LeafAtlas } from '../../world/vegetation/LeafTextures.js';
 import { uCamPos, uGustOffset } from '../../world/vegetation/VegNodes.js';
 import { G } from '../../core/Globals.js';
@@ -29,6 +31,51 @@ const TREE_NEAR = 170; // m: geometry within this, an octahedral impostor beyond
 const POPLAR_NEAR = 230;
 const CANOPY_FAR = [ 2600, 2800 ]; // where the crowns finally fade into the ground's own canopy tone
 const REED_FADE = [ 55, 75 ];
+
+// The leaf stage of the canopy material for this region (VegMaterials.createCanopyMaterial): the
+// greens of a Slavonian floodplain in summer, not the island's olives and bronzes. Willow is pale
+// and grey-green, poplar a light yellow-green that flickers silver when the leaf turns, oak and ash
+// a deep mid green. The species rides on the record's seed, as it does on the island.
+// The far crowns take the same three greens: the impostor atlas stores only brightness and whether
+// a texel is leaf or limb, so the colour is put back here.
+export const farLeafModule = new ShaderModule( {
+	name: 'slavoniaFarLeaf',
+	deps: [ vegModule ],
+	code: /* wgsl */`
+fn slavoniaFarLeaf( seed: f32, cr: f32, leaf: f32, bright: f32 ) -> vec3f {
+	let sp = fract( seed * 3.37 );
+	let willowG = mix( vec3f( 0.205, 0.268, 0.146 ), vec3f( 0.300, 0.360, 0.222 ), cr );
+	let poplarG = mix( vec3f( 0.236, 0.316, 0.130 ), vec3f( 0.352, 0.430, 0.190 ), cr );
+	let oakG = mix( vec3f( 0.140, 0.228, 0.094 ), vec3f( 0.226, 0.316, 0.132 ), cr );
+	var leafC = select( select( oakG, poplarG, sp < 0.66 ), willowG, sp < 0.33 );
+	leafC = leafC * ( vegHash12( vec2f( seed * 17.3, 4.1 ) ) * 0.3 + 0.8 ) * ( bright * 1.4 );
+	// limbs seen through the gaps sit in the crown's shade
+	let barkC = mix( vec3f( 0.035, 0.032, 0.022 ), vec3f( 0.07, 0.065, 0.044 ), ( bright - 0.4 ) / 0.5 );
+	return max( mix( barkC, leafC, smoothstep( 0.05, 0.55, leaf ) ), vec3f( 0.0 ) );
+}
+`,
+} );
+
+const SLAVONIA_LEAF = /* wgsl */`
+	// three greens, picked per tree
+	let sp = fract( seed * 3.37 );
+	let willowG = mix( vec3f( 0.205, 0.268, 0.146 ), vec3f( 0.300, 0.360, 0.222 ), cr );
+	let poplarG = mix( vec3f( 0.236, 0.316, 0.130 ), vec3f( 0.352, 0.430, 0.190 ), cr );
+	let oakG = mix( vec3f( 0.140, 0.228, 0.094 ), vec3f( 0.226, 0.316, 0.132 ), cr );
+	var c = select( select( oakG, poplarG, sp < 0.66 ), willowG, sp < 0.33 );
+	// every tree a little different, and the undersides of the willow and poplar leaves silver
+	let iv = vegHash12( vec2f( seed * 17.3, 4.1 ) );
+	c = c * ( iv * 0.3 + 0.8 );
+	let silver = select( 0.0, 1.0, sp < 0.66 ) * step( 0.55, fract( cell * 5.1 ) );
+	c = mix( c, c * vec3f( 1.26, 1.3, 1.22 ) + vec3f( 0.05 ), silver * 0.35 );
+	// a few leaves already turning: the first yellow is in the poplars by late summer
+	c = mix( c, vec3f( 0.44, 0.36, 0.11 ), step( 0.986, fract( cell * 3.7 ) ) * 0.55 );
+	c = c * bright;
+	// the sunlit outside of the crown warmer and brighter, the inside kept dark
+	let outer = smoothstep( 0.62, 1.0, ao );
+	c = mix( c, c * vec3f( 1.14, 1.2, 0.95 ), outer * 0.7 );
+	let leaf = c * mix( 0.55, 1.0, ao );
+`;
 
 // ---------------------------------------------------------------- species
 
@@ -334,7 +381,7 @@ export class Flora {
 
 		const leafMat = createPlantLeafMaterial();
 		this.leafAtlas = new LeafAtlas();
-		const canopyMat = createCanopyMaterial( this.leafAtlas );
+		const canopyMat = createCanopyMaterial( this.leafAtlas, { leaf: SLAVONIA_LEAF } );
 		this.materials = [ leafMat, canopyMat ];
 
 		const reed = buildReedClump( 7 );
@@ -374,8 +421,10 @@ export class Flora {
 		const impostorMat = ( atlas, group1, near ) => atlas.createMaterial( {
 			isGroup1: () => ( group1 ? 'true' : 'false' ),
 			variantOf: ( seed ) => `floor( fract( ${ seed } * 7.13 ) * 3.0 )`,
-			colorOf: ( { seed, cr, leaf, bright, isGroup1 } ) => `${ impostorColor }( ${ seed }, ${ cr }, ${ leaf }, ${ bright }, ${ isGroup1 } )`,
+			// the same three greens as the near canopy, over the crown's own shaded limbs
+			colorOf: ( { seed, cr, leaf, bright } ) => `slavoniaFarLeaf( ${ seed }, ${ cr }, ${ leaf }, ${ bright } )`,
 			nearDist: () => `${ near.toFixed( 1 ) }`,
+			modules: [ farLeafModule ],
 		} );
 
 		const species = ( name, geos, records, near, atlas, group1 ) => geos.map( ( g, v ) => {

@@ -200,7 +200,8 @@ export class ImpostorAtlas {
 	// variantOf( seed, isGroup1 ): variant index within the group;
 	// colorOf( { seed, cr, leaf, bright, isGroup1 } ): linear albedo;
 	// nearDist( isGroup1 ): the near plants' hand-over distance.
-	createMaterial( { isGroup1, variantOf, colorOf, nearDist } ) {
+	// modules: extra WGSL the colorOf expression calls (a region's own leaf colour)
+	createMaterial( { isGroup1, variantOf, colorOf, nearDist, modules = [] } ) {
 
 		const [ g0, g1 ] = this.groups;
 		const cells = this.variantCount * OCT_N;
@@ -216,7 +217,7 @@ export class ImpostorAtlas {
 		const mat = new Material( {
 			name: 'veg-impostor',
 			side: 'double',
-			modules: [ vegModule, canopyModule ],
+			modules: [ vegModule, canopyModule, ...modules ],
 			textures: { vegImpA: this.rtA.texture, vegImpB: this.rtB.texture },
 			attributes: { iPos: 'vec4f', iDat: 'vec4f' },
 			// crown sway offset (xyz) and the effective scale (w) for the fragment stage

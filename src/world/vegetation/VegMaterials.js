@@ -654,7 +654,28 @@ fn vegCanopyLeaf( in: FragInput ) -> vec4f {
 }
 `;
 
-export function createCanopyMaterial( leafAtlas ) {
+// The leaf stage of the canopy material: from the cluster the fragment sampled it produces `leaf`,
+// the lit leaf colour. A region with other trees passes its own (regions/slavonia/Flora.js); this is
+// the island's. In scope: seed, cr (crown ratio), isShrub, spT / spS (species), cell (the cluster's
+// own id), bright, ao.
+export const ISLAND_CANOPY_LEAF = /* wgsl */`
+	var c = vegCanopyLeafColor( seed, cr, isShrub ) * bright;
+	// species details: red-veined old leaves (sea grape), variegation (croton), flowers (hibiscus)
+	let shrub0 = isShrub && spS < 0.5; let shrub1 = isShrub && spS == 1.0; let shrub2 = isShrub && spS > 1.5;
+	c = mix( c, ${ C( 0x7a3a22 ) }, smoothstep( 0.86, 0.98, cell ) * 0.55 * select( 0.0, 1.0, shrub0 ) );
+	let vari = select( ${ C( 0x7a3a22 ) }, ${ C( 0x9a8a30 ) }, fract( cell * 7.3 ) > 0.5 );
+	c = mix( c, vari, smoothstep( 0.72, 0.9, cell ) * 0.55 * select( 0.0, 1.0, shrub1 ) );
+	c = select( c, ${ C( 0xb3261e ) }, shrub2 && cell > 0.92 );
+	// trees: a few old leaves turning red / yellow before they drop (sea almond)
+	let treeK = select( 1.0, 0.0, isShrub );
+	c = mix( c, mix( ${ C( 0x8a7a3a ) }, ${ C( 0x7e3e22 ) }, step( 0.992, fract( cell * 3.7 ) ) ), step( 0.984, fract( cell * 3.7 ) ) * treeK * 0.6 );
+	// sunlit outer / upper leaves brighter and a little yellow-green; shaded interior kept for contrast
+	let outer = smoothstep( 0.62, 1.0, ao );
+	c = mix( c, c * vec3f( 1.16, 1.22, 0.92 ), outer * 0.7 );
+	let leaf = c * mix( 0.55, 1.0, ao );
+`;
+
+export function createCanopyMaterial( leafAtlas, { leaf = ISLAND_CANOPY_LEAF } = {} ) {
 
 	const maskModule = new ShaderModule( { name: 'vegCanopyMask', deps: [ canopyModule, leafAtlas.module ], code: CANOPY_MASK } );
 	const mat = new Material( {
@@ -682,20 +703,7 @@ export function createCanopyMaterial( leafAtlas ) {
 	if ( ! vegCanopyMask( in, L ) ) { discard; }
 	let bright = L.y * 1.4;
 	let cell = L.z;
-	var c = vegCanopyLeafColor( seed, cr, isShrub ) * bright;
-	// species details: red-veined old leaves (sea grape), variegation (croton), flowers (hibiscus)
-	let shrub0 = isShrub && spS < 0.5; let shrub1 = isShrub && spS == 1.0; let shrub2 = isShrub && spS > 1.5;
-	c = mix( c, ${ C( 0x7a3a22 ) }, smoothstep( 0.86, 0.98, cell ) * 0.55 * select( 0.0, 1.0, shrub0 ) );
-	let vari = select( ${ C( 0x7a3a22 ) }, ${ C( 0x9a8a30 ) }, fract( cell * 7.3 ) > 0.5 );
-	c = mix( c, vari, smoothstep( 0.72, 0.9, cell ) * 0.55 * select( 0.0, 1.0, shrub1 ) );
-	c = select( c, ${ C( 0xb3261e ) }, shrub2 && cell > 0.92 );
-	// trees: a few old leaves turning red / yellow before they drop (sea almond)
-	let treeK = select( 1.0, 0.0, isShrub );
-	c = mix( c, mix( ${ C( 0x8a7a3a ) }, ${ C( 0x7e3e22 ) }, step( 0.992, fract( cell * 3.7 ) ) ), step( 0.984, fract( cell * 3.7 ) ) * treeK * 0.6 );
-	// sunlit outer / upper leaves brighter and a little yellow-green; shaded interior kept for contrast
-	let outer = smoothstep( 0.62, 1.0, ao );
-	c = mix( c, c * vec3f( 1.16, 1.22, 0.92 ), outer * 0.7 );
-	let leaf = c * mix( 0.55, 1.0, ao );
+${ leaf }
 	// bark: grey-brown with vertical streaks, lichen patches
 	let hfB = in.vs.vHf;
 	var albedo = leaf;

@@ -164,7 +164,7 @@ Removed when their replacement lands: `Roads.js`, `Buildings.js`, `Yards.js`, `B
 ## 11. State at hand-off (2026-10-02)
 
 - Branch `ccr-f1d94ae0-dxdfac`. Last commits: `847797c` (St Roch's model + landmark loader),
-  `4d73f6a` (houses on real footprints, ribbon roads). Not yet pushed.
+  `4d73f6a` (houses on real footprints, ribbon roads). Pushed.
 - Untracked: `docs/slavonia/rokovci/`, `docs/slavonia/andrijasevci/` (your reference photos).
 - Blender is driven through the `mcp__Blender__*` tools (the official extension). The `blender` entry
   in `~/.claude.json` (`uvx blender-mcp`) is a different addon's bridge; it times out and can go.

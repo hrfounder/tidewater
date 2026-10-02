@@ -6,6 +6,7 @@ import { SEEN, PARTED, ADDED, MOVED, GONE, BESIDE, OPEN, AREAS, TREES, MARINAS, 
 import { LANDMARKS } from './Landmarks.js';
 import { loadModels } from './build/Models.js';
 import { buildVillage } from './build/Village.js';
+import { Drift } from './build/Drift.js';
 import { Flora } from './flora/Flora.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
 
@@ -85,10 +86,12 @@ function fetchFile( base = document.baseURI ) {
 
 }
 
-// what stands on the ground: world is what loadWorld gave; colliders may be null (a render without a player)
+// what stands on the ground and floats on the water: world is what loadWorld gave; colliders may be
+// null (a render without a player). `update( dt, camera )` moves what moves, once a frame.
 export function buildPlaces( world, { scene, colliders } ) {
 
-	return { village: buildVillage( world, { scene, colliders } ), flora: new Flora( world, { scene } ) };
+	const village = buildVillage( world, { scene, colliders } ), flora = new Flora( world, { scene } ), drift = new Drift( world, { scene, material: village.material } );
+	return { village, flora, drift, update( dt, camera ) { flora.update( dt, camera ); drift.update( dt, camera ); } };
 
 }
 

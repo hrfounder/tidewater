@@ -6,6 +6,7 @@ import { Colliders } from '../../src/world/Colliders.js';
 import { insideBuilding } from '../../src/regions/slavonia/site/Buildings.js';
 import { RAIL, frameAt } from '../../src/regions/slavonia/site/Rails.js';
 import { BRIDGE } from '../../src/regions/slavonia/build/Railway.js';
+import { Drift } from '../../src/regions/slavonia/build/Drift.js';
 import { archetypeOf, ARCHETYPES } from '../../src/regions/slavonia/build/Archetypes.js';
 
 const world = await load(), { site, terrain: T } = world;
@@ -80,6 +81,18 @@ for ( const br of site.roads.bridges ) {
 	} ) );
 	const room = BRIDGE.between / 2 - RAIL.sleeper.length / 2;
 	check( R.bridges.every( ( b ) => b.clear > 0.5 ) && bows.every( ( b ) => b < room ), 'a railway bridge clear of the water, the track between its girders', `${ R.bridges.map( ( b ) => b.clear.toFixed( 2 ) ).join( ', ' ) } m over the water; the track bows ${ bows.map( ( b ) => b.toFixed( 2 ) ).join( ', ' ) } m off straight, with ${ room.toFixed( 2 ) } m between a sleeper's end and a girder` );
+
+}
+
+// ---- what floats: rafts round an angler on the park bank, after a minute of the river
+{
+
+	const drift = new Drift( world, { scene: null, material: village.material } ), at = { position: { x: site.park.start.x, z: site.park.start.z } };
+	const before = drift.rafts.map( ( r ) => [ r.x, r.z ] );
+	for ( let k = 0; k < 60 * 30; k ++ ) drift.update( 1 / 30, at );
+	const s = drift.state(), aground = drift.rafts.filter( ( r ) => r.afloat && T.heightAt( r.x, r.z ) > - 0.2 ).length;
+	const moved = drift.rafts.filter( ( r, i ) => r.afloat && Math.hypot( r.x - before[ i ][ 0 ], r.z - before[ i ][ 1 ] ) > 0.5 ).length;
+	check( s.afloat > s.rafts * 0.9 && aground === 0 && s.fastest > 0.03 && s.fastest < 0.6 && moved > s.afloat / 4, 'duckweed and leaves on the current', `${ s.afloat } of ${ s.rafts } rafts afloat round the start, ${ aground } aground; the fastest drifts ${ s.fastest.toFixed( 2 ) } m/s; ${ moved } went more than half a metre in a minute` );
 
 }
 

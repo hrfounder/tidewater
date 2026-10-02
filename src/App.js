@@ -706,7 +706,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( this.whale ) this.whale.update( dt, this.camera );
 		this.boat.update( dt );
 		if ( this.wildlife ) this.wildlife.update( dt, this.camera, this.freeCam ? null : this.player );
-		if ( this.places && this.places.flora ) this.places.flora.update( dt, this.camera );
+		if ( this.places ) this.places.update( dt, this.camera );
 		this.localLights.update( this.camera, dt );
 
 		// ---- render

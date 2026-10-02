@@ -125,6 +125,10 @@ the yard opens. It is instanced kit panels with a fade distance, not merged pick
   flow x time, which sheared it into streaks; a two-phase flow map would bound that, at twice the
   cost of every wave sample, to show a drift of 0.12 m/s that wind ripples cannot show anyway. The
   current is shown by what floats on it (M7: flecks and leaves on the surface, the float, the boat).
+  Built 2026-10-03 as `build/Drift.js`: 520 rafts of duckweed and of fallen leaves kept within 45 m
+  of the camera, each carried by the terrain's grid of the surface current (0.12 m/s where the
+  river runs, still in a backwater), set down again when it leaves the reach or runs aground. Two
+  instanced meshes in the village's material; `village.mjs` runs a minute of it.
   Fixed 2026-10-02, with the strip of undrawn water along the bank (the island's swash sheet was
   still clipping the water on a river with no surf: the "line that walks the shoreline").
 - **Colour by numbers**: the water, grass, roofs and walls are matched to your photographs as
@@ -321,6 +325,7 @@ Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
 | T1 | the survey of the orthophoto: footprints, roofs, roads | `tools/geodata/survey.py`, `survey.json` | `site.mjs` |
 | T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row, the hall, two long houses; the ochre house and the brick row north-east of the church (one footprint, parted), the houses east of the apse, the four across Ulica Vladimira Nazora | `Survey.js`, `site/Beside.js` | `site.mjs` |
 | T3 | the named places: the municipality and post office, the school, the parish house, the restaurant; the park, the sports ground; the marina and the landing with their boats | `Survey.js`, `build/Marina.js`, `tools/blender/kit.py` | `site.mjs`, `village.mjs`, `flora.mjs` |
+| M7 (part) | what floats on the water and shows the current: duckweed and leaves | `build/Drift.js` | `village.mjs` |
 | T4 | the railway: the line and the siding on their ballast, four level crossings, the bridge over the Bosut | `site/Rails.js`, `build/Railway.js`, `terrain/Grade.js` | `site.mjs`, `village.mjs` |
 
 Still to do, in this order:
@@ -344,7 +349,7 @@ Still to do, in this order:
    yards and fences, the registry's outlines, and with them storeys from shadows.
 7. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
    Street-level pictures of the other streets are what every further ring needs.
-8. **M7** colour by numbers; what floats on the water to show the current.
+8. **M7** colour by numbers. (What floats on the water is in: `build/Drift.js`.)
 
 Known and left: one house at 754,-1083, near the block's edge, stands a metre onto a lane that was not surveyed
 (`site.mjs` reports it).

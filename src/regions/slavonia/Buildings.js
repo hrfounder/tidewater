@@ -1,5 +1,5 @@
 import { Mesh, Vector3 } from '../../engine/index.js';
-import { prepare, mergePrepared, box, slab, mat4 } from '../../world/boat/GeoKit.js';
+import { prepare, mergePrepared, box, slab, cylinder, mat4 } from '../../world/boat/GeoKit.js';
 import { createPropMaterial, PAT } from '../../game/GameMaterials.js';
 
 // The buildings of the block, from public/world/bosut/places.json (OpenStreetMap via Overture, ODbL).
@@ -63,6 +63,78 @@ function minAreaRect( ring ) {
 
 }
 
+// A village parish church: a long nave under a steep tiled roof with a half-hipped apse at the
+// altar end, and the bell tower over the west door carrying a tapered spire. Catholic churches here
+// are laid out east-west with the altar east, so the tower goes on the western end of the footprint.
+function church( parts, terrain, r ) {
+
+	const y = terrain.heightAt( r.cx, r.cz );
+	const navW = Math.min( r.w, 12 ), navL = r.d;
+	const eaves = 9.5, rise = navW * 0.55;
+	const ang = r.ang;
+	// the nave, which the rectangle's long side already orients
+	parts.push( prepare( box( navW, eaves, navL ), {
+		color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( r.cx, y + eaves / 2, r.cz, 0, ang, 0 ),
+	} ) );
+	const slope = Math.atan2( rise, navW / 2 );
+	const slabLen = Math.hypot( rise, navW / 2 + 0.35 );
+	for ( const side of [ - 1, 1 ] ) {
+
+		const sx = r.cx + Math.cos( ang ) * side * ( navW / 4 + 0.18 );
+		const sz = r.cz - Math.sin( ang ) * side * ( navW / 4 + 0.18 );
+		parts.push( prepare( box( slabLen, 0.16, navL + 0.7 ), {
+			color: 0x7d4531, rough: 0.82, pattern: PAT.plain,
+			matrix: mat4( sx, y + eaves + rise / 2, sz, 0, ang, - side * slope, 1, 1, 1, 'YZX' ),
+		} ) );
+
+	}
+
+	for ( const end of [ - 1, 1 ] ) {
+
+		const gx = r.cx - Math.sin( ang ) * end * navL / 2, gz = r.cz - Math.cos( ang ) * end * navL / 2;
+		const tri = slab( [ [ - navW / 2, 0 ], [ navW / 2, 0 ], [ 0, rise ] ], [], ( u, v, sd ) => new Vector3( u, v, sd * 0.11 ), { edges: false } );
+		parts.push( prepare( tri, { color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( gx, y + eaves, gz, 0, ang, 0 ) } ) );
+
+	}
+
+	// which end of the nave lies west: the tower stands there, the altar at the other
+	const ex = - Math.sin( ang ), ez = - Math.cos( ang ); // the local long axis in world x / z
+	const west = ex < 0 ? 1 : - 1;
+	const tx = r.cx + ex * west * ( navL / 2 + 2.4 ), tz = r.cz + ez * west * ( navL / 2 + 2.4 );
+	const towerW = Math.min( 5.5, navW * 0.62 ), towerH = 20;
+	parts.push( prepare( box( towerW, towerH, towerW ), {
+		color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( tx, y + towerH / 2, tz, 0, ang, 0 ),
+	} ) );
+	// the belfry openings, then the cornice and the spire
+	for ( const f of [ 0, 1 ] ) {
+
+		const o = f ? Math.cos( ang ) : - Math.sin( ang ), o2 = f ? - Math.sin( ang ) : - Math.cos( ang );
+		parts.push( prepare( box( f ? 0.12 : 1.5, 2.6, f ? 1.5 : 0.12 ), {
+			color: 0x2b2f33, rough: 0.6, pattern: PAT.plain,
+			matrix: mat4( tx + o * towerW / 2, y + towerH - 3.4, tz + o2 * towerW / 2, 0, ang, 0 ),
+		} ) );
+
+	}
+
+	parts.push( prepare( box( towerW + 0.7, 0.35, towerW + 0.7 ), {
+		color: 0xd8d0c0, rough: 0.9, pattern: PAT.plain, matrix: mat4( tx, y + towerH + 0.18, tz, 0, ang, 0 ),
+	} ) );
+	parts.push( prepare( cylinder( 0.0, towerW * 0.78, 9.5, 4 ), {
+		color: 0x55606a, rough: 0.55, metal: 0.35, pattern: PAT.plain,
+		matrix: mat4( tx, y + towerH + 0.35 + 4.75, tz, 0, ang + Math.PI / 4, 0 ),
+	} ) );
+	// the cross on the spire
+	parts.push( prepare( box( 0.1, 1.5, 0.1 ), { color: 0x3c3f42, rough: 0.5, metal: 0.7, pattern: PAT.machined, matrix: mat4( tx, y + towerH + 10.6, tz, 0, ang, 0 ) } ) );
+	parts.push( prepare( box( 0.7, 0.1, 0.1 ), { color: 0x3c3f42, rough: 0.5, metal: 0.7, pattern: PAT.machined, matrix: mat4( tx, y + towerH + 10.9, tz, 0, ang, 0 ) } ) );
+
+	// the apse at the altar end
+	const axp = r.cx - ex * west * ( navL / 2 + 1.6 ), azp = r.cz - ez * west * ( navL / 2 + 1.6 );
+	parts.push( prepare( cylinder( navW * 0.34, navW * 0.34, eaves * 0.86, 10 ), {
+		color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( axp, y + eaves * 0.43, azp, 0, 0, 0 ),
+	} ) );
+
+}
+
 export function buildBuildings( { terrain, scene, places } ) {
 
 	if ( ! places || ! places.buildings || ! places.buildings.length ) return null;
@@ -80,6 +152,8 @@ export function buildBuildings( { terrain, scene, places } ) {
 		if ( r.w < 2.5 || r.d < 3 || r.w > 40 || r.d > 90 ) continue; // ruins and halls are not houses
 		const ground = terrain.heightAt( r.cx, r.cz );
 		if ( ! ( ground > - 1 ) ) continue;
+
+		if ( b.class === 'church' ) { church( parts, terrain, r ); count ++; continue; }
 
 		const h = hash( r.cx, r.cz );
 		const area = r.w * r.d;

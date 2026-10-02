@@ -1,6 +1,7 @@
 import { Mesh, Vector3 } from '../../engine/index.js';
 import { prepare, mergePrepared, box, slab, cylinder, mat4 } from '../../world/boat/GeoKit.js';
 import { createPropMaterial, PAT } from '../../game/GameMaterials.js';
+import { yardFor, buildYards } from './Yards.js';
 
 // The buildings of the block, from public/world/bosut/places.json (OpenStreetMap via Overture, ODbL).
 //
@@ -141,6 +142,7 @@ export function buildBuildings( { terrain, scene, places } ) {
 	const [ cE, cN ] = terrain.center;
 	const half = terrain.size / 2 - 6;
 	const parts = [];
+	const yards = [];
 	let count = 0;
 
 	for ( const b of places.buildings ) {
@@ -231,9 +233,12 @@ export function buildBuildings( { terrain, scene, places } ) {
 
 		}
 
+		yardFor( yards, terrain, r, isShed );
 		count ++;
 
 	}
+
+	buildYards( { scene, parts: yards } );
 
 	if ( ! parts.length ) return null;
 	const mesh = new Mesh( mergePrepared( parts ), createPropMaterial( 'slavoniaBuildings' ) );

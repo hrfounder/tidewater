@@ -30,7 +30,10 @@ export class Engine {
 		this.meshRenderer.syncPipelines = false; // compile in the background (App.precompile waits for them)
 		this.camera = new PerspectiveCamera( 62, window.innerWidth / window.innerHeight, 0.06, 60000 );
 		this.scene = new Scene();
-		window.addEventListener( 'resize', () => this.resize() );
+		// The canvas fills its container, whatever makes that change size: the window, a phone turned
+		// round, a browser's bars sliding away (which changes the page's height without always sending
+		// the window a resize).
+		new ResizeObserver( () => this.resize() ).observe( this.container );
 		this.resize();
 
 	}
@@ -57,7 +60,7 @@ export class Engine {
 
 	resize() {
 
-		const w = window.innerWidth, h = window.innerHeight;
+		const w = this.container.clientWidth || window.innerWidth, h = this.container.clientHeight || window.innerHeight;
 		const dpr = this.renderScale;
 		this.canvas.width = Math.max( 1, Math.floor( w * dpr ) );
 		this.canvas.height = Math.max( 1, Math.floor( h * dpr ) );

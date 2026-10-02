@@ -2597,6 +2597,17 @@ body {
 		grid-template-columns: 1fr;
 	}
 
+	/* a phone held upright: the frame rate alone, so the purse fits beside it on the top row */
+	.tw-stats {
+		grid-template-areas: 'main';
+		grid-template-columns: auto;
+	}
+
+	.tw-spark,
+	.tw-stats-sub {
+		display: none;
+	}
+
 	.tw-boat {
 		transform-origin: 0 100%;
 		scale: 0.82;

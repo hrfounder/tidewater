@@ -30,6 +30,15 @@ const CSS = `
 .tw-touch-btn { width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid rgba( 255, 255, 255, 0.4 ); background: rgba( 12, 22, 30, 0.38 ); color: #fff; display: flex; align-items: center; justify-content: center; pointer-events: auto; text-shadow: 0 1px 2px rgba( 0, 0, 0, 0.6 ); }
 .tw-touch-btn.is-big { grid-column: span 3; width: 84px; height: 84px; font-size: 16px; background: rgba( 64, 176, 160, 0.5 ); justify-self: end; margin-right: 12px; }
 .tw-touch-btn.is-down { background: rgba( 255, 255, 255, 0.5 ); color: #0c161e; text-shadow: none; }
+
+/* With the thumbs' controls on screen the two bottom corners are theirs: what the HUD keeps there on
+   a desktop moves out of the way. The map goes up under the purse and the brand row, smaller; the settings rail goes
+   to the left edge, above the stick; the boat's instruments and the fight bar sit above the controls. */
+html.tw-touch-on .gm-map { bottom: auto; top: calc( var( --tw-edge ) + 92 * var( --tw-u ) ); width: calc( 118 * var( --tw-u ) ); height: calc( 118 * var( --tw-u ) ); }
+html.tw-touch-on .tw-rail { right: auto; left: var( --tw-3 ); top: 42%; scale: 0.86; transform-origin: 0 50%; }
+html.tw-touch-on .tw-root[data-panel='open'] .tw-rail, html.tw-touch-on .tw-root.is-starting .tw-rail { transform: translate( calc( -14 * var( --tw-u ) ), -50% ); }
+html.tw-touch-on .tw-boat { bottom: calc( 190px + env( safe-area-inset-bottom ) ); }
+html.tw-touch-on .gm-fight { bottom: calc( 250px + env( safe-area-inset-bottom ) ); }
 `;
 
 export class TouchControls {
@@ -57,6 +66,7 @@ export class TouchControls {
 		canvas.style.touchAction = 'none';
 		canvas.addEventListener( 'touchstart', ( e ) => e.preventDefault(), { passive: false } );
 		document.documentElement.style.overscrollBehavior = 'none';
+		document.documentElement.classList.add( 'tw-touch-on' );
 
 		this._stick( root.querySelector( '.tw-touch-stick' ), root.querySelector( '.tw-touch-knob' ) );
 		for ( const b of BUTTONS ) this._button( root.querySelector( `[data-id="${ b.id }"]` ), b );

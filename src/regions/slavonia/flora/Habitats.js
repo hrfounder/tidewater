@@ -101,8 +101,8 @@ class Spread {
 
 // A tree is as tall as its shape, by its size, by a stretch of its own between these.
 const STRETCH = [ 0.85, 1.15 ];
-// What stands in a landmark's grounds where its survey saw a tree, and the room it keeps (m): the
-// tree of a Slavonian churchyard is a lime.
+// What stands where the survey saw a tree (in a landmark's grounds, in a park), and the room it
+// keeps (m): the tree of a Slavonian churchyard and of its village's park is a lime.
 const GROUNDS_TREE = { plant: 'lime', clear: 4 };
 
 // Plant the patch: { reed: [ records ], willow: [ ... ], ... } by shape, and a count per habitat. A
@@ -117,12 +117,27 @@ export function plant( { site, terrain } ) {
 	// every tree keeps clear of every other, whatever habitat planted it
 	const trees = new Spread( 16 );
 	const forest = ( x, z ) => terrain.forest[ Math.floor( z - terrain.origin ) * terrain.res + Math.floor( x - terrain.origin ) ] / 255;
-	// first the trees that were surveyed: each where it was seen and as tall, and the habitats plant round them
+	// first the trees that were surveyed: each where it was seen and as tall, and the habitats plant round
+	// them; then, inside ground the survey found open, nothing is planted by rule
+	const open = site.open.map( ( o ) => o.ring );
+	const inOpen = ( x, z ) => open.some( ( ring ) => {
+
+		let inside = false;
+		for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
+
+			const a = ring[ j ], b = ring[ i ];
+			if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) inside = ! inside;
+
+		}
+
+		return inside;
+
+	} );
 	{
 
 		const rnd = random( 104729 ), kind = PLANTS[ GROUNDS_TREE.plant ], shape = SHAPES[ kind.shape ];
 		counts.grounds = 0;
-		for ( const b of site.buildings.list ) if ( b.grounds ) for ( const t of b.grounds.trees ) {
+		for ( const t of [ ...site.buildings.list.flatMap( ( b ) => b.grounds ? b.grounds.trees : [] ), ...site.trees ] ) {
 
 			const yaw = rnd() * Math.PI * 2;
 			out[ kind.shape ].push( { x: t.x, y: terrain.heightAt( t.x, t.z ), z: t.z, yaw, s: t.height / shape.spec.H, seed: seedOf( GROUNDS_TREE.plant, rnd ), qr: TREE_REACH + 12, la: yaw, l: 1, H: t.height } );
@@ -142,6 +157,8 @@ export function plant( { site, terrain } ) {
 		const put = ( x, z, allowed ) => {
 
 			if ( Math.abs( x ) > half || Math.abs( z ) > half || patch( x, z ) > h.stand[ 1 ] ) return;
+			// ( reeds and the bank's willows grow on a park's bank as on any other )
+			if ( kind && h.on !== 'bank' && inOpen( x, z ) ) return;
 			if ( occupancy.within( x, z, h.clear ) > allowed ) return;
 			if ( same.near( x, z, h.spacing * 0.75 ) || ( kind && trees.near( x, z, h.clear ) ) ) return;
 			const y = terrain.heightAt( x, z );

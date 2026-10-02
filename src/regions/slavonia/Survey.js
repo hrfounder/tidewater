@@ -16,6 +16,12 @@
 //   form      its roof's: 'gable' or 'hip'
 //   source    where it was seen: the frame or the sheet
 export const SEEN = [
+	// the municipality of Andrijaševci on Vinkovačka ulica: two storeys of yellow render, white windows
+	// in rows; and the lower yellow wing north of it with the post office
+	{ at: [ 22.5, - 117.5 ], is: 'public', storeys: 2, walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone1 at 30-33 s; sheet opcina' },
+	{ at: [ 18, - 131 ], is: 'public', storeys: 1, walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone1 at 30 s; sheet opcina' },
+	// the primary school by the park: two storeys, pale yellow, windows in rows under a dark red roof
+	{ at: [ 138, 61 ], is: 'public', storeys: 2, walls: [ 'render', [ 236, 222, 168 ] ], form: 'gable', source: 'drone2 at 42 and 60-72 s; drone4; sheet school' },
 	// the long yellow row on the street north-west of St Andrew's, brick at its corners and round its
 	// door, under a dark red hipped roof
 	{ at: [ - 62, 139 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 228, 186, 96 ] ], form: 'hip', source: 'drone1 at 63-72 s; sheet andrew-ring1' },
@@ -49,6 +55,45 @@ export const BESIDE = [
 	// cars stand, and the pavement along the fence
 	{ along: 'Ulica Stjepana Radića', from: [ 70, - 197 ], to: [ 62, - 216 ], out: [ 0, 5 ], of: 'asphalt', source: 'orthophoto at 5 cm; ROKOVCI-01.jpg' },
 	{ along: 'Ulica Stjepana Radića', from: [ 70, - 197 ], to: [ 62, - 216 ], out: [ 5, 6.5 ], of: 'paving', source: 'orthophoto at 5 cm; ROKOVCI-01.jpg' },
+	// before the municipality and the shop: the cars stand along both sides of Vinkovačka ulica, and a
+	// pavement runs before the buildings on the east
+	{ along: 'Vinkovačka ulica', from: [ 6.5, - 133.5 ], to: [ 4.6, - 90.5 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet opcina' },
+	{ along: 'Vinkovačka ulica', from: [ 6, - 125 ], to: [ 4.6, - 90.5 ], out: [ 5, 6.4 ], of: 'paving', source: 'sheet opcina; drone1 at 30 s' },
+	{ along: 'Vinkovačka ulica', from: [ - 7.7, - 122.5 ], to: [ - 12, - 87.4 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet opcina' },
 	// the walk outside the churchyard's fence along Ulica Vladimira Nazora, a grass verge between it and the road
 	{ along: 'Ulica Vladimira Nazora', from: [ - 60, 191 ], to: [ - 24, 222 ], out: [ 3.5, 4.7 ], of: 'paving', source: 'orthophoto at 5 cm; drone5 f002' },
+];
+
+// Open ground that the land cover calls a wood and is not one: a park, a school's grounds. Inside a
+// ring nothing is planted by rule: its trees are the ones in TREES.
+export const OPEN = [
+	// the park on the south bank east of the bridge, the school's grounds and the sports ground
+	{ ring: [ [ 22, 6 ], [ 100, - 2 ], [ 160, 2 ], [ 232, 44 ], [ 268, 150 ], [ 232, 212 ], [ 128, 148 ], [ 62, 84 ], [ 26, 62 ] ], source: 'sheets park, school, sport' },
+];
+
+// Ground that is made: each a flat surface with straight sides (a ring that bulges nowhere inward).
+//   of   'concrete' (a paved terrace), 'gravel' (a playground's ground), 'track' (red rubber),
+//        'court' (blue acrylic), 'sand'
+export const AREAS = [
+	// the promenade on the park bank, where the stalls stand
+	{ ring: [ [ 100.7, 10.6 ], [ 129.4, 10.6 ], [ 129.4, 14.8 ], [ 100.7, 14.8 ] ], of: 'concrete', source: 'sheet park' },
+	// the playground west of it
+	{ ring: [ [ 58.4, 26 ], [ 70, 19.9 ], [ 77.8, 24 ], [ 76, 36.8 ], [ 60, 34 ] ], of: 'gravel', source: 'sheet park' },
+	// the school's sports ground: the running track, the basketball court, the handball court, the sand court
+	{ ring: [ [ 180.4, 75.2 ], [ 184.6, 71.2 ], [ 263.4, 156 ], [ 259.2, 160 ] ], of: 'track', source: 'sheet sport' },
+	{ ring: [ [ 191.8, 121 ], [ 204.2, 107.8 ], [ 226.4, 129.2 ], [ 213.2, 142.4 ] ], of: 'court', source: 'sheet sport' },
+	{ ring: [ [ 165.7, 147.2 ], [ 181.4, 131.7 ], [ 211.4, 162.2 ], [ 195.9, 177.7 ] ], of: 'court', source: 'sheet sport' },
+	{ ring: [ [ 215.3, 196.4 ], [ 230.5, 183.2 ], [ 238.2, 192.9 ], [ 223.6, 206.8 ] ], of: 'sand', source: 'sheet sport' },
+];
+
+// Trees that were seen where they stand: [ x, z, height ]. The place is the middle of the crown on the
+// orthophoto; the height is judged from the crown's width and its shadow.
+export const TREES = [
+	// the park on the south bank ( sheets park and school )
+	[ 87.6, 40.2, 15 ], [ 63, 54.6, 15 ], [ 102.4, 9.2, 11 ], [ 116.8, 25, 14 ], [ 125.2, 21.6, 14 ], [ 133.7, 24.1, 13 ],
+	[ 140.4, 18.2, 12 ], [ 144.7, 25, 13 ], [ 159.9, 24.1, 15 ], [ 161.5, 29.6, 12 ], [ 186.9, 20.4, 14 ],
+	// round the school
+	[ 176.5, 66.5, 13 ], [ 152.3, 83.8, 14 ], [ 133.8, 96.5, 13 ], [ 159.2, 96.5, 12 ], [ 110.7, 111.5, 12 ], [ 185.7, 96.5, 12 ],
+	// between the track and the river
+	[ 212, 78, 14 ], [ 224, 92, 14 ], [ 236, 106, 13 ], [ 247, 122, 13 ], [ 256, 140, 12 ],
 ];

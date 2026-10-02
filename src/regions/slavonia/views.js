@@ -45,4 +45,10 @@ export const PROGRESS_VIEWS = {
 	rochFlank: { pos: [ 30.3, 1.7, - 221.7 ], ground: true, target: [ 40.6, 11, - 196.8 ], fov: 62 },
 	// St Roch's and its yard from before and above
 	rochAir: { pos: [ 68.2, 22, - 229.4 ], ground: true, target: [ 43.9, 7, - 199.3 ], fov: 60 },
+	// the park on the south bank, the school behind it, from over the river
+	parkAir: { pos: [ 60, 60, - 40 ], ground: true, target: [ 135, 0, 70 ], fov: 60 },
+	// the school's sports ground: the track, the courts
+	sportAir: { pos: [ 150, 70, 230 ], ground: true, target: [ 215, 0, 130 ], fov: 60 },
+	// the municipality and the shop from across Vinkovačka ulica, St Roch's beyond (drone1 at 30 s)
+	opcinaStreet: { pos: [ - 6, 1.7, - 108 ], ground: true, target: [ 22, 6, - 118 ], fov: 70 },
 };

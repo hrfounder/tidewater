@@ -1,6 +1,6 @@
 import { overRoads, project, SHOULDER } from '../site/Roads.js';
 import { toWorld } from '../site/Buildings.js';
-import { gridOf } from '../site/Raster.js';
+import { gridOf, fillPolygon } from '../site/Raster.js';
 
 // The grading pass: everything the Site cuts into the dry ground of the tiles, at the resolution of
 // the grid it is cut into. The patch takes all of it at a metre; the coarse field around the patch
@@ -17,6 +17,8 @@ import { gridOf } from '../site/Raster.js';
 //           their decks are built, not graded.
 //   beside  the parking and the pavements along a road lie at the level of its edge; parking is
 //           drawn as the road is, by the same outline.
+//   open    ground the survey found open is neither wood nor field in the ground's masks.
+//   areas   made ground is flat, at the mean level of its corners.
 //
 // The roads also leave their outline in the terrain for the ground shader to draw them from
 // (GroundSurface.js): a signed distance to the carriageway's edge, one field for paved roads and one
@@ -211,6 +213,29 @@ export function gradeBeside( terrain, strips ) {
 
 }
 
+// Open ground and made ground, as surveyed (Survey.js OPEN and AREAS).
+export function gradeOpen( terrain, open, areas ) {
+
+	const grid = gridOf( terrain ), { res, texel, origin, heights: H } = terrain;
+	for ( const o of open ) fillPolygon( grid, o.ring, ( k ) => { terrain.forest[ k ] = terrain.cropland[ k ] = 0; } );
+	const reach = PAD_BLEND;
+	for ( const area of areas ) {
+
+		const ring = area.ring, xs = ring.map( ( p ) => p[ 0 ] ), zs = ring.map( ( p ) => p[ 1 ] );
+		area.level = ring.reduce( ( s, [ x, z ] ) => s + terrain.heightAt( x, z ), 0 ) / ring.length;
+		const i0 = Math.max( 0, Math.floor( ( Math.min( ...xs ) - reach - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ...xs ) + reach - origin ) / texel ) );
+		const j0 = Math.max( 0, Math.floor( ( Math.min( ...zs ) - reach - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( ...zs ) + reach - origin ) / texel ) );
+		for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) {
+
+			const w = 1 - smoothstep( 0, reach, outside( ring, origin + ( i + 0.5 ) * texel, origin + ( j + 0.5 ) * texel ) );
+			if ( w > 0 ) H[ j * res + i ] += ( area.level - H[ j * res + i ] ) * w;
+
+		}
+
+	}
+
+}
+
 // metres between the samples of the current's grid: the flow turns over tens of metres
 const FLOW_CELL = 8;
 
@@ -242,8 +267,11 @@ export function gradeTerrain( terrain, site ) {
 	const under = gradePads( terrain, site.buildings );
 	water.bind( terrain, cutWater( { heights: terrain.heights, ...gridOf( terrain ) }, water, terrain, under ) );
 	cutWater( terrain.far, water );
-	gradeRoads( terrain, site.roads, water );
+	gradeOpen( terrain, site.open, site.areas );
+	// ( what lies beside the roads before the roads themselves: a foot way that runs through a row of
+	// parking keeps its own level )
 	gradeBeside( terrain, site.beside );
+	gradeRoads( terrain, site.roads, water );
 	terrain.flow = flowGrid( terrain, water );
 	terrain.finish();
 

@@ -43,6 +43,8 @@ export class Occupancy {
 
 		}
 
+		// made ground is built on: nothing grows on a court
+		for ( const area of site.areas ) fillPolygon( grid, area.ring, ( k ) => claim( k, BUILDING ) );
 		// what was surveyed beside the roads: parking is road, a pavement is built on
 		for ( const strip of site.beside ) fillPolygon( grid, strip.ring, ( k ) => claim( k, strip.of === 'asphalt' ? ROAD : BUILDING ) );
 		for ( const b of site.buildings.list ) if ( b.grounds ) {

@@ -88,7 +88,21 @@ export const ARCHETYPES = {
 		fence: [ [ 'boards', 1 ] ],
 		vent: false, chimneys: [ 0, 0 ],
 	},
-	// a hall: a shed of the co-operative, a workshop, a shop, a school: tall walls under a low sheet roof
+	// a public building of the last sixty years: the municipality, the school, the post office. High
+	// storeys, wide windows in rows, a low tiled roof, a plain door on the street, no yard fence.
+	// Never chosen by rule: a building is one when it was seen to be (Survey.js).
+	public: {
+		storeys: [ 1, 2 ], storey: 3.3, plinth: 0.5,
+		roof: { form: 'gable', pitch: 24, eave: 0.6, verge: 0.3, cover: [ SURFACE.tile, TILE_ROOFS ] },
+		walls: [ [ SURFACE.render, RENDER, 1 ] ],
+		gable: null,
+		trim: WHITE_TRIM, joinery: [ [ 238, 236, 228 ] ], doors: DOORS,
+		windows: { street: [ 'window_plain', 2.2, 0.95 ], side: [ 'window_plain', 2.6, 0.95 ], back: [ 'window_plain', 2.6, 0.95 ] },
+		door: [ 'door_house', 'street' ],
+		fence: [],
+		vent: false, chimneys: [ 0, 0 ],
+	},
+	// a hall: a shed of the co-operative, a workshop, a shop: tall walls under a low sheet roof
 	hall: {
 		storeys: [ 1, 1 ], storey: 5.0, plinth: 0.15,
 		roof: { form: 'gable', pitch: 14, tiled: 28, eave: 0.4, verge: 0.2, cover: [ SURFACE.sheet, SHEET_ROOFS ] },

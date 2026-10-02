@@ -10,6 +10,7 @@ import { G } from '../../../core/Globals.js';
 import { SHAPES, VARIANTS, TREE_NEAR, variantOf, variantWGSL, LEAF_STAGE, farLeafModule, buildReedClump } from './Species.js';
 import { plant, REED_REACH, TREE_REACH } from './Habitats.js';
 import { FREE, YARD } from '../site/Occupancy.js';
+import { fillPolygon } from '../site/Raster.js';
 
 // The plants of the Slavonian world, drawn: what flora/Habitats.js planted, as instances of the
 // shapes of flora/Species.js. Trees are geometry near the camera and octahedral impostors beyond,
@@ -136,7 +137,7 @@ export class Flora {
 
 // Where the meadow grows, as the rgba8 mask the grass field takes: on ground nobody has taken, less
 // where it is worked field or wood floor, and not where the grass is kept short (the yards, the
-// built-up land cover, the village's own ground).
+// built-up land cover, the village's own ground, a park).
 function meadowMask( site, terrain ) {
 
 	const res = Math.round( terrain.size / MASK_TEXEL ), step = MASK_TEXEL / terrain.texel;
@@ -152,6 +153,8 @@ function meadowMask( site, terrain ) {
 
 	}
 
+	// a park's lawn is mown like the village's own ground
+	for ( const o of site.open ) fillPolygon( { res, texel: MASK_TEXEL, ox: terrain.origin, oz: terrain.origin }, o.ring, ( k ) => { far[ k ] = 0; } );
 	const relax = ( k, o, w ) => { if ( far[ o ] + w < far[ k ] ) far[ k ] = far[ o ] + w; };
 	const D = MASK_TEXEL * Math.SQRT2;
 	for ( let j = 1; j < res - 1; j ++ ) for ( let i = 1; i < res - 1; i ++ ) { const k = j * res + i; relax( k, k - 1, MASK_TEXEL ); relax( k, k - res, MASK_TEXEL ); relax( k, k - res - 1, D ); relax( k, k - res + 1, D ); }

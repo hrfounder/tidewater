@@ -28,7 +28,9 @@ export const PARK = {
 // The anglers' platforms (docs/slavonia/photos/bosut-winter-platforms-bridge.jpg): on both banks,
 // from `clear` metres either side of the bridge out to `reach`, one every `spacing` [ least, most ]
 // metres of the river's course, where `room` metres of the bank behind are free.
-export const PLATFORMS = { reach: 320, clear: 14, spacing: [ 13, 22 ], room: 2 };
+// (The spacing is measured on the orthophoto: ten on the park bank stand 10.0 to 10.3 m apart, those
+// on the bank across from the sports ground 9.7.)
+export const PLATFORMS = { reach: 320, clear: 14, spacing: [ 9.7, 10.3 ], room: 2 };
 
 // a repeatable stream of numbers in 0..1 (mulberry32)
 function random( seed ) {

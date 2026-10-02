@@ -195,6 +195,21 @@ for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 
 }
 
+// ---- made ground, and the trees that were seen
+{
+
+	// a ring that bulges nowhere inward: every corner turns the same way
+	const convex = ( ring ) => { const s = ring.map( ( p, i ) => { const q = ring[ ( i + 1 ) % ring.length ], r = ring[ ( i + 2 ) % ring.length ]; return Math.sign( ( q[ 0 ] - p[ 0 ] ) * ( r[ 1 ] - q[ 1 ] ) - ( q[ 1 ] - p[ 1 ] ) * ( r[ 0 ] - q[ 0 ] ) ); } ); return s.every( ( v ) => v === s[ 0 ] ); };
+	const bent = site.areas.filter( ( a ) => ! convex( a.ring ) );
+	const on = site.areas.filter( ( a ) => a.ring.some( ( [ x, z ] ) => buildings.near( x, z, buildings.radius ).some( ( b ) => insideBuilding( b, x, z, - 0.2 ) ) || T.heightAt( x, z ) < 0 ) );
+	let rough = 0;
+	for ( const a of site.areas ) for ( const [ x, z ] of a.ring ) rough = Math.max( rough, Math.abs( T.heightAt( x, z ) - a.level ) );
+	check( ! bent.length && ! on.length && rough < 0.3, 'made ground: straight-sided, clear of buildings and of the water, level', `${ site.areas.length } areas; ${ bent.length } bulge inward, ${ on.length } with a corner in a building or in the water; their corners lie within ${ ( rough * 100 ).toFixed( 0 ) } cm of their level` );
+	const wet = site.trees.filter( ( t ) => occupancy.at( t.x, t.z ) > YARD );
+	check( wet.length === 0, 'surveyed trees on free ground', `${ site.trees.length } trees; ${ wet.length } stand on water, a road or a building${ wet.map( ( t ) => ` (${ t.x },${ t.z })` ).join( '' ) }` );
+
+}
+
 // ---- plots
 {
 

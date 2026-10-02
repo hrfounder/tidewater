@@ -25,9 +25,18 @@ const LEAN = { share: 0.3, depth: 4.5, drop: 0.25, pitch: 20, wall: 1.9 };
 const CHIMNEY = { side: 0.5, above: 0.55, cap: 0.07 };
 // a window keeps this far from the corners of its wall and from the eaves (m)
 const CORNER = 0.6, HEAD = 0.25;
-// a pavement beside a road: its kerb's height over the ground (m), and the colour of its setts (the
-// red-grey concrete setts of the pavements round St Andrew's, by eye off the orthophoto: sRGB)
-const PAVING = { kerb: 0.12, colour: [ 170, 146, 136 ] };
+// Made ground: how far each kind stands over the ground it lies on (m), its colour (sRGB, by eye off
+// the orthophoto) and what it is drawn as. `paving` is the pavement beside a road: the red-grey
+// concrete setts of those round St Andrew's.
+const MADE = {
+	paving: { kerb: 0.12, colour: [ 170, 146, 136 ], surface: SURFACE.concrete },
+	concrete: { kerb: 0.08, colour: [ 172, 170, 162 ], surface: SURFACE.concrete },
+	gravel: { kerb: 0.03, colour: [ 178, 168, 150 ], surface: SURFACE.concrete },
+	track: { kerb: 0.03, colour: [ 150, 62, 52 ], surface: SURFACE.plain },
+	court: { kerb: 0.03, colour: [ 118, 158, 194 ], surface: SURFACE.plain },
+	sand: { kerb: 0.03, colour: [ 206, 190, 150 ], surface: SURFACE.plain },
+};
+const PAVING = MADE.paving;
 // half the thickness of the wall round a landmark's grounds, as the player meets it (m)
 const WALL_HALF = 0.15;
 // the steps up to a door: this deep, a tread's width wider than the door on each side (m)
@@ -123,8 +132,10 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 		if ( ! styles.has( plot ) ) {
 
 			const A = archetypeOf( plot.house ), rnd = random( plot.house.index + 77 );
-			let lot = A ? rnd() * A.fence.reduce( ( s, f ) => s + f[ 1 ], 0 ) : 0;
-			const F = A ? FENCES[ ( A.fence.find( ( f ) => ( lot -= f[ 1 ] ) < 0 ) || A.fence[ 0 ] )[ 0 ] ] : null;
+			// ( an archetype with no fence styles stands open to its street )
+			const fenced = A && A.fence.length > 0;
+			let lot = fenced ? rnd() * A.fence.reduce( ( s, f ) => s + f[ 1 ], 0 ) : 0;
+			const F = fenced ? FENCES[ ( A.fence.find( ( f ) => ( lot -= f[ 1 ] ) < 0 ) || A.fence[ 0 ] )[ 0 ] ] : null;
 			const colours = F && ( F.colours || A.walls[ 0 ][ 1 ] );
 			styles.set( plot, F && { ...F, paint: { color: lin( colours[ Math.floor( rnd() * colours.length ) ] ), rough: 0.92, surface: F.surface, seed: rnd() } } );
 
@@ -177,6 +188,25 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 		}
 
 		for ( const [ p, q ] of [ [ strip.inner[ 0 ], strip.outer[ 0 ] ], [ strip.inner[ n - 1 ], strip.outer[ n - 1 ] ] ] ) builder( p[ 0 ], p[ 1 ] ).paint( paving ).polygon( [ foot( p ), foot( q ), top( q ), top( p ) ], [ [ 0, 0 ], [ width, 0 ], [ width, PAVING.kerb + FOOTING ], [ 0, PAVING.kerb + FOOTING ] ] );
+
+	}
+
+	// made ground: each a flat slab at its area's level, its sides closed down to the ground
+	for ( const area of site.areas ) {
+
+		const M = MADE[ area.of ], B = builder( area.ring[ 0 ][ 0 ], area.ring[ 0 ][ 1 ] ), y = area.level + M.kerb;
+		B.paint( { color: lin( M.colour ), rough: 0.9, surface: M.surface, seed: 0.35 } );
+		// ( wound so that its top faces up whichever way the ring was written )
+		let turn = 0;
+		area.ring.forEach( ( p, i ) => { const q = area.ring[ ( i + 1 ) % area.ring.length ]; turn += p[ 0 ] * q[ 1 ] - q[ 0 ] * p[ 1 ]; } );
+		const ring = turn > 0 ? area.ring.slice().reverse() : area.ring;
+		B.polygon( ring.map( ( [ x, z ] ) => [ x, y, z ] ), ring.map( ( [ x, z ] ) => [ x, z ] ) );
+		ring.forEach( ( p, i ) => {
+
+			const q = ring[ ( i + 1 ) % ring.length ], len = Math.hypot( q[ 0 ] - p[ 0 ], q[ 1 ] - p[ 1 ] );
+			B.polygon( [ [ q[ 0 ], area.level - FOOTING, q[ 1 ] ], [ p[ 0 ], area.level - FOOTING, p[ 1 ] ], [ p[ 0 ], y, p[ 1 ] ], [ q[ 0 ], y, q[ 1 ] ] ], [ [ 0, 0 ], [ len, 0 ], [ len, M.kerb + FOOTING ], [ 0, M.kerb + FOOTING ] ] );
+
+		} );
 
 	}
 

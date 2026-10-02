@@ -54,6 +54,17 @@ class Shells:
 			f += [ ( a, a + 1, b + 1, b ), ( a + 1, a + 2, b + 2, b + 1 ) ]
 		self.shell( v, f, mat )
 
+	def pole( self, x, y, z0, z1, r0, r1, mat, seg=8 ):
+		"""An upright pole: a tapering prism of `seg` sides about the vertical through ( x, y ), capped on top."""
+		v = []
+		for r, z in ( ( r0, z0 ), ( r1, z1 ) ):
+			for k in range( seg ):
+				a = 2 * math.pi * ( k + 0.5 ) / seg
+				v.append( ( x + r * math.cos( a ), y + r * math.sin( a ), z ) )
+		f = [ ( k, ( k + 1 ) % seg, seg + ( k + 1 ) % seg, seg + k ) for k in range( seg ) ]
+		f.append( tuple( range( seg, 2 * seg ) ) )
+		self.shell( v, f, mat )
+
 	def object( self, name, materials, collection, props=None ):
 		"""The collected shells as an object named `name`; props become its custom properties."""
 		used = sorted( set( self.mats ), key=lambda m: list( materials ).index( m ) )

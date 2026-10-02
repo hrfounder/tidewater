@@ -38,6 +38,9 @@ MATERIALS = {
 	'sill': ( ( 168, 164, 156 ), 0.90, 0.0 ),       # concrete sills and steps
 	'plank': ( ( 112, 92, 70 ), 0.85, 0.0 ),        # bare weathered boards
 	'iron': ( ( 40, 40, 42 ), 0.60, 0.8 ),
+	'railing': ( ( 52, 96, 150 ), 0.50, 0.3 ),      # the blue paint of the bridge's railings
+	'zinc': ( ( 150, 154, 156 ), 0.45, 0.9 ),       # galvanised steel: lamp posts
+	'lens': ( ( 230, 226, 210 ), 0.20, 0.0 ),       # a lamp's diffuser
 }
 
 BAR = 0.055          # a frame member's face width
@@ -138,7 +141,33 @@ def vent():
 	return S, dict( w=2 * r, h=2 * r, depth=0 )
 
 
-PIECES = dict( window_street=window_street, window_plain=window_plain, window_small=window_small,
+def railing():
+	"""A panel of the bridge's railing: balusters between two rails, half a post at each end (panels
+	set end to end make whole posts). It stands on its origin and runs along +x; -y is the side of
+	the water."""
+	w, h = 2.0, 1.10
+	S = Shells()
+	for x0, x1 in ( ( 0, 0.035 ), ( w - 0.035, w ) ): S.box( x0, x1, - 0.035, 0.035, 0, h, 'railing' )
+	for z0, z1 in ( ( 0.12, 0.17 ), ( h - 0.06, h ) ): S.box( 0.035, w - 0.035, - 0.03, 0.03, z0, z1, 'railing' )
+	n = 13
+	for k in range( n ):
+		x = 0.035 + ( w - 0.07 ) * ( k + 0.5 ) / n
+		S.box( x - 0.012, x + 0.012, - 0.012, 0.012, 0.17, h - 0.06, 'railing' )
+	return S, dict( w=w, h=h, depth=0 )
+
+
+def lamp():
+	"""A street lamp: a tapering galvanised post with an arm out over the road ( toward +y ) and its head."""
+	h, reach = 8.0, 1.6
+	S = Shells()
+	S.pole( 0, 0, 0, h, 0.09, 0.045, 'zinc' )
+	S.box( - 0.03, 0.03, 0, reach, h - 0.08, h - 0.02, 'zinc' )
+	S.box( - 0.12, 0.12, reach - 0.55, reach + 0.1, h - 0.16, h - 0.04, 'zinc' )
+	S.box( - 0.09, 0.09, reach - 0.45, reach + 0.02, h - 0.19, h - 0.16, 'lens' )
+	return S, dict( w=0.24, h=h, depth=0, reach=reach )
+
+
+PIECES = dict( railing=railing, lamp=lamp, window_street=window_street, window_plain=window_plain, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

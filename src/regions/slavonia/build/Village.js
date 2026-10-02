@@ -4,6 +4,7 @@ import { createVillageMaterial, SURFACE } from './VillageMaterial.js';
 import { archetypeOf } from './Archetypes.js';
 import { gable, leanTo, hip, visible, onSlope, roofHeight } from './Roof.js';
 import { LANDMARKS } from '../Landmarks.js';
+import { buildBridges } from './Bridges.js';
 
 // Everything built on the Site's footprints: each building raised by its archetype (Archetypes.js)
 // on the rectangles its footprint is made of, fitted with the kit's windows and doors in openings
@@ -82,6 +83,8 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
+	const bridges = buildBridges( builder, { site, terrain, models }, colliders );
+
 	const meshes = [];
 	let triangles = 0;
 	for ( const [ key, B ] of cells ) {
@@ -94,7 +97,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	return { meshes, material, built, waiting, triangles };
+	return { meshes, material, built, waiting, bridges, triangles };
 
 }
 

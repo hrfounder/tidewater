@@ -35,6 +35,12 @@ const LEVEL_WINDOW = 40;
 // moved further than SHIFT off the mapped line (the map is a couple of metres out, not ten), and
 // keeps WALL_GAP between its shoulder and the wall. RELAX: passes of the solve that finds its line.
 const EASE = 16, SHIFT = 3, WALL_GAP = 0.3, RELAX = 60;
+// A bridge's deck rises toward the middle of its length by this share of the length: the vertical
+// curve every road bridge is built with, which also lifts it clear of the banks it springs from.
+const CROWN = 1 / 150;
+// What the map draws within this of a bridge's side, alongside it, is on the same structure (m): the
+// footway along a road bridge is mapped as a bridge of its own.
+const BESIDE = 2;
 // side of the buckets the segments are sorted into for `nearest` (m)
 const BUCKET = 32;
 
@@ -78,6 +84,32 @@ export class Roads {
 			this.nodes[ r.a ].roads.push( road.index );
 			this.nodes[ r.b ].roads.push( road.index );
 			this.roads.push( road );
+
+		}
+
+		// The bridges, each with what runs beside it on the same deck:
+		//   { main, members: [ { road, offset } ], left, right }  offsets and the deck's two sides in
+		//   metres to the right of the main road's direction
+		this.bridges = [];
+		const spans = this.roads.filter( ( r ) => r.bridge ).sort( ( a, b ) => b.half - a.half ), taken = new Set();
+		for ( const main of spans ) {
+
+			if ( taken.has( main ) ) continue;
+			taken.add( main );
+			const bridge = { main, members: [], left: - main.half, right: main.half };
+			for ( const o of spans ) {
+
+				if ( taken.has( o ) ) continue;
+				const mid = o.pts[ o.pts.length >> 1 ], f = project( main, mid[ 0 ], mid[ 1 ] );
+				if ( f.s <= 0 || f.s >= main.length || f.d > main.half + o.half + BESIDE ) continue;
+				taken.add( o );
+				bridge.members.push( { road: o, offset: f.d * f.side } );
+				bridge.left = Math.min( bridge.left, f.d * f.side - o.half );
+				bridge.right = Math.max( bridge.right, f.d * f.side + o.half );
+
+			}
+
+			this.bridges.push( bridge );
 
 		}
 
@@ -288,13 +320,19 @@ function clear( road, walls ) {
 
 // The level of a road along its length: the ground under it, averaged over LEVEL_WINDOW, then
 // shifted so that it meets its two nodes at their own level (every road at a junction agrees there).
-// A bridge runs straight from one node to the other.
+// A bridge runs from one node to the other over a crown.
 function level( road, nodes, ground ) {
 
 	const P = road.pts, ya = nodes[ road.a ].y, yb = nodes[ road.b ].y;
 	if ( road.bridge ) {
 
-		for ( const p of P ) p[ 2 ] = ya + ( yb - ya ) * ( road.length ? p[ 3 ] / road.length : 0 );
+		for ( const p of P ) {
+
+			const u = road.length ? p[ 3 ] / road.length : 0;
+			p[ 2 ] = ya + ( yb - ya ) * u + CROWN * road.length * 4 * u * ( 1 - u );
+
+		}
+
 		return;
 
 	}

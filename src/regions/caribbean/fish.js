@@ -13,6 +13,8 @@
 //   stamina   seconds of good pressure it takes to tire a typical one
 //   time      activity by time of day: 'day', 'dawnDusk', 'night' or 'any'
 //   rarity    0..1, scales how often it bites relative to the others in the same water
+import { WORLD } from '../../world/WorldLayout.js';
+
 export const FISH = {
 	silverside: { name: 'Hardhead silverside', sci: 'Atherinomorus stipes', lw: [ 0.0074, 3.1 ], model: 'silverside', habitat: { shallows: 1, pier: 0.6, bay: 0.2 }, kg: [ 0.02, 0.08 ], price: 3, fight: 0.05, stamina: 1.5, time: 'any', rarity: 0.2 },
 	mullet: { name: 'Striped mullet', sci: 'Mugil cephalus', lw: [ 0.0112, 2.98 ], model: 'mullet', habitat: { shallows: 1, pier: 0.4 }, kg: [ 0.4, 2.2 ], price: 5, fight: 0.3, stamina: 5, time: 'day', rarity: 0.8 },
@@ -59,5 +61,19 @@ function smooth( e0, e1, x ) {
 
 	const t = Math.min( 1, Math.max( 0, ( x - e0 ) / ( e1 - e0 ) ) );
 	return t * t * ( 3 - 2 * t );
+
+}
+
+// Read the spot the bobber is in, off the island's own layout: the game asks the region for this,
+// since what makes a spot is the region's business (regions/slavonia/fish.js reads a river instead).
+export function sampleAt( { x, z, depth } ) {
+
+	const reef = WORLD.reef;
+	const reefDist = Math.hypot( x - reef.center.x, z - reef.center.z ) - reef.radius;
+	const P = WORLD.pier;
+	const rect = ( x0, x1, z0, z1 ) => Math.hypot( Math.max( x0 - x, 0, x - x1 ), Math.max( z0 - z, 0, z - z1 ) );
+	const walk = rect( P.x - P.width / 2, P.x + P.width / 2, P.zStart, P.zEnd );
+	const head = rect( P.x - P.headWidth / 2, P.x + P.headWidth / 2, P.zEnd - P.headDepth, P.zEnd );
+	return habitatAt( { depth, reefDist, pierDist: Math.min( walk, head ) } );
 
 }

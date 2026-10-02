@@ -94,3 +94,58 @@ function smooth( e0, e1, x ) {
 	return t * t * ( 3 - 2 * t );
 
 }
+
+// Read the spot the bobber is in, off the patch itself (the game asks the region for this).
+//
+//   river   1 in a watercourse, 0 in a pond, an oxbow or a flooded pit
+//   flow    m/s at the surface: the Bosut runs about a third of a metre a second in summer, a
+//           regulated canal less, and the flow falls away toward the bank
+//   weeds   the reed bed and the soft weed over the shallow margin
+//   cover   fallen willow, the piles of a fishing platform, the shade under the bridge
+//
+// `world` is the TileTerrain patch: it carries the water lines the channels were cut from.
+export function sampleAt( { x, z, depth, world = null } ) {
+
+	let river = 0, flow = 0, cover = 0;
+	if ( world && world.lines ) {
+
+		const [ cE, cN ] = world.center;
+		let best = Infinity, bestLine = null, bestT = 0;
+		for ( const line of world.lines ) {
+
+			if ( line.dry ) continue;
+			const P = line.pts;
+			for ( let i = 0; i + 1 < P.length; i ++ ) {
+
+				const ax = P[ i ][ 0 ] - cE, az = cN - P[ i ][ 1 ];
+				const bx = P[ i + 1 ][ 0 ] - cE, bz = cN - P[ i + 1 ][ 1 ];
+				const dx = bx - ax, dz = bz - az;
+				const len2 = Math.max( dx * dx + dz * dz, 1e-6 );
+				const t = Math.min( 1, Math.max( 0, ( ( x - ax ) * dx + ( z - az ) * dz ) / len2 ) );
+				const d = Math.hypot( x - ax - dx * t, z - az - dz * t );
+				if ( d < best ) { best = d; bestLine = line; bestT = t; }
+
+			}
+
+		}
+
+		if ( bestLine && best < bestLine.width ) {
+
+			// how far into the channel the float is: 1 mid-stream, 0 at the bank
+			const across = 1 - Math.min( 1, best / ( bestLine.width / 2 ) );
+			river = Math.min( 1, across * 1.6 );
+			const full = bestLine.class === 'canal' ? 0.12 : 0.34;
+			flow = full * ( 0.35 + 0.65 * across );
+			void bestT;
+			// the margin under the bank is where the snags are: fallen branches and platform piles
+			cover = Math.max( 0, 1 - Math.abs( best - bestLine.width / 2 ) / 3 );
+
+		}
+
+	}
+
+	// the reed bed and the soft weed stand in the shallow margin, whatever the water
+	const weeds = depth > 0.2 && depth < 1.6 ? Math.min( 1, ( 1.6 - depth ) / 1.1 ) : 0;
+	return habitatAt( { depth, flow, river, weeds, cover } );
+
+}

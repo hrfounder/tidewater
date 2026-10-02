@@ -1,7 +1,6 @@
 import { Vector3, Color } from '../engine/index.js';
-import { WORLD } from '../world/WorldLayout.js';
 import { FISH } from './FishTable.js';
-import { habitatAt, pickSpecies, rollWeight, biteDelay } from './Bites.js';
+import { sampleAt, pickSpecies, rollWeight, biteDelay } from './Bites.js';
 import { CatchMinigame } from './CatchMinigame.js';
 import { GameState } from './GameState.js';
 import { FishingRod } from './FishingRod.js';
@@ -51,7 +50,6 @@ export class Game {
 		this._lmb = false;
 		this._rmb = false;
 		this._hookedSpecies = null;
-		this._pier = WORLD.pier;
 		this._tmp = new Vector3();
 		this.applyGear();
 		this.state.onChange( () => this.applyGear() );
@@ -400,14 +398,7 @@ export class Game {
 
 	habitatAtPoint( x, z, depth ) {
 
-		const b = { x, z };
-		const reef = WORLD.reef;
-		const reefDist = Math.hypot( b.x - reef.center.x, b.z - reef.center.z ) - reef.radius;
-		const P = this._pier;
-		const rect = ( x0, x1, z0, z1 ) => Math.hypot( Math.max( x0 - b.x, 0, b.x - x1 ), Math.max( z0 - b.z, 0, b.z - z1 ) );
-		const walk = rect( P.x - P.width / 2, P.x + P.width / 2, P.zStart, P.zEnd );
-		const head = rect( P.x - P.headWidth / 2, P.x + P.headWidth / 2, P.zEnd - P.headDepth, P.zEnd );
-		return habitatAt( { depth, reefDist, pierDist: Math.min( walk, head ) } );
+		return sampleAt( { x, z, depth, world: this.app.terrainData } );
 
 	}
 

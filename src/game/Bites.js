@@ -4,6 +4,8 @@ import { REGION } from '../regions/index.js';
 // Where the float is and what lives there: weights per water type of the active region, from
 // a spot description (the region's habitatAt documents both).
 export const habitatAt = REGION.fish.habitatAt;
+// what makes a spot is the region's own business: it reads its world and returns those weights
+export const sampleAt = REGION.fish.sampleAt;
 
 // 1 at the species' favourite time, less at others; hour 0..24
 export function activity( pref, hour ) {

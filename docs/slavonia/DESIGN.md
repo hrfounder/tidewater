@@ -249,8 +249,10 @@ and a flat-roofed building stand opposite the municipality, nothing for the L of
 parish house, and three outlines over a gravel lot and a lawn.
 
 The sweep so far (sheets of 110 m at 0.1 m): round St Andrew's, round St Roch's, Vinkovačka ulica
-from St Roch's to the bridge. Not yet swept: Ulica Matije Gupca from the bridge to St Andrew's, and
-everything a street back from these.
+from St Roch's to the bridge, Ulica Matije Gupca from the bridge to St Andrew's, the north bank 150 m
+each way from the bridge. It found 19 buildings the map lacks, 8 outlines with nothing in them, 2
+set down in the wrong place and 1 that is two buildings. Not yet swept: everything a street back
+from these.
 
 A landmark is checked against its photographs before it goes into the game:
 `tools/blender/look.py` renders the model from the places the photographs were taken from.

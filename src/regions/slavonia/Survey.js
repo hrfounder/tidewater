@@ -29,6 +29,9 @@ export const GONE = [
 	{ at: [ - 15.2, - 141.6 ], source: 'sheet blue' },
 	{ at: [ - 13.5, - 122.9 ], source: 'sheet blue' },
 	{ at: [ - 14.2, - 108.6 ], source: 'sheet blue' },
+	// on the north bank east of the bridge: a lawn with garden beds, and grass by the bank road
+	{ at: [ 110, - 85.5 ], source: 'sheet sweep-4b' },
+	{ at: [ 107.5, - 68.5 ], source: 'sheet sweep-4b' },
 ];
 
 // Footprints the survey of the orthophoto set down in the wrong place (its fit goes by the contrast
@@ -72,6 +75,18 @@ export const ADDED = [
 	{ at: [ - 23.5, - 135.3 ], size: [ 22.5, 11.2 ], turn: 14, roof: [ 74, 109, 154 ], source: 'sheet blue' },
 	{ at: [ - 24.1, - 125.0 ], size: [ 28.8, 9.0 ], turn: 14, roof: [ 106, 117, 125 ], source: 'sheet blue' },
 	{ at: [ - 18.3, - 115.3 ], size: [ 11.8, 6.0 ], turn: 14, roof: [ 215, 220, 225 ], source: 'sheet blue' },
+	// behind the municipality, along its yard's east side: a long wing under tiles
+	{ at: [ 29.7, - 121.0 ], size: [ 24.0, 4.8 ], turn: 95.7, roof: [ 123, 98, 84 ], source: 'sheet sweep-1' },
+	// South of the bridge: the outbuilding beside the restaurant; a flat-roofed garage under the trees
+	// west of the first house on Ulica Matije Gupca; a long shed under tiles between that house and
+	// the next; a white flat roof by the hall with the solar panels
+	{ at: [ 27.2, 42.5 ], size: [ 5.5, 5.0 ], turn: 17.5, roof: [ 134, 112, 102 ], source: 'sheet sweep-3' },
+	{ at: [ - 41.2, 75.5 ], size: [ 8.5, 9.0 ], turn: 0, roof: [ 112, 109, 101 ], source: 'sheet sweep-3' },
+	{ at: [ - 32.3, 100.5 ], size: [ 14.0, 4.0 ], turn: 34.8, roof: [ 150, 129, 116 ], source: 'sheet sweep-3' },
+	{ at: [ - 48.5, 111.5 ], size: [ 9.0, 6.0 ], turn: 35, roof: [ 216, 215, 208 ], source: 'sheet sweep-3' },
+	// on the north bank: a small house under a dark roof east of the bridge, a shed west of it
+	{ at: [ 70.2, - 93.5 ], size: [ 7.0, 6.5 ], turn: - 22, roof: [ 84, 80, 76 ], source: 'sheet sweep-4b' },
+	{ at: [ - 127.5, - 27.5 ], size: [ 7.0, 4.0 ], turn: 120, roof: [ 126, 111, 103 ], source: 'sheet sweep-5' },
 ];
 
 // The buildings. `at` is a point on the building (anywhere inside its footprint); the rest is what was
@@ -122,6 +137,13 @@ export const SEEN = [
 	{ at: [ - 23.5, - 135.3 ], is: 'hall', source: 'sheet blue' },
 	{ at: [ - 24.1, - 125.0 ], is: 'hall', source: 'sheet blue' },
 	{ at: [ - 18.3, - 115.3 ], is: 'public', storeys: 1, pitch: 3, source: 'sheet blue' },
+	{ at: [ 29.7, - 121.0 ], is: 'longhouse', storeys: 1, form: 'gable', source: 'sheet sweep-1' },
+	{ at: [ 27.2, 42.5 ], is: 'shed', source: 'sheet sweep-3' },
+	{ at: [ - 41.2, 75.5 ], is: 'shed', pitch: 3, source: 'sheet sweep-3' },
+	{ at: [ - 32.3, 100.5 ], is: 'shed', source: 'sheet sweep-3' },
+	{ at: [ - 48.5, 111.5 ], is: 'shed', pitch: 3, source: 'sheet sweep-3' },
+	{ at: [ 70.2, - 93.5 ], is: 'house', storeys: 1, source: 'sheet sweep-4b' },
+	{ at: [ - 127.5, - 27.5 ], is: 'shed', source: 'sheet sweep-5' },
 	// Ring 1 round St Andrew's, off the orbit of the footage (drone5) and the sheet andrew.
 	// North-east of the church: the house on the street, ochre under a hipped roof of newer red tiles
 	// (the orthophoto's colour of its lit slope, 186, 141, 121, at the survey's gain); the row behind

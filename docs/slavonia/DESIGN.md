@@ -230,6 +230,41 @@ the roads, and a grid in the game's metres. What is read off it goes into `Surve
 A landmark is checked against its photographs before it goes into the game:
 `tools/blender/look.py` renders the model from the places the photographs were taken from.
 
+### What `Survey.js` holds
+
+One file of what was seen, each kind of record with its own builder; adding a thing seen is adding
+a record.
+
+| Record | What it is | Built by |
+|---|---|---|
+| `SEEN` | per building: the kind it is, storeys, walls, roof form, a roof colour newer than the orthophoto | `build/Village.js` over its archetype |
+| `BESIDE` | a strip of parking or pavement along a stretch of road | `site/Beside.js`, graded and drawn with the road or as a slab |
+| `OPEN` | ground the land cover calls a wood and is not (a park): nothing planted by rule, the grass mown | `terrain/Grade.js`, `flora/` |
+| `AREAS` | made ground with straight sides: a terrace, a playground, a track, a court | a level slab |
+| `TREES` | a tree where its crown is on the orthophoto, and its height | `flora/Habitats.js`, before any rule plants |
+| `MARINAS`, `DECKS` | a pontoon with its fingers, gangway and boats; a railed deck on piles and what is moored at it | `build/Marina.js` |
+
+### Tried on the orthophoto, and why each was left
+
+So that they are not tried again the same way:
+
+- **Trees found automatically.** Crowns on these pictures are as dark and as blue as cast shadows
+  (a crown's shaded side reads 26, 34, 44; a shadow on grass 31, 35, 48); only the lit part of a
+  crown is green, and a bank of reeds is greener. A mask of green, dark, textured pixels found 73
+  "trees" in the park, most of them reeds and shrubs along the bank, and missed the large crowns.
+  Trees are entered by hand where they matter (`TREES`, a landmark's grounds).
+- **Storeys from shadow length.** The sun stood 42 degrees up (St Andrew's 26 m tower throws 28.7 m),
+  so a wall's shadow is 1.1 times its height. Measured from the footprint's shadow-side walls it
+  gave 6.8 m for the school (right) and 5.5 m for the hall, but nothing for one building in three:
+  a footprint a metre off starts the measurement on a lit roof or beyond the shadow, and a shaded
+  slope cannot be told from the shadow it throws. It needs outlines good to a few decimetres: the
+  cadastre's.
+- **Labelling a drone frame.** A camera fitted to ten marked points of St Andrew's (all near the
+  plane of its facade) was off by 11 px and put every other building on the horizon: the footage is
+  wide-angle and reframed, and points in one plane do not fix a camera's depth. A frame with marked
+  points at several depths, from an undistorted picture, would do.
+- **A footprint's place by contrast alone**, without the guards: see above, the hall on its shadow.
+
 ## 12. State (2026-10-02, night)
 
 Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
@@ -240,24 +275,28 @@ Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
 | M1 | the Site: water, road graph, footprints, plots, occupancy | `src/regions/slavonia/site/` | `tools/checks/site.mjs` |
 | M2 | dry ground in the tiles; water, pads and roads cut into a 4 km metre patch; roads drawn by the ground shader | `terrain/`, `GroundSurface.js`, `tools/geodata/` | `tools/checks/terrain.mjs` |
 | M3 | buildings by archetype, kit openings, roofs with valleys, colliders | `build/`, `tools/blender/kit.py` | `tools/checks/village.mjs` |
-| M4 | bridges along their roads; St Roch's; St Andrew's with its yard, from the footage and the orthophoto | `build/Bridges.js`, `Landmarks.js`, `tools/blender/st_andrew.py` | `village.mjs`, `site.mjs` |
+| M4 | bridges along their roads; St Roch's and St Andrew's, each with its yard, from the footage and the orthophoto | `build/Bridges.js`, `Landmarks.js`, `tools/blender/st_roch.py`, `st_andrew.py`, `grounds.py` | `village.mjs`, `site.mjs` |
 | M5 | fences and gates along the plots' street lines; anglers' platforms | `site/Fences.js`, `site/Park.js` | `village.mjs` |
 | M6 | plants from the habitat table and the occupancy map; a landmark's surveyed trees | `flora/` | `tools/checks/flora.mjs` |
 | T1 | the survey of the orthophoto: footprints, roofs, roads | `tools/geodata/survey.py`, `survey.json` | `site.mjs` |
-| T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row and the hall | `Survey.js`, `site/Beside.js` | `site.mjs` |
+| T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row, the hall, two long houses | `Survey.js`, `site/Beside.js` | `site.mjs` |
+| T3 | the named places: the municipality and post office, the school, the parish house, the restaurant; the park, the sports ground; the marina and the landing with their boats | `Survey.js`, `build/Marina.js`, `tools/blender/kit.py` | `site.mjs`, `village.mjs`, `flora.mjs` |
 
 Still to do, in this order:
 
 1. **Ring 1 round St Andrew's**: the rest of its neighbours (walls, storeys, fences, yards), the
    crossing's markings, the trees of the street.
-2. **St Roch's again**, as St Andrew's was done: the footage shows a rounded east end, a ridge
-   turret, an iron fence, a paved forecourt with a stone cross and a large tree, which the model
-   lacks; then its ring.
-3. **The named places**: the municipality (yellow, two storeys), the school (two storeys, red roof)
-   and its park (the outdoor gym, the paths), the marina's pontoons and the excursion boat's
-   landing, the restaurant by the bridge. The bridge's railing is grey in the footage, not blue.
-4. **The cadastre**, when the service answers: parcels for yards, the registry's outlines.
-5. **M7** colour by numbers; what floats on the water to show the current.
+2. **St Roch's ring**: the houses round it, the shop (Boso), the streets' corner where the stone
+   cross and the lime stand (the fence's line there is a guess: the tree and the church's shadow
+   hide it on the orthophoto).
+3. **The park's newer things**, which are in the footage of 2025 and not on the orthophoto: the
+   outdoor gym on its red ground, the fire pit, the benches and lamps, the bank's paved edge at the
+   marina. Their places have to be judged from the frames.
+4. **The cadastre**, when the service answers (it failed on three tries on 2026-10-02): parcels for
+   yards and fences, the registry's outlines, and with them storeys from shadows.
+5. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
+   Street-level pictures of the other streets are what every further ring needs.
+6. **M7** colour by numbers; what floats on the water to show the current.
 
 Known and left: one house at 754,-1083, near the block's edge, stands a metre onto a lane that was not surveyed
 (`site.mjs` reports it).
@@ -273,5 +312,8 @@ How things are run:
 - Blender through the `mcp__Blender__*` tools: `tools/blender/kit.py`, `st_roch.py`, `st_andrew.py`, `look.py`.
 - Geodata: `terrain.py bosut`, `tiles.py bosut core 45.22730,18.74159,12`, `places.py bosut 45.22730,18.74159,4`,
   `survey.py bosut 45.22730,18.74159,4`, `sheet.py`, `cadastre.py` (the cache is on F:).
+- A ring: `python tools/geodata/sheet.py bosut <x>,<z> <half side> <out.jpg>` for the sheet,
+  `node tools/checks/ring.mjs <x> <z> <metres>` for its buildings, `node tools/checks/around.mjs
+  "<name>"` for a landmark's neighbours in its model's frame.
 - Reference footage: frames of the five drone videos in `F:/tidewater-data/ref/drone1..5`.
 - Untracked: `docs/slavonia/rokovci/`, `docs/slavonia/andrijasevci/` (your reference photos).

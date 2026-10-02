@@ -14,12 +14,18 @@
 //   walls     [ surface, [ r, g, b ] ]: what its walls are (a name of the village material's SURFACE)
 //             and their colour, sRGB 0-255
 //   form      its roof's: 'gable' or 'hip'
+//   roof      its roof's colour, where it is not what the orthophoto has (a roof laid since): [ r, g, b ]
 //   source    where it was seen: the frame or the sheet
 export const SEEN = [
 	// the municipality of Andrijaševci on Vinkovačka ulica: two storeys of yellow render, white windows
 	// in rows; and the lower yellow wing north of it with the post office
 	{ at: [ 22.5, - 117.5 ], is: 'public', storeys: 2, walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone1 at 30-33 s; sheet opcina' },
 	{ at: [ 18, - 131 ], is: 'public', storeys: 1, walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone1 at 30 s; sheet opcina' },
+	// the parish house on Vinkovačka ulica: two storeys, cream, a red tiled roof, its gable to the street
+	{ at: [ - 31, - 49 ], is: 'house', storeys: 2, walls: [ 'render', [ 236, 230, 214 ] ], form: 'gable', source: 'drone1 at 36 s' },
+	// the restaurant by the bridge's south end: one storey of dark boards under a bright red roof laid
+	// since the orthophoto was flown
+	{ at: [ 35, 49 ], is: 'house', storeys: 1, walls: [ 'boards', [ 150, 112, 82 ] ], form: 'gable', roof: [ 150, 52, 44 ], source: 'drone2 at 18-21 s' },
 	// the primary school by the park: two storeys, pale yellow, windows in rows under a dark red roof
 	{ at: [ 138, 61 ], is: 'public', storeys: 2, walls: [ 'render', [ 236, 222, 168 ] ], form: 'gable', source: 'drone2 at 42 and 60-72 s; drone4; sheet school' },
 	// the long yellow row on the street north-west of St Andrew's, brick at its corners and round its

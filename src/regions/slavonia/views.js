@@ -21,6 +21,9 @@ export const PROGRESS_VIEWS = {
 	// docs/slavonia/photos/bosut-spring-anglers-church-reflection.jpg: from the park bank across
 	// the water to St Roch's church
 	photoChurch: { pos: [ 110, 1.6, - 3 ], ground: true, target: [ 42, 12, - 196 ], fov: 60 },
+	// a street in Rokovci, north of the bridge: the village houses gable-on to the road (added
+	// 2026-10-02, with the buildings; its series starts there)
+	village: { pos: [ - 40, 6, - 230 ], ground: true, target: [ 60, 0, - 170 ], fov: 55 },
 	// on the bank among the fishing platforms, looking down at the water's edge
 	bankEdge: { pos: [ 95, 1.7, - 2 ], ground: true, target: [ 80, - 0.5, - 22 ], fov: 60 },
 };

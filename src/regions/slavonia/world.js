@@ -5,6 +5,7 @@ import { buildPlatforms } from './Platforms.js';
 import { Flora } from './Flora.js';
 import { buildRoads } from './Roads.js';
 import { buildBuildings } from './Buildings.js';
+import { buildBridges } from './Bridge.js';
 
 // The Slavonian world as App builds it (?region=slavonia): the real terrain from the world tiles of
 // the core block around Most Bosut (public/world/bosut/), its ground shader, calm river water, and
@@ -67,6 +68,7 @@ export function buildPlaces( { terrain, scene, places = null } ) {
 
 	return {
 		roads: buildRoads( { terrain, scene, places } ),
+		bridges: buildBridges( { terrain, scene, places } ),
 		buildings: buildBuildings( { terrain, scene, places } ),
 		platforms: buildPlatforms( { terrain, scene } ),
 		flora: new Flora( { scene, terrain } ),

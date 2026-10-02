@@ -1,7 +1,7 @@
 import { Vector3 } from '../../../engine/index.js';
 import { MeshBuilder } from './MeshBuilder.js';
 import { createVillageMaterial, SURFACE } from './VillageMaterial.js';
-import { archetypeOf, FENCES } from './Archetypes.js';
+import { archetypeOf, coverSeen, FENCES } from './Archetypes.js';
 import { gable, leanTo, hip, visible, onSlope, roofHeight } from './Roof.js';
 import { LANDMARKS } from '../Landmarks.js';
 import { buildBridges } from './Bridges.js';
@@ -256,7 +256,10 @@ function raise( B, b, A, kit, terrain ) {
 	const wall = { color: lin( pick( wallColours ) ), rough: 0.92, surface: wallSurface, seed };
 	const trim = { color: lin( pick( A.trim ) ), rough: 0.9, surface: SURFACE.render, seed };
 	const joinery = { color: lin( pick( A.joinery ) ), rough: 0.55, surface: SURFACE.plain, seed };
-	const cover = { color: lin( pick( A.roof.cover[ 1 ] ) ), rough: 0.85, surface: A.roof.cover[ 0 ], seed };
+	// the roof as the survey saw it, or as the archetype has it where it was not seen (the pick is
+	// made either way: what a building is otherwise must not turn on whether its roof was seen)
+	const picked = pick( A.roof.cover[ 1 ] ), seen = b.seen.roof;
+	const cover = { color: lin( seen || picked ), rough: 0.85, surface: seen ? coverSeen( seen ) : A.roof.cover[ 0 ], seed };
 	const infill = A.gable ? { color: lin( pick( A.gable[ 1 ] ) ), rough: 0.9, surface: A.gable[ 0 ], seed } : wall;
 	const paints = { ...KIT_PAINT, joinery, surround: trim, leaf: { color: lin( pick( A.doors ) ), rough: 0.6, surface: SURFACE.plain, seed } };
 	const plinth = { ...CONCRETE, seed };
@@ -274,7 +277,7 @@ function raise( B, b, A, kit, terrain ) {
 	}
 
 	const gabled = pieces.filter( ( p ) => ! hosts.has( p ) ), axes = new Map( gabled.map( ( p ) => [ p, p.hu >= p.hv ? 0 : 1 ] ) );
-	const tan = Math.tan( A.roof.pitch * Math.PI / 180 );
+	const tan = Math.tan( ( A.roof.tiled && cover.surface === SURFACE.tile ? A.roof.tiled : A.roof.pitch ) * Math.PI / 180 );
 	const roofs = new Map( pieces.map( ( p ) => [ p,
 		hosts.has( p ) ? leanTo( p, hosts.get( p ), { topY: eaveY - LEAN.drop, tan: Math.tan( LEAN.pitch * Math.PI / 180 ), lowest: floorY + LEAN.wall, eave: A.roof.eave / 2, verge: A.roof.verge } )
 		: A.roof.form === 'hip' && pieces.length === 1 ? hip( p, { eaveY, tan, eave: A.roof.eave } )

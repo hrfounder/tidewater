@@ -1,9 +1,14 @@
 // The roads of the Site: a graph. Nodes are where roads meet, end, or turn into a bridge; a road is
 // one stretch between two nodes, either all bridge or none (tools/geodata/places.py cuts the map's
 // segments that way). Coordinates are the patch's metres: x = east, z = south, y above the datum.
+//
+// The map says which roads there are, what they are called and how they join. Where they run, and how
+// wide the asphalt of a paved one is, comes from the survey of the orthophoto
+// (tools/geodata/survey.py): the mapped lines lie two or three metres beside the roads.
 
-// What each class of road the map knows is on the ground here: the carriageway's width in metres,
-// what it is surfaced with unless the map says otherwise, and whether houses line it (a street).
+// What each class of road the map knows is on the ground here: the carriageway's width in metres
+// where the survey did not measure it, what it is surfaced with unless the map says otherwise, and
+// whether houses line it (a street).
 // A two-lane country road in this part of Slavonia is about 7 m, a village street 5 m, a field
 // track a pair of ruts. Classes that are not listed are not built.
 export const ROAD_CLASSES = {
@@ -20,8 +25,9 @@ export const ROAD_CLASSES = {
 // The gravel shoulder beside a paved carriageway (m).
 export const SHOULDER = 0.6;
 // The narrowest a carriageway is squeezed to where the buildings beside it leave no more room (m):
-// a lane one car wide.
-const LANE = 2.5;
+// a lane one car wide. A way that is narrower than that to begin with is for feet, and squeezes to
+// a path a person passes on.
+const LANE = 2.5, FOOT = 0.8;
 
 // metres between the points of a road once its mapped corners are rounded
 const STEP = 2;
@@ -41,34 +47,41 @@ const CROWN = 1 / 150;
 // What the map draws within this of a bridge's side, alongside it, is on the same structure (m): the
 // footway along a road bridge is mapped as a bridge of its own.
 const BESIDE = 2;
+// The survey gives a road as a point every two metres. Its corners are what is left when every point
+// that lies within this of the line through its neighbours is taken out (m); they are then rounded
+// like mapped ones.
+const STRAIGHT = 0.3;
 // side of the buckets the segments are sorted into for `nearest` (m)
 const BUCKET = 32;
 
 // how much room a road takes each side of its centreline: the carriageway and its shoulder
-export const reachOf = ( road ) => road.half + ( road.surface === 'paved' ? SHOULDER : 0 );
+export const reachOf = ( road ) => road.half + road.shoulder;
 
 export class Roads {
 
-	// places: places.json; center ( east, north ); ground( x, z ): the dry ground's height;
+	// places: places.json; survey: survey.json, { nodes, roads } in the order of the map's;
+	// center ( east, north ); ground( x, z ): the dry ground's height;
 	// walls: the Site's buildings, for `crossings` and `gap` (Buildings.js)
-	constructor( places, { center, ground, walls } ) {
+	constructor( places, { center, ground, walls, survey } ) {
 
 		const [ cE, cN ] = center;
-		this.nodes = places.nodes.map( ( [ e, n ] ) => ( { x: e - cE, z: cN - n, y: 0, roads: [] } ) );
+		this.nodes = survey.nodes.map( ( [ e, n ] ) => ( { x: e - cE, z: cN - n, y: 0, roads: [] } ) );
 		for ( const n of this.nodes ) n.y = ground( n.x, n.z );
 		this.roads = [];
 		this.skipped = {};
-		for ( const r of places.roads ) {
+		places.roads.forEach( ( r, k ) => {
 
 			const cls = ROAD_CLASSES[ r.class ];
-			if ( ! cls ) { this.skipped[ r.class ] = ( this.skipped[ r.class ] || 0 ) + 1; continue; }
-			// the mapped points, without any the map has twice
-			const mapped = r.pts.map( ( [ e, n ] ) => [ e - cE, cN - n ] ).filter( ( p, i, P ) => ! i || p[ 0 ] !== P[ i - 1 ][ 0 ] || p[ 1 ] !== P[ i - 1 ][ 1 ] );
-			if ( mapped.length < 2 ) continue;
+			if ( ! cls ) { this.skipped[ r.class ] = ( this.skipped[ r.class ] || 0 ) + 1; return; }
+			// the surveyed line's corners
+			const seen = survey.roads[ k ], line = corners( seen.pts.map( ( [ e, n ] ) => [ e - cE, cN - n ] ) );
+			if ( line.length < 2 ) return;
 			const road = {
 				index: this.roads.length, class: r.class, name: r.name, bridge: r.bridge, a: r.a, b: r.b,
-				half: cls.width / 2, surface: r.surface || cls.surface, street: cls.street && ! r.bridge,
-				pts: rounded( mapped ), // [ x, z, y, distance along the road ]
+				half: ( seen.width || cls.width ) / 2, surface: r.surface || cls.surface, street: cls.street && ! r.bridge,
+				// the gravel beside a paved carriageway (none where walls leave it no room: `clear`)
+				shoulder: ( r.surface || cls.surface ) === 'paved' ? SHOULDER : 0,
+				pts: rounded( line ), // [ x, z, y, distance along the road ]
 				length: 0,
 			};
 			clear( road, walls );
@@ -85,7 +98,7 @@ export class Roads {
 			this.nodes[ r.b ].roads.push( road.index );
 			this.roads.push( road );
 
-		}
+		} );
 
 		// The bridges, each with what runs beside it on the same deck:
 		//   { main, members: [ { road, offset } ], left, right }  offsets and the deck's two sides in
@@ -227,6 +240,34 @@ export function overRoads( roads, grid, reach, accept, visit ) {
 
 }
 
+// The corners of a line given as many points: the first and the last, and between them every point
+// that lies more than STRAIGHT from the line through the corners kept on either side of it
+// (Douglas and Peucker's cut).
+function corners( P ) {
+
+	const keep = new Uint8Array( P.length );
+	keep[ 0 ] = keep[ P.length - 1 ] = 1;
+	const cut = ( a, b ) => {
+
+		const dx = P[ b ][ 0 ] - P[ a ][ 0 ], dz = P[ b ][ 1 ] - P[ a ][ 1 ], l = Math.hypot( dx, dz ) || 1;
+		let far = 0, at = - 1;
+		for ( let i = a + 1; i < b; i ++ ) {
+
+			const d = Math.abs( ( P[ i ][ 0 ] - P[ a ][ 0 ] ) * dz - ( P[ i ][ 1 ] - P[ a ][ 1 ] ) * dx ) / l;
+			if ( d > far ) { far = d; at = i; }
+
+		}
+
+		if ( far <= STRAIGHT ) return;
+		keep[ at ] = 1;
+		cut( a, at ); cut( at, b );
+
+	};
+	cut( 0, P.length - 1 );
+	return P.filter( ( _, i ) => keep[ i ] );
+
+}
+
 // The mapped line of a road with its corners rounded, sampled every STEP metres. Each corner is
 // replaced by a curve that leaves the one leg and joins the other FILLET from the corner (a
 // quadratic Bezier on the corner), so the road never strays outside the corners the map drew, and
@@ -248,7 +289,9 @@ function rounded( P ) {
 		const t = Math.min( FILLET, la / 2, lb / 2 );
 		const p0 = [ v[ 0 ] + ( a[ 0 ] - v[ 0 ] ) * t / la, v[ 1 ] + ( a[ 1 ] - v[ 1 ] ) * t / la ];
 		const p1 = [ v[ 0 ] + ( b[ 0 ] - v[ 0 ] ) * t / lb, v[ 1 ] + ( b[ 1 ] - v[ 1 ] ) * t / lb ];
-		if ( Math.hypot( p0[ 0 ] - from[ 0 ], p0[ 1 ] - from[ 1 ] ) > 1e-6 || ! out.length ) line( from, p0 );
+		// ( two curves that all but meet: no straight between them, or it would be a point a few
+		// centimetres from the last, and a road's slope between two such points is noise )
+		if ( Math.hypot( p0[ 0 ] - from[ 0 ], p0[ 1 ] - from[ 1 ] ) > STEP / 4 || ! out.length ) line( from, p0 );
 		const n = Math.max( 2, Math.ceil( 2 * t / STEP ) );
 		for ( let q = 1; q <= n; q ++ ) {
 
@@ -261,7 +304,9 @@ function rounded( P ) {
 
 	}
 
-	if ( Math.hypot( P[ P.length - 1 ][ 0 ] - from[ 0 ], P[ P.length - 1 ][ 1 ] - from[ 1 ] ) > 1e-6 || ! out.length ) line( from, P[ P.length - 1 ] );
+	if ( Math.hypot( P[ P.length - 1 ][ 0 ] - from[ 0 ], P[ P.length - 1 ][ 1 ] - from[ 1 ] ) > STEP / 4 || ! out.length ) line( from, P[ P.length - 1 ] );
+	// the road ends on its node, whatever was left out before it
+	else out[ out.length - 1 ] = [ P[ P.length - 1 ][ 0 ], P[ P.length - 1 ][ 1 ] ];
 	return out;
 
 }
@@ -314,7 +359,9 @@ function clear( road, walls ) {
 	// what room the walls still do not leave, the carriageway gives up, down to a lane
 	let room = Infinity;
 	for ( let i = 0; i + 1 < n; i ++ ) room = Math.min( room, walls.gap( P[ i ][ 0 ], P[ i ][ 1 ], P[ i + 1 ][ 0 ], P[ i + 1 ][ 1 ], need ) );
-	if ( room < reachOf( road ) ) road.half = Math.max( Math.min( road.half, LANE / 2 ), road.half - ( reachOf( road ) - room ) );
+	if ( room < reachOf( road ) ) road.half = Math.max( ( road.half < LANE / 2 ? FOOT : LANE ) / 2, road.half - ( reachOf( road ) - room ) );
+	// a lane between two walls has no shoulder: the walls are its edges
+	if ( room < reachOf( road ) ) road.shoulder = Math.max( 0, room - road.half );
 
 }
 

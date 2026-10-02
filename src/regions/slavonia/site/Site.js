@@ -23,15 +23,16 @@ import { layFences } from './Fences.js';
 // the datum of a block, from its water: the terrain needs it before the Site can be made
 export { waterDatum };
 
-// index: the tiles' index.json; water, places: water.json and places.json of the block;
+// index: the tiles' index.json; water, places: water.json and places.json of the block; survey: its
+// survey.json, what was measured on the orthophoto (tools/geodata/survey.py);
 // ground( x, z ): the height of the dry ground, before anything is cut into it;
 // landmarks: the buildings that have a model of their own, by name in lower case (Landmarks.js),
 // each with the plan its model carries (build/Models.js), if it has one
-export function buildSite( { index, water, places, ground, datum, landmarks } ) {
+export function buildSite( { index, water, places, survey, ground, datum, landmarks } ) {
 
 	const center = index.center;
-	const buildings = new Buildings( places, { center, landmarks } );
-	const roads = new Roads( places, { center, ground, walls: buildings } );
+	const buildings = new Buildings( places, { center, landmarks, survey } );
+	const roads = new Roads( places, { center, ground, walls: buildings, survey } );
 	buildings.settle( { roads, ground, landmarks } );
 	return {
 		center, datum,

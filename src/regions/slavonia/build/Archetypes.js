@@ -6,9 +6,10 @@ import { SURFACE } from './VillageMaterial.js';
 //   storeys   [ fewest, most ]
 //   storey    floor to floor, and to the eaves on the top one (m)
 //   plinth    how far the ground floor stands above the ground (m)
-//   roof      form ('gable', or 'hip' where the footprint is one piece), pitch (degrees), the
-//             overhang at the eaves and at the verge (m), and what it is covered with: [ surface,
-//             colours ]
+//   roof      form ('gable', or 'hip' where the footprint is one piece), pitch (degrees; `tiled`:
+//             the pitch it has instead when it was seen to be tiled, where sheet lets it lie
+//             flatter than tile can), the overhang at the eaves and at the verge (m), and what it is
+//             covered with where the survey did not see it: [ surface, colours ]
 //   walls     what the walls can be: [ surface, colours, weight ]
 //   gable     what closes the gable above the eaves: null for the wall itself, or [ surface, colours ]
 //   trim, joinery, doors   colours of the plaster surrounds, the window frames, the door leaves
@@ -86,7 +87,7 @@ export const ARCHETYPES = {
 	// a hall: a shed of the co-operative, a workshop, a shop, a school: tall walls under a low sheet roof
 	hall: {
 		storeys: [ 1, 1 ], storey: 5.0, plinth: 0.15,
-		roof: { form: 'gable', pitch: 14, eave: 0.4, verge: 0.2, cover: [ SURFACE.sheet, SHEET_ROOFS ] },
+		roof: { form: 'gable', pitch: 14, tiled: 28, eave: 0.4, verge: 0.2, cover: [ SURFACE.sheet, SHEET_ROOFS ] },
 		walls: [ [ SURFACE.render, ROUGH_RENDER, 3 ], [ SURFACE.render, RENDER, 1 ] ],
 		gable: null,
 		trim: ROUGH_RENDER, joinery: JOINERY, doors: DOORS,
@@ -107,6 +108,12 @@ export const FENCES = {
 	// a low wall in front of a newer house
 	low: { height: 0.9, thick: 0.2, surface: SURFACE.render, colours: ROUGH_RENDER },
 };
+
+// What a roof is covered with, from the colour the survey saw (sRGB): fired clay is redder than it is
+// blue by REDDER, and redder than it is green. What is not clay here is fibre cement, concrete tile
+// or sheet metal, all grey from above, and is drawn as sheet.
+const REDDER = 1.15;
+export const coverSeen = ( [ r, g, b ] ) => r > REDDER * b && r > g ? SURFACE.tile : SURFACE.sheet;
 
 // A long house is narrow and long: its main piece no wider than this (m) and at least this many
 // times as long as it is wide.

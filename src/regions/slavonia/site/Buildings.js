@@ -1,5 +1,7 @@
-// The buildings of the Site, from the mapped footprints. Each one keeps its true ring, and what the
-// ring is made of: village footprints are rectilinear (99 % of them have every wall within 5 degrees
+// The buildings of the Site, from the mapped footprints, each set where the survey of the orthophoto
+// found its roof (the map's footprints lie metres from the buildings: tools/geodata/survey.py) and
+// carrying what the survey saw of it: `seen`, { roof: [ r, g, b ] sRGB or null }. Each one keeps its
+// true ring, and what the ring is made of: village footprints are rectilinear (99 % of them have every wall within 5 degrees
 // of one pair of axes), so a footprint is cut into the rectangles it is built from, one for a plain
 // house, two or three for an L or a T. Coordinates are the patch's metres: x = east, z = south.
 //
@@ -24,20 +26,23 @@ const BUCKET = 32;
 // What a building is, from its size and where it stands (the archetypes are built from this):
 //   landmark     has a model of its own (Landmarks.js)
 //   church       mapped as one, no model yet
-//   hall         a large footprint: a barn, a shed of the co-operative, a school, a shop
+//   hall         a large footprint that is also wide: a shed of the co-operative, a school, a shop.
+//                (A long house with its barns in one row is as large, and narrow: a house.)
 //   outbuilding  small, or standing behind another building as seen from its street
 //   house        the rest
-const HALL_AREA = 300, OUTBUILDING_AREA = 45;
+// A hall is at least HALL_AREA m2 and its main piece at least HALL_SPAN m across.
+const HALL_AREA = 300, HALL_SPAN = 11, OUTBUILDING_AREA = 45;
 
 export class Buildings {
 
-	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } ).
+	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } );
+	// survey: survey.json, { shifts, roofs } in the order of the map's buildings.
 	// The footprints only: `settle` does the rest, once the roads exist (the roads need the walls
 	// first, to keep clear of them).
-	constructor( places, { center, landmarks } ) {
+	constructor( places, { center, landmarks, survey } ) {
 
 		const [ cE, cN ] = center;
-		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN ) );
+		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN, survey.shifts[ index ], survey.roofs[ index ] ) );
 		for ( const b of this.list ) {
 
 			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
@@ -84,7 +89,7 @@ export class Buildings {
 			const key = ( b.name || '' ).toLowerCase();
 			b.kind = landmarks.has( key ) ? 'landmark'
 				: b.class === 'church' ? 'church'
-				: b.area >= HALL_AREA ? 'hall'
+				: b.area >= HALL_AREA && 2 * Math.min( b.pieces[ 0 ].hu, b.pieces[ 0 ].hv ) >= HALL_SPAN ? 'hall'
 				: b.area < OUTBUILDING_AREA || this.hidden( b ) ? 'outbuilding'
 				: 'house';
 
@@ -203,10 +208,12 @@ export function toWorld( b, u, v ) {
 
 }
 
-function footprint( src, index, cE, cN ) {
+// src: the map's building; shift: [ east, north ], the metres the survey moves it by; roof: what the
+// survey saw of its roof
+function footprint( src, index, cE, cN, shift, roof ) {
 
 	// the ring, open, in the patch's metres, without doubled corners
-	let ring = src.ring.slice( 0, - 1 ).map( ( [ e, n ] ) => [ e - cE, cN - n ] );
+	let ring = src.ring.slice( 0, - 1 ).map( ( [ e, n ] ) => [ e + shift[ 0 ] - cE, cN - n - shift[ 1 ] ] );
 	ring = ring.filter( ( p, i ) => Math.hypot( p[ 0 ] - ring[ ( i + 1 ) % ring.length ][ 0 ], p[ 1 ] - ring[ ( i + 1 ) % ring.length ][ 1 ] ) > JOG );
 	let area = 0;
 	for ( let i = 0; i < ring.length; i ++ ) {
@@ -247,7 +254,7 @@ function footprint( src, index, cE, cN ) {
 		// 3065 here: apses, chamfered corners) and the one piece is the rectangle around it.
 		exact: rects !== null,
 		pieces: rects || [ { u: 0, v: 0, hu: ( u1 - u0 ) / 2, hv: ( v1 - v0 ) / 2 } ],
-		frontage: null, floor: 0, kind: null, grounds: null,
+		frontage: null, floor: 0, kind: null, grounds: null, seen: { roof },
 	};
 
 }

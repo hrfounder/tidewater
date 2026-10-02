@@ -195,15 +195,44 @@ Removed when their replacement lands: `TileTerrain`'s channel cut and flow, `riv
 - Cadastral parcels from DGU for real plots, if and when you can supply them.
 - The yard fence around St Roch's and the kerb lines: not in the map data; a photo of each would do.
 
-## 11. State at hand-off (2026-10-02)
+## 11. State (2026-10-02, evening)
 
-- Branch `ccr-f1d94ae0-dxdfac`. Last commits: `847797c` (St Roch's model + landmark loader),
-  `4d73f6a` (houses on real footprints, ribbon roads). Pushed.
+Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
+
+| | What | Where | Check |
+|---|---|---|---|
+| M0 | audit | section 8 | — |
+| M1 | the Site: water, road graph, footprints, plots, occupancy | `src/regions/slavonia/site/` | `tools/checks/site.mjs` |
+| M2 | dry ground in the tiles; water, pads and roads cut into a 4 km metre patch; roads drawn by the ground shader | `terrain/`, `GroundSurface.js`, `tools/geodata/` | `tools/checks/terrain.mjs` |
+| M3 | buildings by archetype, kit openings, roofs with valleys, colliders | `build/`, `tools/blender/kit.py` | `tools/checks/village.mjs` |
+| M4 (part) | bridges along their roads; St Roch's on its footprint, fronting the street its entry names | `build/Bridges.js`, `Landmarks.js` | `village.mjs`, `site.mjs` |
+| M6 | plants from the habitat table and the occupancy map | `flora/` | `tools/checks/flora.mjs` |
+
+Also fixed on the way, in the engine's water: the strip of undrawn water along the bank (the "line
+that walks the shoreline") and the shearing of the waves by the current.
+
+Still to do, in this order:
+
+1. **Fishing platforms** on the park bank (the first pass's were removed with it; the game's text
+   speaks of them).
+2. **M5** fences and gates along the plots' street lines.
+3. **M4** St Andrew's church (`docs/slavonia/andrijasevci`), and what St Roch's still lacks.
+4. **M7** colour by numbers against the photographs; the road's surface (the asphalt reads as
+   paving); what floats on the water to show the current.
+
+Frame cost in the game's bench (2560x1267, an RTX 3080, measured in one session against the first
+pass at `4bd741d`): bridge 15.2 ms (was 18.4), aerial 15.4 (15.0), village view 13.2 (12.3). The two
+that are over draw the far trees, which the first pass never did (its tree records made every
+impostor zero tall); the grass is the largest single cost there (1.6 ms).
+
+How things are run:
+
+- Checks: `node tools/checks/terrain.mjs`, `site.mjs`, `village.mjs`, `flora.mjs`.
+- Headless render: `node test/world-slavonia.mjs <dir> --small [--look=name:x,y,z:tx,ty,tz[:fov]]`.
+- In the game: `npm run dev` (port 5189), `?region=slavonia`. Shots: `node tools/progress/collector.mjs
+  <dir>`, then `?region=slavonia&bench&shots=<views>&tag=game`, then `python tools/progress/collect.py
+  <dir> <stamp> "<label>"`. Timings: `await __bench.run( { views: [ ... ] } )` on a `&bench` page.
+- Blender through the `mcp__Blender__*` tools; the kit: `tools/blender/kit.py`.
+- Geodata: `tools/geodata/terrain.py bosut`, `tiles.py bosut core 45.22730,18.74159,12`,
+  `places.py bosut 45.22730,18.74159,4` (the cache is on F:).
 - Untracked: `docs/slavonia/rokovci/`, `docs/slavonia/andrijasevci/` (your reference photos).
-- Blender is driven through the `mcp__Blender__*` tools (the official extension). The `blender` entry
-  in `~/.claude.json` (`uvx blender-mcp`) is a different addon's bridge; it times out and can go.
-- The game's dev server: `npm run dev` on port 5189; `?region=slavonia`. The browser pane throttles
-  when hidden, so in-game checks are slow unless it is visible; node checks against the real modules
-  are the quicker evidence.
-- Reported and still open, all covered above: waves read as too much wind; broken wave patterns
-  (the current, M7); the line that walks the shoreline; artifacts at distance; water colour.

@@ -112,8 +112,9 @@ everything else:
   `far` field, which `TileTerrain` builds from a 12 km ring of the 10 m tiles with the same channels
   cut into it, and `TerrainGPU` samples beyond the fine domain. The rivers, the canals and the lie
   of the land carry on past the patch instead of stopping at a flat plain.
-- [ ] Far crowns as impostors (the island has them); beyond the fade the ground shader's canopy tone
-  stands in.
+- [x] Far crowns as impostors, baked from the same three crowns per species; beyond those the
+  ground shader's canopy tone stands in.
+- [x] The yards: the fence and gate that close each plot to the street, and the winter's firewood.
 - [ ] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no
   foam), but the water still reads as a lake surface: no current, no reflection of the banks.
 - [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to

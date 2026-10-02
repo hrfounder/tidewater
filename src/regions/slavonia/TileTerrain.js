@@ -112,34 +112,45 @@ function blur( m, res, r ) {
 export class TileTerrain extends Heightfield {
 
 	// index: the tiles' index.json; readFile( file ) -> Promise<ArrayBuffer> (tiles, rivers.json)
-	static async load( { index, readFile, center, size = 2048, res = 2048, datum } ) {
+	// farSize: how wide a ring of the 10 m tiles to keep as the coarse field around the fine patch
+	// (Heightfield `far`), so the rivers and the lie of the land carry on past the metre data
+	static async load( { index, readFile, center, size = 2048, res = 2048, datum, farSize = 12288 } ) {
 
-		const T = index.tile, half = size / 2;
+		const T = index.tile, half = Math.max( size, farSize ) / 2;
 		const [ cE, cN ] = center;
 		const e0 = Math.floor( ( cE - half ) / T ) * T, e1 = Math.ceil( ( cE + half ) / T ) * T;
 		const n0 = Math.floor( ( cN - half ) / T ) * T, n1 = Math.ceil( ( cN + half ) / T ) * T;
 		const byKey = new Map( index.tiles.map( ( t ) => [ t.east + ',' + t.north, t ] ) );
 		const tiles = [];
+		// the fine patch has to be covered; the far ring is whatever of it has been exported
+		const fh = size / 2;
 		for ( let e = e0; e < e1; e += T ) for ( let n = n0; n < n1; n += T ) {
 
 			const t = byKey.get( e + ',' + n );
-			if ( ! t ) throw new Error( `world tile ${ e },${ n } is missing (patch outside the exported tiles)` );
+			const fine = e + T > cE - fh && e < cE + fh && n + T > cN - fh && n < cN + fh;
+			if ( ! t ) {
+
+				if ( fine ) throw new Error( `world tile ${ e },${ n } is missing (patch outside the exported tiles)` );
+				continue;
+
+			}
+
 			tiles.push( readFile( t.file ).then( parseTile ) );
 
 		}
 
 		const rivers = index.rivers ? JSON.parse( new TextDecoder().decode( await readFile( index.rivers ) ) ).lines : [];
-		return new TileTerrain( await Promise.all( tiles ), { e0, n1, cols: ( e1 - e0 ) / T, rows: ( n1 - n0 ) / T, T, center, size, res, datum, rivers } );
+		return new TileTerrain( await Promise.all( tiles ), { e0, n1, cols: ( e1 - e0 ) / T, rows: ( n1 - n0 ) / T, T, center, size, res, datum, rivers, farSize } );
 
 	}
 
-	constructor( tiles, { e0, n1, cols, rows, T, center, size, res, datum, rivers = [] } ) {
+	constructor( tiles, { e0, n1, cols, rows, T, center, size, res, datum, rivers = [], farSize = 0 } ) {
 
 		super();
 		const step = tiles[ 0 ].res, per = tiles[ 0 ].n - 1;
 		// one mosaic of the 10 m samples, rows from north to south (tiles share their edges)
 		const mw = cols * per + 1, mh = rows * per + 1;
-		const mH = new Float32Array( mw * mh ), mW = new Float32Array( mw * mh ), mC = new Uint8Array( mw * mh );
+		const mH = new Float32Array( mw * mh ).fill( NaN ), mW = new Float32Array( mw * mh ), mC = new Uint8Array( mw * mh );
 		for ( const t of tiles ) {
 
 			const c0 = ( t.east - e0 ) / T * per, r0 = ( n1 - ( t.north + T ) ) / T * per;
@@ -270,6 +281,28 @@ export class TileTerrain extends Heightfield {
 
 		this.lines = rivers.map( smoothLine );
 		this.cutChannels( this.lines );
+
+		// The coarse field: the whole 10 m mosaic, relative to the datum, with the same channels cut
+		// into it. Past the metre patch the ground, the river and its tributaries carry on from this
+		// instead of flattening into a plain (Heightfield `far`).
+		if ( farSize ) {
+
+			// where the ring has not been exported the mosaic is blank: those cells take the median of
+			// the ground that is there, so the plain carries on at the right level
+			const have = [];
+			for ( let k = 0; k < mH.length; k += 11 ) if ( mH[ k ] === mH[ k ] ) have.push( mH[ k ] );
+			have.sort( ( a, b ) => a - b );
+			const fill = have.length ? have[ have.length >> 1 ] : datum;
+			const fh = new Float32Array( mw * mh );
+			for ( let k = 0; k < fh.length; k ++ ) fh[ k ] = ( mH[ k ] === mH[ k ] ? mH[ k ] : fill ) - datum;
+			const far = { heights: fh, res: mw, resZ: mh, texel: step, ox: e0 - center[ 0 ], oz: center[ 1 ] - n1 };
+			this.cutChannels( this.lines, far );
+			let mn = Infinity, mx = - Infinity;
+			for ( let k = 0; k < fh.length; k ++ ) { if ( fh[ k ] < mn ) mn = fh[ k ]; if ( fh[ k ] > mx ) mx = fh[ k ]; }
+			far.min = mn; far.max = mx;
+			this.far = far;
+
+		}
 		blur( this.scarp, res, 1 );
 
 		// Beyond the patch the plain carries on: the height reported outside the domain is the median
@@ -291,10 +324,16 @@ export class TileTerrain extends Heightfield {
 	//   bed      level - depth, flat out to the bed's half width
 	//   banks    rising at 1 : slope through the water line up to the bank top
 	//   beyond   easing from the bank top into the ground over BLEND m
-	cutChannels( lines ) {
+	// `g` is the grid to cut into: the patch itself by default, or the coarse far field, which has
+	// only heights (no masks, and the water plane fills its channels on its own).
+	cutChannels( lines, g = null ) {
 
 		const BLEND = 14;
-		const { res, texel, origin, heights, datum } = this;
+		const datum = this.datum;
+		const res = g ? g.res : this.res, texel = g ? g.texel : this.texel;
+		const ox = g ? g.ox : this.origin, oz = g ? g.oz : this.origin;
+		const heights = g ? g.heights : this.heights;
+		const masks = ! g;
 		const [ cE, cN ] = this.center;
 		const n = res * res;
 		const bestS = new Float32Array( n ).fill( Infinity );
@@ -311,16 +350,16 @@ export class TileTerrain extends Heightfield {
 				const ax = ea - cE, az = cN - na, bx = eb - cE, bz = cN - nb;
 				const top = bh + ( Math.max( ba, bb ) - Math.min( la, lb ) + depth ) * slope;
 				const R = top + BLEND;
-				const i0 = Math.max( 0, Math.floor( ( Math.min( ax, bx ) - R - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ax, bx ) + R - origin ) / texel ) );
-				const j0 = Math.max( 0, Math.floor( ( Math.min( az, bz ) - R - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( az, bz ) + R - origin ) / texel ) );
+				const i0 = Math.max( 0, Math.floor( ( Math.min( ax, bx ) - R - ox ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ax, bx ) + R - ox ) / texel ) );
+				const j0 = Math.max( 0, Math.floor( ( Math.min( az, bz ) - R - oz ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( az, bz ) + R - oz ) / texel ) );
 				if ( i0 > i1 || j0 > j1 ) continue;
 				const dx = bx - ax, dz = bz - az, len2 = Math.max( dx * dx + dz * dz, 1e-6 );
 				for ( let j = j0; j <= j1; j ++ ) {
 
-					const z = origin + ( j + 0.5 ) * texel;
+					const z = oz + ( j + 0.5 ) * texel;
 					for ( let i = i0; i <= i1; i ++ ) {
 
-						const x = origin + ( i + 0.5 ) * texel;
+						const x = ox + ( i + 0.5 ) * texel;
 						const t = Math.min( 1, Math.max( 0, ( ( x - ax ) * dx + ( z - az ) * dz ) / len2 ) );
 						const d = Math.hypot( x - ax - dx * t, z - az - dz * t );
 						const lvl = la + ( lb - la ) * t, bank = ba + ( bb - ba ) * t;
@@ -349,17 +388,21 @@ export class TileTerrain extends Heightfield {
 			if ( s < 0 ) {
 
 				heights[ k ] = bestL[ k ] - depth + Math.max( 0, bestD[ k ] - bh ) / slope;
-				this.water[ k ] = ! dry && bestD[ k ] < width / 2 ? bestL[ k ] : NaN;
-				// bare mud from the bed up to a little above the waterline; grass above
-				const above = heights[ k ] - bestL[ k ];
-				this.scarp[ k ] = Math.round( 255 * Math.min( 1, Math.max( 0, ( 0.7 - above ) / 0.5 ) ) );
-				this.sand[ k ] = this.path[ k ] = this.gully[ k ] = 0;
+				if ( masks ) {
+
+					this.water[ k ] = ! dry && bestD[ k ] < width / 2 ? bestL[ k ] : NaN;
+					// bare mud from the bed up to a little above the waterline; grass above
+					const above = heights[ k ] - bestL[ k ];
+					this.scarp[ k ] = Math.round( 255 * Math.min( 1, Math.max( 0, ( 0.7 - above ) / 0.5 ) ) );
+					this.sand[ k ] = this.path[ k ] = this.gully[ k ] = 0;
+
+				}
 
 			} else {
 
 				const t = s / BLEND, e = t * t * ( 3 - 2 * t );
 				heights[ k ] = bestB[ k ] + ( heights[ k ] - bestB[ k ] ) * e;
-				if ( this.water[ k ] === this.water[ k ] && heights[ k ] > this.water[ k ] ) this.water[ k ] = NaN;
+				if ( masks && this.water[ k ] === this.water[ k ] && heights[ k ] > this.water[ k ] ) this.water[ k ] = NaN;
 
 			}
 

@@ -1,4 +1,4 @@
-import { Vector3 } from '../engine/math/index.js';
+import { Vector2, Vector3 } from '../engine/math/index.js';
 import { Texture } from '../engine/gpu/Texture.js';
 import { generateMipmaps } from '../engine/gpu/Mipmaps.js';
 import { ShaderModule, UniformBlock } from '../engine/gpu/Shader.js';
@@ -27,6 +27,7 @@ import { detailBinding } from './terrain/TerrainShading.js';
 //   terrainUvOf( xz: vec2f ) -> vec2f                   domain uv (0..1) of a world xz
 //   terrainHeightAt( xz: vec2f ) -> f32                 exact bilinear height (terrainParams.outside beyond it)
 //   terrainInside( xz: vec2f ) -> f32                   1 inside the mapped domain, 0 beyond it
+//   terrainFarHeightAt( xz: vec2f ) -> f32              the coarse field beyond the fine one
 //   terrainNormalRock( xz: vec2f ) -> vec4f             macro normal xz (-1..1), rock mask, AO — fragment only
 //                                                       (implicit derivatives); terrainNormalRockLevel( xz, level )
 //   terrainNormalAt( xz: vec2f ) -> vec3f               unit macro normal (mip 0, any stage)
@@ -62,6 +63,12 @@ export class TerrainGPU {
 
 		// heights: R32F, loaded with manual bilinear filtering (no sampler / float filtering needed)
 		this.heightTexture = dataTexture( terrain.heights, res, res, 'r32float', 'terrainHeights' );
+		// the coarse field beyond the fine one (Heightfield `far`), or a single texel standing for
+		// the plain when a source has none
+		const far = terrain.far;
+		this.farTexture = far
+			? dataTexture( far.heights, far.res, far.resZ || far.res, 'r32float', 'terrainFarHeights' )
+			: dataTexture( new Float32Array( [ terrain.outside ] ), 1, 1, 'r32float', 'terrainFarHeights' );
 
 		const maps = bakeTerrainMaps( terrain );
 		// trilinear, clamp to edge (smpLinearClamp), linear data (no colour space)
@@ -86,6 +93,10 @@ export class TerrainGPU {
 			origin: [ 'f32', terrain.origin ],
 			size: [ 'f32', terrain.size ],
 			res: [ 'f32', res ],
+			// the coarse far field: its origin, texel and sample counts (farRes 1 = none)
+			farOrigin: [ 'vec2f', new Vector2( terrain.far ? terrain.far.ox : 0, terrain.far ? terrain.far.oz : 0 ) ],
+			farTexel: [ 'f32', terrain.far ? terrain.far.texel : 1 ],
+			farRes: [ 'vec2f', new Vector2( terrain.far ? terrain.far.res : 1, terrain.far ? ( terrain.far.resZ || terrain.far.res ) : 1 ) ],
 			// the height reported beyond the domain, the same value the heightfield uses on the CPU:
 			// the island's deep ocean floor, or the level of the plain an inland patch sits in
 			outside: [ 'f32', terrain.outside ],
@@ -108,6 +119,7 @@ export class TerrainGPU {
 			uniforms: this.uniforms,
 			bindings: {
 				terrainHeightTex: { texture: this.heightTexture, sampleType: 'unfilterable-float' },
+				terrainFarTex: { texture: this.farTexture, sampleType: 'unfilterable-float' },
 				terrainNormalTex: { texture: this.normalTexture },
 				terrainSplatTex: { texture: this.splatTexture },
 				terrainDetailTex: detailBinding(),
@@ -226,6 +238,24 @@ fn terrainUvOf( xz: vec2f ) -> vec2f {
 	return ( xz - terrainParams.origin ) / terrainParams.size;
 }
 
+// the coarse field beyond the fine one (Heightfield.farHeightAt); outside that, the plain
+fn terrainFarHeightAt( xz: vec2f ) -> f32 {
+	let res = terrainParams.farRes;
+	if ( res.x < 2.0 ) { return terrainParams.outside; }
+	let f = ( xz - terrainParams.farOrigin ) / terrainParams.farTexel - 0.5;
+	let fc = clamp( f, vec2f( 0.0 ), res - 1.001 );
+	let i = floor( fc );
+	let t = fract( fc );
+	let ii = vec2i( i );
+	let a = textureLoad( terrainFarTex, ii, 0 ).x;
+	let b = textureLoad( terrainFarTex, ii + vec2i( 1, 0 ), 0 ).x;
+	let c = textureLoad( terrainFarTex, ii + vec2i( 0, 1 ), 0 ).x;
+	let d = textureLoad( terrainFarTex, ii + vec2i( 1, 1 ), 0 ).x;
+	let h = mix( mix( a, b, t.x ), mix( c, d, t.x ), t.y );
+	let out = f.x < 0.0 || f.y < 0.0 || f.x > res.x - 1.0 || f.y > res.y - 1.0;
+	return select( h, terrainParams.outside, out );
+}
+
 // exact bilinear height at world xz (matches TerrainData.heightAt)
 fn terrainHeightAt( xz: vec2f ) -> f32 {
 	let res = terrainParams.res;
@@ -239,9 +269,9 @@ fn terrainHeightAt( xz: vec2f ) -> f32 {
 	let c = textureLoad( terrainHeightTex, ii + vec2i( 0, 1 ), 0 ).x;
 	let d = textureLoad( terrainHeightTex, ii + vec2i( 1, 1 ), 0 ).x;
 	let h = mix( mix( a, b, t.x ), mix( c, d, t.x ), t.y );
-	// beyond the domain: the heightfield's own outside height (TerrainParams)
+	// beyond the domain: the coarse far field, and past that the plain
 	let outside = f.x < 0.0 || f.y < 0.0 || f.x > res - 1.0 || f.y > res - 1.0;
-	return select( h, terrainParams.outside, outside );
+	return select( h, terrainFarHeightAt( xz ), outside );
 }
 
 // 1 well inside the mapped domain, 0 outside it, over a 48 m skirt. Every map here is sampled with a
@@ -257,7 +287,13 @@ fn terrainInside( xz: vec2f ) -> f32 {
 // filtered normal (xz components), rock mask, ambient occlusion; beyond the domain, flat and open
 fn terrainNormalRock( xz: vec2f ) -> vec4f {
 	let s = textureSample( terrainNormalTex, smpLinearClamp, terrainUvOf( xz ) );
-	return mix( vec4f( 0.0, 0.0, 0.0, 1.0 ), vec4f( s.xy * 2.0 - 1.0, s.z, s.w ), terrainInside( xz ) );
+	let inside = terrainInside( xz );
+	// out there the slopes come from the coarse field itself (its banks and dykes have to shade)
+	let e = max( 2.0, terrainParams.farTexel );
+	let hx = terrainFarHeightAt( xz + vec2f( e, 0.0 ) ) - terrainFarHeightAt( xz - vec2f( e, 0.0 ) );
+	let hz = terrainFarHeightAt( xz + vec2f( 0.0, e ) ) - terrainFarHeightAt( xz - vec2f( 0.0, e ) );
+	let far = vec4f( clamp( - hx / ( 2.0 * e ), - 0.95, 0.95 ), clamp( - hz / ( 2.0 * e ), - 0.95, 0.95 ), 0.0, 1.0 );
+	return mix( far, vec4f( s.xy * 2.0 - 1.0, s.z, s.w ), inside );
 }
 // explicit mip (e.g. in the vertex stage)
 fn terrainNormalRockLevel( xz: vec2f, level: f32 ) -> vec4f {

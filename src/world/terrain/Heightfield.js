@@ -6,11 +6,17 @@
 //                              ( origin + ( i + 0.5 ) * texel, origin + ( j + 0.5 ) * texel )
 //   heights                    Float32Array( res * res ), row j = z
 // then call buildMinMax(). `outside` is the height reported beyond the domain.
+//
+// A source may also set `far`: a second, coarser field { heights, res, resZ, texel, ox, oz } over a wider
+// area, which the queries fall back to outside the fine domain (regions/slavonia: the patch is 2 km
+// of metre data inside a dozen kilometres of 10 m tiles, so the rivers and the lie of the land carry
+// on past it instead of stopping at a flat plain). Beyond the far field too, `outside` stands.
 export class Heightfield {
 
 	constructor() {
 
 		this.outside = - 90;
+		this.far = null;
 
 	}
 
@@ -18,11 +24,26 @@ export class Heightfield {
 
 		const { res, texel, origin, heights } = this;
 		const fx = ( x - origin ) / texel - 0.5, fz = ( z - origin ) / texel - 0.5;
-		if ( fx < 0 || fz < 0 || fx >= res - 1 || fz >= res - 1 ) return this.outside;
+		if ( fx < 0 || fz < 0 || fx >= res - 1 || fz >= res - 1 ) return this.farHeightAt( x, z );
 		const i = Math.floor( fx ), j = Math.floor( fz );
 		const tx = fx - i, tz = fz - j;
 		const k = j * res + i;
 		const a = heights[ k ], b = heights[ k + 1 ], c = heights[ k + res ], d = heights[ k + res + 1 ];
+		return ( a * ( 1 - tx ) + b * tx ) * ( 1 - tz ) + ( c * ( 1 - tx ) + d * tx ) * tz;
+
+	}
+
+	// the coarse field outside the fine one (see `far`)
+	farHeightAt( x, z ) {
+
+		const f = this.far;
+		if ( ! f ) return this.outside;
+		const fx = ( x - f.ox ) / f.texel - 0.5, fz = ( z - f.oz ) / f.texel - 0.5;
+		if ( fx < 0 || fz < 0 || fx >= f.res - 1 || fz >= ( f.resZ || f.res ) - 1 ) return this.outside;
+		const i = Math.floor( fx ), j = Math.floor( fz );
+		const tx = fx - i, tz = fz - j;
+		const k = j * f.res + i;
+		const a = f.heights[ k ], b = f.heights[ k + 1 ], c = f.heights[ k + f.res ], d = f.heights[ k + f.res + 1 ];
 		return ( a * ( 1 - tx ) + b * tx ) * ( 1 - tz ) + ( c * ( 1 - tx ) + d * tx ) * tz;
 
 	}
@@ -121,8 +142,12 @@ export class Heightfield {
 
 		if ( outside ) {
 
-			mn = Math.min( mn, this.outside );
-			mx = Math.max( mx, this.outside );
+			// past the fine field the bounds have to cover the coarse one too, or the CDLOD culls
+			// away the ground the far field carries (its channels run well below the plain)
+			const lo = this.far ? Math.min( this.far.min, this.outside ) : this.outside;
+			const hi = this.far ? Math.max( this.far.max, this.outside ) : this.outside;
+			mn = Math.min( mn, lo );
+			mx = Math.max( mx, hi );
 
 		}
 

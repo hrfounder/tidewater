@@ -96,17 +96,17 @@ def main():
         M = 300
         bx0, bx1, by0, by1 = e0 * TILE - M, e1 * TILE + M, n0 * TILE - M, n1 * TILE + M
         out_lines = []
-        for l in json.load( open( lp ) )[ 'lines' ]:
+        for l in json.load( open( lp, encoding='utf-8' ) )[ 'lines' ]:
             run = []
             for p in l[ 'pts' ] + [ None ]:
                 if p is not None and bx0 <= p[ 0 ] <= bx1 and by0 <= p[ 1 ] <= by1: run.append( p ); continue
                 if len( run ) > 1: out_lines.append( { k: v for k, v in l.items() if k != 'pts' } | { 'pts': run } )
                 run = []
         rivers = 'rivers.json'
-        json.dump( { 'crs': str( crs ), 'lines': out_lines }, open( os.path.join( out, rivers ), 'w' ), ensure_ascii=False )
+        json.dump( { 'crs': str( crs ), 'lines': out_lines }, open( os.path.join( out, rivers ), 'w', encoding='utf-8' ), ensure_ascii=False )
         print( f'{len( out_lines )} water lines -> {rivers}' )
     json.dump( { 'version': 1, 'crs': str( crs ), 'center': center, 'rivers': rivers, 'tile': TILE, 'samples': n, 'res': res, 'credits': CREDITS, 'tiles': tiles },
-        open( os.path.join( out, 'index.json' ), 'w' ), ensure_ascii=False, indent=1 )
+        open( os.path.join( out, 'index.json' ), 'w', encoding='utf-8' ), ensure_ascii=False, indent=1 )
     size = sum( os.path.getsize( os.path.join( out, t[ 'file' ] ) ) for t in tiles )
     print( f'{len( tiles )} tiles of {TILE} m ({n} x {n} samples at {res} m) -> {out} ({size / 1e6:.1f} MB)' )
 

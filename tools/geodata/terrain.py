@@ -276,8 +276,8 @@ def main():
     with rasterio.open( os.path.join( out, 'water.tif' ), 'w', **prof, nodata=np.nan ) as f: f.write( water, 1 )
     with rasterio.open( os.path.join( out, 'ground.tif' ), 'w', **prof ) as f: f.write( ground, 1 )
     # line vectors: points every `res` m downstream, [ east, north, water level, bank top ] (m)
-    json.dump( { 'crs': CRS, 'lines': lines_out }, open( os.path.join( out, 'water_lines.json' ), 'w' ), ensure_ascii=False )
-    json.dump( { 'crs': CRS, 'origin': [ x0, y1 ], 'res': res, 'size': [ width, height ], 'bodies': bodies }, open( os.path.join( out, 'water.json' ), 'w' ), ensure_ascii=False, indent=1 )
+    json.dump( { 'crs': CRS, 'lines': lines_out }, open( os.path.join( out, 'water_lines.json' ), 'w', encoding='utf-8' ), ensure_ascii=False )
+    json.dump( { 'crs': CRS, 'origin': [ x0, y1 ], 'res': res, 'size': [ width, height ], 'bodies': bodies }, open( os.path.join( out, 'water.json' ), 'w', encoding='utf-8' ), ensure_ascii=False, indent=1 )
     print( f'water: {len( bodies )} bodies, {np.isfinite( water ).mean() * 100:.2f}% of the area wet', flush=True )
 
     # ---- previews

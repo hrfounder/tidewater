@@ -106,6 +106,12 @@ everything else:
   and tall bank meadow. The tree shape moved out of `PlantGeometry.buildTreeNear` into a species
   spec (`buildBroadleafTree`), so a region declares its own trees; the island's is `ISLAND_TREE` and
   is unchanged. Three seeds per species, so a bank is not one crown repeated.
+- [x] The roads, the villages, the bridges and the churches on their real footprints
+  (`tools/geodata/places.py` -> `places.json`; `Roads.js`, `Buildings.js`, `Bridge.js`).
+- [x] Two-level heightfield. The patch is 2 km of metre data; `Heightfield` now takes a coarser
+  `far` field, which `TileTerrain` builds from a 12 km ring of the 10 m tiles with the same channels
+  cut into it, and `TerrainGPU` samples beyond the fine domain. The rivers, the canals and the lie
+  of the land carry on past the patch instead of stopping at a flat plain.
 - [ ] Far crowns as impostors (the island has them); beyond the fade the ground shader's canopy tone
   stands in.
 - [ ] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no

@@ -47,8 +47,13 @@ export const WATER = {
 		sizes: [ 61, 13.7, 3.1, 0.73 ],
 		depth: 2.5,
 		choppiness: 0.3,
-		// fetch is the river's width in km; no swell reaches an inland channel
-		local: { windSpeed: 2.2, windDirection: - 37, fetch: 0.03, spreadBlend: 0.5, swell: 0.0 },
+		// Fetch is how far the wind has blown over open water, and on a river that is the straight
+		// reach it blows along, not the width: the Bosut runs half a kilometre between bends. Taking
+		// the width instead left the spectrum peaking at a couple of centimetres, so the surface
+		// fizzed at 9 Hz and read as a mountain stream. Half a kilometre puts the peak near 0.6 m and
+		// 1.5 Hz, which is the slow ripple of a lowland river. shortWavesFade damps the capillary
+		// tail that short fetch exaggerates; no swell reaches an inland channel.
+		local: { windSpeed: 2.2, windDirection: - 37, fetch: 0.5, spreadBlend: 0.5, swell: 0.0, shortWavesFade: 0.15 },
 		swell: { scale: 0.0, windSpeed: 1, windDirection: 0, fetch: 1, spreadBlend: 1.0, swell: 0.0, shortWavesFade: 0.1 },
 	},
 	// whitecaps need wind the Bosut never sees

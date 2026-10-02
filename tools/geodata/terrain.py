@@ -1,4 +1,4 @@
-"""Bare-earth terrain and water bodies of an area, from the fetched data (see fetch.py).
+"""Dry ground and water bodies of an area, from the fetched data (see fetch.py).
 
     python3 tools/geodata/terrain.py bosut [resolution_m]
 
@@ -7,21 +7,22 @@ Steps:
   2. Bare earth: cells under forest, shrubs and buildings (and a margin around them, where the canopy
      edge bleeds into the 30 m model) are refilled from the surrounding open ground with a push-pull
      (pyramid) interpolation. The plain is flat, so that is close to the real forest floor.
-  3. Water levels: lakes and ponds take the level the DEM's water flattening gives them. Rivers and
-     canals take a level profile along their centreline (OSM lines run downstream) that never rises
-     downstream.
-  4. Channels: every river, canal, stream and ditch is cut into the ground with a trapezoid
-     cross-section (bed width, depth, bank slope by class), and lakes get a basin that deepens away
-     from the shore.
+  3. Water bodies, as vectors. Areas are the mapped water polygons, touching ones merged, each with a
+     level, a depth and a bank slope. Lines are the rivers, canals, streams and ditches, each with a
+     section by class and a level profile along the line that never rises downstream. A river that
+     is mapped as a polygon has both: the polygon is its bank line, the line its course.
+  4. Dry ground: the 30 m model cannot see a bank. What it reports in and beside the water is a
+     smear of surface, slope and trees, so those cells are refilled from the land around them. The
+     game cuts every body into this ground itself, at its own resolution, and the bank comes out as
+     tall as the plain stands above the water.
 
 Outputs in cache/<area>/terrain/:
-  dtm.tif        bare-earth ground with the channels and basins (m above sea level, float32)
-  ground.tif     the same with the lake basins but without the line channels (the game cuts those)
-  water_lines.json  rivers, canals, streams and ditches: width, depth, bank slope and points
-                 [ east, north, water level, bank top ] every res metres, downstream
-  water.tif      water surface level where there is water, NaN elsewhere (float32)
-  water.json     the water bodies: name, class, level (or level range), width, depth
-  previews       dsm vs dtm hillshades, the water map
+  ground.tif     dry bare-earth ground (m above sea level, float32)
+  water.json     areas [ { name, class, level, depth, slope, flowing, rings } ] (rings of
+                 [ east, north ]: the outer one first, then the islands) and lines [ { name, class,
+                 width, depth, slope, dry, pts } ] with pts [ east, north, water level, inside an
+                 area (0 / 1) ] every res metres, downstream
+  previews       dsm.png, ground.png (hillshades; the water painted on the second)
 """
 import os, sys, json, math
 import numpy as np
@@ -34,8 +35,9 @@ from rasterio import features
 from scipy import ndimage
 from pyproj import Transformer
 from shapely import wkb
-from shapely.ops import transform as shp_transform
-from shapely.geometry import LineString, Polygon
+from shapely import STRtree, contains_xy
+from shapely.ops import transform as shp_transform, linemerge, unary_union
+from shapely.geometry import MultiLineString
 from PIL import Image
 from areas import AREAS
 
@@ -64,7 +66,12 @@ NAMED = {
     'Kanal Bosut': ( 12, 2.0, 2.0, 1.5 ),
     'Vuka': ( 15, 2.0, 2.0, 1.5 ),
 }
-LAKE_DEPTH = { 'lake': 5.0, 'oxbow': 3.0, 'pond': 2.0, 'reservoir': 4.0, 'water': 3.0, 'river': 4.0, 'stream': 1.0, 'wastewater': 1.5 }
+# still water, by class: depth (m)
+STILL_DEPTH = { 'lake': 5.0, 'oxbow': 3.0, 'pond': 2.0, 'reservoir': 4.0, 'water': 3.0, 'river': 4.0, 'stream': 1.0, 'wastewater': 1.5 }
+# the bank of a pond or a lake is gentler than a regulated channel's (horizontal per vertical)
+STILL_SLOPE = 4.0
+# how far the 30 m model smears a water body into the ground beside it: one and a half of its cells
+SMEAR = 45.0
 MASK_CLASSES = ( 10, 20, 50 )  # tree cover, shrubland, built-up
 
 
@@ -170,12 +177,10 @@ def main():
     dtm = np.where( valid, dsm, ndimage.gaussian_filter( dtm, 30 / res ) )
     print( f'bare earth: refilled {( ~valid ).mean() * 100:.1f}% of the cells; mean lowering {np.mean( ( dsm - dtm )[ ~valid ] ):.1f} m', flush=True )
 
-    # ---- 3/4. water
+    # ---- 3. water bodies
     tb = pq.read_table( os.path.join( src, 'overture_water.parquet' ) )
     to_grid = lambda g: shp_transform( lambda x, y, z=None: tf.transform( x, y ), g )
-    water = np.full( ( height, width ), np.nan, np.float32 )
-    bed = np.full( ( height, width ), np.inf, np.float32 )
-    bodies = []
+    rows = list( zip( tb[ 'geometry' ].to_pylist(), tb[ 'class' ].to_pylist(), tb[ 'names' ].to_pylist(), tb[ 'is_intermittent' ].to_pylist() ) )
 
     def sample( z, xs, ys ):
 
@@ -183,41 +188,40 @@ def main():
         r = np.clip( ( ( y1 - np.asarray( ys ) ) / res ).astype( int ), 0, height - 1 )
         return z[ r, c ]
 
-    # lakes, ponds and the mapped river areas: a level and a basin
-    for g, sub, cl, nm, inter in zip( tb[ 'geometry' ].to_pylist(), tb[ 'subtype' ].to_pylist(), tb[ 'class' ].to_pylist(), tb[ 'names' ].to_pylist(), tb[ 'is_intermittent' ].to_pylist() ):
+    def cells( geom, touched ):
+
+        return features.rasterize( [ ( geom, 1 ) ], out_shape=( height, width ), transform=T, dtype=np.uint8, all_touched=touched ).astype( bool )
+
+    # the mapped polygons; touching ones are one body (a river is mapped reach by reach)
+    polys = []
+    for g, cl, nm, inter in rows:
         G = wkb.loads( g )
         if not G.geom_type.endswith( 'Polygon' ) or cl == 'swimming_pool': continue
-        P = to_grid( G )
-        m = features.rasterize( [ ( P, 1 ) ], out_shape=( height, width ), transform=T, dtype=np.uint8, all_touched=False ).astype( bool )
-        if m.sum() < 2: continue
-        # the water's level: the DEM flattens water bodies, the low end of the cells inside is the surface
-        lvl = float( np.percentile( dsm[ m ], 20 ) )
-        inside = ndimage.distance_transform_edt( m ) * res
-        depth = LAKE_DEPTH.get( cl, 3.0 )
-        ramp = min( 25.0, max( 4.0, np.sqrt( m.sum() ) * res * 0.15 ) )
-        b = lvl - depth * np.clip( inside / ramp, 0, 1 ) ** 0.7
-        bed = np.where( m, np.minimum( bed, b ), bed )
-        water = np.where( m, np.fmax( water, lvl ), water )
-        bodies.append( { 'kind': 'area', 'name': nm and nm.get( 'primary' ), 'class': cl, 'level': round( lvl, 2 ), 'depth': depth, 'cells': int( m.sum() ), 'intermittent': bool( inter ) } )
+        for P in getattr( to_grid( G ).buffer( 0 ), 'geoms', [ to_grid( G ).buffer( 0 ) ] ):
+            if P.geom_type == 'Polygon' and P.area > 0: polys.append( ( P, cl, nm and nm.get( 'primary' ) ) )
+    merged = unary_union( [ p[ 0 ] for p in polys ] )
+    bodies = [ g for g in getattr( merged, 'geoms', [ merged ] ) if g.geom_type == 'Polygon' and g.area >= 2 * res * res ]
+    tree = STRtree( bodies )
+    # each body takes the class and the name of the largest polygon it was merged from
+    lead = {}
+    for P, cl, name in polys:
+        for i in tree.query( P.representative_point(), predicate='intersects' ):
+            if int( i ) not in lead or P.area > lead[ int( i ) ][ 0 ]: lead[ int( i ) ] = ( P.area, cl, name )
 
-    # bare earth with the lake basins but without the line channels: the game cuts those itself at
-    # full resolution from the line vectors (water_lines.json)
-    ground = np.minimum( dtm, bed ).astype( np.float32 )
-    lines_out = []
-
-    # rivers, canals, streams and ditches: a level profile along the line and a trapezoid channel
-    # pieces of the same named river are joined first, so its level profile runs continuously
-    from shapely.ops import linemerge
-    from shapely.geometry import MultiLineString
+    # rivers, canals, streams and ditches: pieces of the same named river are joined first, so its
+    # level profile runs continuously
     groups, singles = {}, []
-    for g, sub, cl, nm, inter in zip( tb[ 'geometry' ].to_pylist(), tb[ 'subtype' ].to_pylist(), tb[ 'class' ].to_pylist(), tb[ 'names' ].to_pylist(), tb[ 'is_intermittent' ].to_pylist() ):
+    for g, cl, nm, inter in rows:
         G = wkb.loads( g )
         if G.geom_type not in ( 'LineString', 'MultiLineString' ): continue
         name = nm and nm.get( 'primary' )
         if name: groups.setdefault( ( name, cl, inter ), [] ).extend( getattr( G, 'geoms', [ G ] ) )
         else: singles.append( ( G, cl, None, inter ) )
-    merged = [ ( linemerge( MultiLineString( v ) ), k[ 1 ], k[ 0 ], k[ 2 ] ) for k, v in groups.items() ] + singles
-    for G, cl, name, inter in merged:
+    joined = [ ( linemerge( MultiLineString( v ) ), k[ 1 ], k[ 0 ], k[ 2 ] ) for k, v in groups.items() ] + singles
+    lines, wide = [], []
+    # the course of each body: the line with the most of its points inside it
+    course = {}
+    for G, cl, name, inter in joined:
         key = next( ( k for k in NAMED if name and name.split( ' /' )[ 0 ] == k ), None )
         wid, dep, slope, free = NAMED[ key ] if key else CHANNEL.get( cl, CHANNEL[ 'ditch' ] )
         L = to_grid( G )
@@ -232,63 +236,47 @@ def main():
             # never rises downstream: the best non-increasing fit (a running minimum would drag the
             # whole river down to the lowest spot anywhere upstream)
             lvl = falling_fit( ndimage.uniform_filter1d( g0 - free, size=max( 3, int( 300 / res ) ), mode='nearest' ) )
-            # bank top: the ground beside the channel on both sides (perpendicular to the line)
-            tx, ty = np.gradient( px ), np.gradient( py )
-            tn = np.maximum( np.hypot( tx, ty ), 1e-6 )
-            off = wid / 2 + dep * slope + 25
-            gl = sample( dtm, px - ty / tn * off, py + tx / tn * off )
-            gr = sample( dtm, px + ty / tn * off, py - tx / tn * off )
-            bank = ndimage.uniform_filter1d( np.maximum( np.minimum( gl, gr ), lvl + 0.3 ), size=max( 3, int( 100 / res ) ), mode='nearest' )
-            lines_out.append( { 'name': name, 'class': cl, 'width': wid, 'depth': dep, 'slope': slope, 'dry': bool( inter is True and cl in ( 'ditch', 'drain' ) ),
-                'pts': [ [ round( float( a ), 1 ), round( float( b ), 1 ), round( float( c ), 2 ), round( float( e ), 2 ) ] for a, b, c, e in zip( px, py, lvl, bank ) ] } )
-            half = wid / 2 + dep * slope  # water half width + the underwater bank
-            reach = half + free * slope
-            # cells near the line: distance to it and the level of its nearest point
-            buf = line.buffer( reach + res )
-            minx, miny, maxx, maxy = buf.bounds
-            c0, c1 = max( 0, int( ( minx - x0 ) / res ) ), min( width, int( ( maxx - x0 ) / res ) + 1 )
-            r0, r1 = max( 0, int( ( y1 - maxy ) / res ) ), min( height, int( ( y1 - miny ) / res ) + 1 )
-            if c1 <= c0 or r1 <= r0: continue
-            cx = x0 + ( np.arange( c0, c1 ) + 0.5 ) * res
-            cy = y1 - ( np.arange( r0, r1 ) + 0.5 ) * res
-            X, Y = np.meshgrid( cx, cy )
-            # nearest sample point (dense samples: good enough for a res-sized grid)
-            from scipy.spatial import cKDTree
-            d, i = cKDTree( np.c_[ px, py ] ).query( np.c_[ X.ravel(), Y.ravel() ], distance_upper_bound=reach + res )
-            ok = np.isfinite( d )
-            d = np.where( ok, d, 1e9 ).reshape( X.shape )
-            li = np.where( ok, lvl[ np.minimum( i, n - 1 ) ], np.nan ).reshape( X.shape )
-            # trapezoid: flat bed out to wid/2, then the bank slope up through the water line to the ground
-            prof = li - dep + np.clip( d - wid / 2 + dep * slope * 0, 0, None ) / slope
-            prof = np.where( d < wid / 2 - dep * slope, li - dep, li - dep + np.clip( d - ( wid / 2 - dep * slope ), 0, None ) / slope )
-            sub_bed = bed[ r0:r1, c0:c1 ]
-            sub_bed[ : ] = np.where( d <= reach, np.fmin( sub_bed, prof ), sub_bed )
-            wet = ( d <= wid / 2 ) & ~( inter is True and cl in ( 'ditch', 'drain' ) )
-            sub_w = water[ r0:r1, c0:c1 ]
-            sub_w[ : ] = np.where( wet, np.fmax( sub_w, li ), sub_w )
-            if key or cl in ( 'river', 'canal' ):
-                bodies.append( { 'kind': 'line', 'name': name, 'class': cl, 'level': [ round( float( lvl[ 0 ] ), 2 ), round( float( lvl[ - 1 ] ), 2 ) ], 'width': wid, 'depth': dep, 'length_m': round( line.length ) } )
+            inside = np.zeros( n, bool )
+            for i in tree.query( line ):
+                hit = contains_xy( bodies[ i ], px, py )
+                inside |= hit
+                if hit.sum() > course.get( int( i ), ( 0, ) )[ 0 ]: course[ int( i ) ] = ( int( hit.sum() ), len( lines ), float( np.median( lvl[ hit ] ) ) )
+            lines.append( { 'name': name, 'class': cl, 'width': wid, 'depth': dep, 'slope': slope, 'dry': bool( inter is True and cl in ( 'ditch', 'drain' ) ),
+                'pts': [ [ round( float( a ), 1 ), round( float( b ), 1 ), round( float( c ), 2 ), int( d ) ] for a, b, c, d in zip( px, py, lvl, inside ) ] } )
+            if wid >= res: wide.append( line.buffer( wid / 2 ) )
 
-    dtm_final = np.minimum( dtm, bed ).astype( np.float32 )
-    water = np.where( water > dtm_final + 0.02, water, np.nan ).astype( np.float32 )
+    areas = []
+    for i, P in enumerate( bodies ):
+        _, cl, name = lead[ i ]
+        if i in course:
+            # a river with its bank line mapped: the line gives the level and the section
+            l = lines[ course[ i ][ 1 ] ]
+            level, depth, slope, name = course[ i ][ 2 ], l[ 'depth' ], l[ 'slope' ], name or l[ 'name' ]
+        else:
+            # still water: the DEM flattens water bodies, the low end of the cells inside is the surface
+            m = cells( P, True )
+            level, depth, slope = float( np.percentile( dsm[ m ], 20 ) ), STILL_DEPTH.get( cl, STILL_DEPTH[ 'water' ] ), STILL_SLOPE
+        ring = lambda r: [ [ round( x, 1 ), round( y, 1 ) ] for x, y in r.coords ]
+        areas.append( { 'name': name, 'class': cl, 'level': round( level, 2 ), 'depth': depth, 'slope': slope, 'flowing': i in course,
+            'rings': [ ring( P.exterior ) ] + [ ring( r ) for r in P.interiors ] } )
+
+    # ---- 4. dry ground
+    wet = cells( unary_union( bodies + wide ), True )
+    smeared = ndimage.binary_dilation( wet, iterations=max( 1, round( SMEAR / res ) ) )
+    ground = push_pull( dtm, ~smeared )
+    print( f'water: {len( areas )} areas ({sum( a[ "flowing" ] for a in areas )} with a course), {len( lines )} lines; {wet.mean() * 100:.2f}% of the area wet, {smeared.mean() * 100:.2f}% refilled', flush=True )
+
     prof = dict( driver='GTiff', height=height, width=width, count=1, dtype='float32', crs=CRS, transform=T, compress='deflate', predictor=3, tiled=True )
-    with rasterio.open( os.path.join( out, 'dtm.tif' ), 'w', **prof ) as f: f.write( dtm_final, 1 )
-    with rasterio.open( os.path.join( out, 'water.tif' ), 'w', **prof, nodata=np.nan ) as f: f.write( water, 1 )
     with rasterio.open( os.path.join( out, 'ground.tif' ), 'w', **prof ) as f: f.write( ground, 1 )
-    # line vectors: points every `res` m downstream, [ east, north, water level, bank top ] (m)
-    json.dump( { 'crs': CRS, 'lines': lines_out }, open( os.path.join( out, 'water_lines.json' ), 'w', encoding='utf-8' ), ensure_ascii=False )
-    json.dump( { 'crs': CRS, 'origin': [ x0, y1 ], 'res': res, 'size': [ width, height ], 'bodies': bodies }, open( os.path.join( out, 'water.json' ), 'w', encoding='utf-8' ), ensure_ascii=False, indent=1 )
-    print( f'water: {len( bodies )} bodies, {np.isfinite( water ).mean() * 100:.2f}% of the area wet', flush=True )
+    json.dump( { 'crs': CRS, 'areas': areas, 'lines': lines }, open( os.path.join( out, 'water.json' ), 'w', encoding='utf-8' ), ensure_ascii=False )
 
     # ---- previews
-    for name, z in ( ( 'dsm', dsm ), ( 'dtm', dtm_final ) ):
+    for name, z in ( ( 'dsm', dsm ), ( 'ground', ground ) ):
         hs = hillshade( z, res )
-        lo_, hi_ = np.percentile( dtm_final, [ 1, 99.5 ] )
+        lo_, hi_ = np.percentile( ground, [ 1, 99.5 ] )
         t = np.clip( ( z - lo_ ) / ( hi_ - lo_ ), 0, 1 )
         rgb = np.stack( [ 0.45 + 0.5 * t, 0.55 + 0.3 * t, 0.35 + 0.2 * t ], - 1 ) * ( 0.35 + 0.75 * hs )[ ..., None ]
-        if name == 'dtm':
-            wet = np.isfinite( water )
-            rgb[ wet ] = [ 0.2, 0.4, 0.65 ]
+        if name == 'ground': rgb[ wet ] = [ 0.2, 0.4, 0.65 ]
         Image.fromarray( ( np.clip( rgb, 0, 1 ) * 255 ).astype( np.uint8 ) ).save( os.path.join( out, f'{name}.png' ) )
     print( 'wrote', out )
 

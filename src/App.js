@@ -142,8 +142,9 @@ export class App {
 		await progress( 0.06, tiles ? 'Loading the map…' : 'Shaping the island…' );
 		if ( tiles ) {
 
-			this.terrainData = await tiles.loadTerrain();
-			this.placesData = await tiles.loadPlaces();
+			const world = await tiles.loadWorld();
+			this.terrainData = world.terrain;
+			this.site = world.site;
 			tiles.applyLayout( WORLD );
 
 		} else this.terrainData = new TerrainData();
@@ -170,7 +171,7 @@ export class App {
 		this.debris = tiles ? null : new Debris( { scene, terrain: this.terrain, village: this.village, vegetation: this.vegetation, rocks: this.rocks, colliders: this.colliders } );
 		// these apply the heightfield sun shadow in their own lighting model (see UnderwaterLighting)
 		this.terrain.mesh.material.appliesHillShadow = true;
-		if ( tiles ) this.places = tiles.buildPlaces( { terrain: this.terrainData, scene, places: this.placesData } );
+		if ( tiles ) this.places = tiles.buildPlaces( { terrain: this.terrainData, site: this.site, scene, colliders: this.colliders } );
 		if ( this.rocks ) this.rocks.material.appliesHillShadow = true;
 
 		await progress( 0.23, 'Growing the reef…' );

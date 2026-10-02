@@ -3,34 +3,35 @@
     python3 tools/geodata/places.py bosut 45.22730,18.74159,4
 
 Reads the Overture layers fetched into cache/<area>/ (OpenStreetMap-derived, ODbL) and writes
-public/world/<area>/places.json: the road centrelines and the building footprints of the block,
-in the same projected grid as the tiles (EPSG:3765), as metres east / north.
+public/world/<area>/places.json, in the same projected grid as the tiles (EPSG:3765), as metres
+east / north:
 
-places.json:
-  center   [ east, north ] of the block, the same point index.json uses
-  roads    [ { class, name, lanes, bridge, pts: [ [ e, n ], ... ] } ]
-  buildings[ { class, name, height, levels, ring: [ [ e, n ], ... ] } ]  (outer ring, closed)
+  center    [ east, north ] of the block, the same point index.json uses
+  nodes     [ [ east, north ], ... ] where roads meet, end, or change (a bridge begins)
+  roads     [ { class, name, surface, bridge, a, b, pts: [ [ e, n ], ... ] } ]: one stretch of road
+            between two nodes (a, b: indices into nodes). The map's segments are cut at every
+            junction along them and at the ends of every bridge, so a road here is either all
+            bridge or none. A stretch that leaves the block ends at a node of its own just outside.
+            class is the map's (secondary, residential, track ...), surface 'paved' / 'unpaved' /
+            null where the map does not say; the game decides what each class is on the ground.
+  buildings [ { class, name, height, levels, roof, ring: [ [ e, n ], ... ] } ]  (outer ring, closed)
 
 The game places them relative to its patch centre, so nothing here depends on the patch size.
 """
-import os, sys, json, math
+import os, sys, json
 import pyarrow.parquet as pq
 from pyproj import Transformer
 from shapely import wkb
-from shapely.geometry import shape
-from areas import AREAS
+from shapely.geometry import LineString
+from shapely.ops import substring
 
 HERE = os.path.dirname( os.path.abspath( __file__ ) )
 ROOT = os.path.abspath( os.path.join( HERE, '..', '..' ) )
 
-# The roads that matter on the ground here. Overture's classes; the width is the carriageway in
-# metres, as built in this part of Slavonia: a two-lane country road is about 6 m, a village street
-# 5 m, a field track a pair of ruts.
-ROADS = {
-    'motorway': 11.0, 'trunk': 9.0, 'primary': 7.5, 'secondary': 7.0, 'tertiary': 6.0,
-    'residential': 5.0, 'living_street': 4.5, 'unclassified': 4.5, 'service': 3.6,
-    'track': 3.0, 'footway': 1.4, 'path': 1.2, 'cycleway': 2.0, 'steps': 1.2,
-}
+# surfaces the map names, as the two the ground can show
+PAVED = { 'paved', 'asphalt', 'concrete', 'paving_stones', 'sett', 'cobblestone', 'metal', 'wood' }
+# fractions of a segment closer than this are the same cut
+EPS = 1e-6
 
 
 def main():
@@ -45,67 +46,95 @@ def main():
     # the block is aligned to the tile grid the same way tiles.py aligns it
     half = km * 1000 / 2
     cx, cy = round( cx ), round( cy )
-    west, east, south, north = cx - half, cx + half, cy - half, cy + half
+    box = ( cx - half, cy - half, cx + half, cy + half )
 
-    roads = read_roads( cache, to_grid, ( west, south, east, north ) )
-    buildings = read_buildings( cache, to_grid, ( west, south, east, north ) )
+    nodes, roads = read_roads( cache, to_grid, box )
+    buildings = read_buildings( cache, to_grid, box )
 
     os.makedirs( out_dir, exist_ok=True )
     path = os.path.join( out_dir, 'places.json' )
     with open( path, 'w', encoding='utf-8' ) as f:
-        json.dump( { 'center': [ cx, cy ], 'roads': roads, 'buildings': buildings }, f, separators=( ',', ':' ) )
-    print( f'{len( roads )} roads, {len( buildings )} buildings -> {os.path.relpath( path, ROOT )}'
+        json.dump( { 'center': [ cx, cy ], 'nodes': nodes, 'roads': roads, 'buildings': buildings }, f, separators=( ',', ':' ), ensure_ascii=False )
+    print( f'{len( roads )} roads between {len( nodes )} nodes ({sum( r[ "bridge" ] for r in roads )} bridges), {len( buildings )} buildings -> {os.path.relpath( path, ROOT )}'
            f' ({os.path.getsize( path ) >> 10} kB)' )
 
 
 def rows( path, columns ):
 
-    t = pq.read_table( path, columns=columns )
-    return t.to_pylist()
+    return pq.read_table( path, columns=columns ).to_pylist()
 
 
-def clip( pts, box ):
+def covering( rules, t, key ):
 
-    """Keep the parts of a line inside the block, as separate lines."""
+    """The value of the first linear-referenced rule that covers fraction t of the segment."""
+    for r in rules or []:
+        lo, hi = r.get( 'between' ) or ( 0.0, 1.0 )
+        if lo - EPS <= t <= hi + EPS: return r[ key ]
+    return None
+
+
+def inside_runs( pts, box ):
+
+    """The runs of a line inside the block, each with one point past the edge where it leaves, and
+    whether its first / last point is the line's own end."""
     west, south, east, north = box
-    inside = lambda p: west <= p[ 0 ] <= east and south <= p[ 1 ] <= north
-    out, cur = [], []
-    for i, p in enumerate( pts ):
-        if inside( p ):
-            cur.append( p )
-        else:
-            # keep one point past the edge so the line leaves the block instead of stopping short
-            if cur:
-                cur.append( p )
-                out.append( cur )
-                cur = []
-            elif i + 1 < len( pts ) and inside( pts[ i + 1 ] ):
-                cur.append( p )
-    if cur: out.append( cur )
-    return [ l for l in out if len( l ) > 1 ]
+    inside = [ west <= x <= east and south <= y <= north for x, y in pts ]
+    out, i = [], 0
+    while i < len( pts ):
+        if not inside[ i ]: i += 1; continue
+        j = i
+        while j + 1 < len( pts ) and inside[ j + 1 ]: j += 1
+        a, b = max( 0, i - 1 ), min( len( pts ) - 1, j + 1 )
+        if b > a: out.append( ( pts[ a:b + 1 ], a == 0 and inside[ 0 ], b == len( pts ) - 1 and inside[ - 1 ] ) )
+        i = j + 1
+    return out
 
 
 def read_roads( cache, to_grid, box ):
 
     path = os.path.join( cache, 'overture_segment.parquet' )
     if not os.path.exists( path ): sys.exit( f'missing {path} (run fetch.py <area> overture)' )
-    out = []
-    for r in rows( path, [ 'geometry', 'subtype', 'class', 'names', 'road_surface', 'road_flags' ] ):
+    nodes, index, roads = [], {}, []
+
+    def node( key, p ):
+
+        if key not in index:
+            index[ key ] = len( nodes )
+            nodes.append( [ round( p[ 0 ], 1 ), round( p[ 1 ], 1 ) ] )
+        return index[ key ]
+
+    for r in rows( path, [ 'id', 'geometry', 'subtype', 'class', 'names', 'connectors', 'road_surface', 'road_flags' ] ):
         if r[ 'subtype' ] != 'road': continue
-        cls = r[ 'class' ]
-        if cls not in ROADS: continue
         g = wkb.loads( bytes( r[ 'geometry' ] ) )
         if g.geom_type != 'LineString': continue
-        pts = [ list( to_grid.transform( x, y ) ) for x, y in g.coords ]
+        line = LineString( [ to_grid.transform( x, y ) for x, y in g.coords ] )
+        x0, y0, x1, y1 = line.bounds
+        if x1 < box[ 0 ] or x0 > box[ 2 ] or y1 < box[ 1 ] or y0 > box[ 3 ]: continue
+        # where the segment is cut: its junctions, and the ends of its bridges
+        cuts = { 0.0: ( r[ 'id' ], 0.0 ), 1.0: ( r[ 'id' ], 1.0 ) }
+        bridges = [ f.get( 'between' ) or [ 0.0, 1.0 ] for f in r.get( 'road_flags' ) or [] if 'is_bridge' in ( f.get( 'values' ) or [] ) ]
+        for lo, hi in bridges:
+            for t in ( lo, hi ): cuts.setdefault( min( 1.0, max( 0.0, t ) ), ( r[ 'id' ], t ) )
+        # a junction names its node by the map's connector, so every road through it shares it
+        for c in r.get( 'connectors' ) or []:
+            t = min( 1.0, max( 0.0, c[ 'at' ] ) )
+            near = next( ( k for k in cuts if abs( k - t ) < EPS ), t )
+            cuts[ near ] = c[ 'connector_id' ]
+        ts = sorted( cuts )
         name = ( r.get( 'names' ) or {} ).get( 'primary' )
-        flags = r.get( 'road_flags' ) or []
-        bridge = any( 'bridge' in str( f ) for f in flags )
-        for part in clip( pts, box ):
-            out.append( {
-                'class': cls, 'name': name, 'width': ROADS[ cls ], 'bridge': bridge,
-                'pts': [ [ round( x, 1 ), round( y, 1 ) ] for x, y in part ],
-            } )
-    return out
+        for ta, tb in zip( ts, ts[ 1: ] ):
+            piece = substring( line, ta, tb, normalized=True )
+            if piece.geom_type != 'LineString' or piece.length < 0.05: continue
+            mid = ( ta + tb ) / 2
+            surface = covering( r.get( 'road_surface' ), mid, 'value' )
+            bridge = any( lo - EPS <= mid <= hi + EPS for lo, hi in bridges )
+            for k, ( pts, first, last ) in enumerate( inside_runs( list( piece.coords ), box ) ):
+                a = node( cuts[ ta ] if first else ( r[ 'id' ], ta, k, 'in' ), pts[ 0 ] )
+                b = node( cuts[ tb ] if last else ( r[ 'id' ], ta, k, 'out' ), pts[ - 1 ] )
+                roads.append( { 'class': r[ 'class' ], 'name': name, 'bridge': bridge, 'a': a, 'b': b,
+                    'surface': None if surface is None else 'paved' if surface in PAVED else 'unpaved',
+                    'pts': [ [ round( x, 1 ), round( y, 1 ) ] for x, y in pts ] } )
+    return nodes, roads
 
 
 def read_buildings( cache, to_grid, box ):

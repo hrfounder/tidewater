@@ -14,7 +14,6 @@
 //   invasive  true for the introduced species (sold cheaply; anglers are asked to keep them)
 //
 // Fight, stamina, time and rarity as in the Caribbean table.
-import { FLOW } from './world.js';
 export const FISH = {
 	// small fish: the bread and butter of float fishing, and live bait for the predators
 	bleak: { name: 'Bleak', hr: 'Uklija', sci: 'Alburnus alburnus', lw: [ 0.0069, 3.12 ], model: 'bleak', habitat: { slack: 1, still: 0.7, current: 0.5, shallows: 0.4 }, kg: [ 0.01, 0.05 ], price: 2, fight: 0.05, stamina: 1, time: 'day', rarity: 0.35 },
@@ -96,51 +95,26 @@ function smooth( e0, e1, x ) {
 
 }
 
-// Read the spot the bobber is in, off the patch itself (the game asks the region for this).
+// Read the spot the bobber is in, off the Site (the game asks the region for this).
 //
-//   river   1 in a watercourse, 0 in a pond, an oxbow or a flooded pit
-//   flow    m/s at the surface (world.js FLOW), falling away toward the bank
+//   river   1 in water that has a current, 0 in a pond, an oxbow or a flooded pit
+//   flow    m/s at the surface there (site/Water.js)
 //   weeds   the reed bed and the soft weed over the shallow margin
-//   cover   fallen willow, the piles of a fishing platform, the shade under the bridge
+//   cover   fallen willow, the piles of a fishing platform: the margin under the bank
 //
-// `world` is the TileTerrain patch: it carries the water lines the channels were cut from.
+// `world` is the Site (site/Site.js).
+const SNAG_MARGIN = 3; // metres out from the waterline that the snags lie
+const current = [ 0, 0 ];
 export function sampleAt( { x, z, depth, world = null } ) {
 
 	let river = 0, flow = 0, cover = 0;
-	if ( world && world.lines ) {
+	const body = world && world.water.bodyAt( x, z );
+	if ( body ) {
 
-		const [ cE, cN ] = world.center;
-		let best = Infinity, bestLine = null, bestT = 0;
-		for ( const line of world.lines ) {
-
-			if ( line.dry ) continue;
-			const P = line.pts;
-			for ( let i = 0; i + 1 < P.length; i ++ ) {
-
-				const ax = P[ i ][ 0 ] - cE, az = cN - P[ i ][ 1 ];
-				const bx = P[ i + 1 ][ 0 ] - cE, bz = cN - P[ i + 1 ][ 1 ];
-				const dx = bx - ax, dz = bz - az;
-				const len2 = Math.max( dx * dx + dz * dz, 1e-6 );
-				const t = Math.min( 1, Math.max( 0, ( ( x - ax ) * dx + ( z - az ) * dz ) / len2 ) );
-				const d = Math.hypot( x - ax - dx * t, z - az - dz * t );
-				if ( d < best ) { best = d; bestLine = line; bestT = t; }
-
-			}
-
-		}
-
-		if ( bestLine && best < bestLine.width ) {
-
-			// how far into the channel the float is: 1 mid-stream, 0 at the bank
-			const across = 1 - Math.min( 1, best / ( bestLine.width / 2 ) );
-			river = Math.min( 1, across * 1.6 );
-			const full = bestLine.class === 'canal' ? FLOW.canal : FLOW.river;
-			flow = full * ( 0.35 + 0.65 * across );
-			void bestT;
-			// the margin under the bank is where the snags are: fallen branches and platform piles
-			cover = Math.max( 0, 1 - Math.abs( best - bestLine.width / 2 ) / 3 );
-
-		}
+		river = body.current ? 1 : 0;
+		flow = world.water.flowAt( x, z, depth, current );
+		// the bed falls from the waterline at the bank's slope, so the depth says how far out this is
+		cover = Math.max( 0, 1 - depth * body.slope / SNAG_MARGIN );
 
 	}
 

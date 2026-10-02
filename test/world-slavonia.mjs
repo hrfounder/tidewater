@@ -1,63 +1,45 @@
-// The real-world terrain of the Slavonian region (regions/slavonia/TileTerrain.js) through the
-// engine's terrain pipeline (TerrainGPU -> Terrain), rendered headless. Needs the exported core
-// tiles in public/world/bosut/ (tools/geodata/tiles.py bosut core ...).
+// The Slavonian world (regions/slavonia/world.js) through the engine's terrain pipeline
+// (TerrainGPU -> Terrain) and whatever the region stands on it, rendered headless. Needs the block's
+// map files in public/world/bosut/ (tools/geodata).
 //   node test/world-slavonia.mjs [outDir] [--view=name] [--small]
-// The views are the fixed progress views; tools/progress/shoot.sh files them into the timelapse.
-import { readFileSync } from 'node:fs';
+// The views are the fixed progress views (regions/slavonia/views.js).
+import { tmpdir } from 'node:os';
 import { worldHarness, done } from './world-harness.mjs';
-import { TileTerrain } from '../src/regions/slavonia/TileTerrain.js';
+import { load } from '../tools/checks/load.mjs';
 import { TerrainGPU } from '../src/world/TerrainGPU.js';
 import { Terrain } from '../src/world/Terrain.js';
 import { computeShoreField } from '../src/world/ShoreField.js';
 import { Material } from '../src/engine/render/Material.js';
 import { PROGRESS_VIEWS } from '../src/regions/slavonia/views.js';
-import { GROUND_SURFACE } from '../src/regions/slavonia/GroundSurface.js';
-import { buildPlatforms } from '../src/regions/slavonia/Platforms.js';
+import { GROUND_SURFACE, TERRAIN_EXTENT, buildPlaces } from '../src/regions/slavonia/world.js';
 
-const out = process.argv[ 2 ] && ! process.argv[ 2 ].startsWith( '--' ) ? process.argv[ 2 ] : '/tmp';
+const out = process.argv[ 2 ] && ! process.argv[ 2 ].startsWith( '--' ) ? process.argv[ 2 ] : tmpdir();
 const small = process.argv.includes( '--small' );
-const dir = new URL( '../public/world/bosut/', import.meta.url );
-const index = JSON.parse( readFileSync( new URL( 'index.json', dir ) ) );
 let t = performance.now();
-const data = await TileTerrain.load( { index, center: index.center, readFile: async ( f ) => {
-
-	const b = readFileSync( new URL( f, dir ) );
-	return b.buffer.slice( b.byteOffset, b.byteOffset + b.byteLength );
-
-} } );
-console.log( 'TileTerrain', ( performance.now() - t ).toFixed( 0 ), 'ms; datum', data.datum.toFixed( 2 ), 'm a.s.l.; heights',
-	Math.min( ...data.mmLevels.at( - 1 ).min ).toFixed( 1 ), '..', Math.max( ...data.mmLevels.at( - 1 ).max ).toFixed( 1 ), 'm' );
-let wet = 0;
-for ( const w of data.water ) if ( w === w ) wet ++;
-console.log( 'water cover', ( wet / data.water.length * 100 ).toFixed( 2 ), '%' );
+const { terrain: data, site } = await load();
+console.log( 'world', ( performance.now() - t ).toFixed( 0 ), 'ms; datum', data.datum.toFixed( 2 ), 'm a.s.l.' );
 
 const H = await worldHarness( { sun: [ 0.5, 0.42, 0.45 ], ...( small ? { width: 960, height: 540 } : {} ) } );
+t = performance.now();
 const shore = computeShoreField( data, { res: 512, swellDir: [ 0, 1 ] } );
 const gpu = new TerrainGPU( data, shore );
-const terrain = new Terrain( { scene: H.scene, terrainData: data, terrainGPU: gpu, surface: GROUND_SURFACE } );
+console.log( 'terrain maps', ( performance.now() - t ).toFixed( 0 ), 'ms' );
+const terrain = new Terrain( { scene: H.scene, terrainData: data, terrainGPU: gpu, surface: GROUND_SURFACE, extent: TERRAIN_EXTENT } );
 terrain.material.appliesHillShadow = true;
 H.before.push( ( cam ) => terrain.update( cam ) );
 // stand-in for the water (the game's water surface is not in this harness): a flat, glossy,
-// dark olive plane at the patch's water level
-const water = new H.E.Mesh( new H.E.PlaneGeometry( data.size, data.size ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
+// dark olive plane at the water level
+const water = new H.E.Mesh( new H.E.PlaneGeometry( 16384, 16384 ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
 H.scene.add( water );
-const platforms = buildPlatforms( { terrain: data, scene: H.scene } );
-console.log( 'fishing platforms', platforms ? platforms.userData.count : 0 );
+buildPlaces( { terrain: data, site, scene: H.scene, colliders: null } );
 
-// the fixed progress views (regions/slavonia/views.js); `ground` heights are above the ground there
-const views = {};
+// `ground` heights are above the ground there
+const only = process.argv.find( ( a ) => a.startsWith( '--view=' ) );
 for ( const [ k, v ] of Object.entries( PROGRESS_VIEWS ) ) {
 
-	const [ x, y, z ] = v.pos;
-	views[ k ] = { ...v, pos: [ x, v.ground ? data.heightAt( x, z ) + y : y, z ] };
-
-}
-
-const only = process.argv.find( ( a ) => a.startsWith( '--view=' ) );
-for ( const [ k, v ] of Object.entries( views ) ) {
-
 	if ( only && only.slice( 7 ) !== k ) continue;
-	await H.shot( `${ out }/slavonia-terrain-${ k }.png`, v );
+	const [ x, y, z ] = v.pos;
+	await H.shot( `${ out }/slavonia-${ k }.png`, { ...v, pos: [ x, v.ground ? data.heightAt( x, z ) + y : y, z ] } );
 
 }
 

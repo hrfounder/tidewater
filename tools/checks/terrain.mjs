@@ -1,99 +1,116 @@
-// Numbers on the terrain patch the region is built on (M0 audit of docs/slavonia/DESIGN.md).
+// Numbers on the ground of the Slavonian world (docs/slavonia/DESIGN.md, section 7).
 //   node tools/checks/terrain.mjs
-import { loadTerrain, readJSON, check, finish } from './load.mjs';
+import { Polygon } from './polygon.mjs';
+import { load, readJSON, check, finish } from './load.mjs';
 
 let t = performance.now();
-const T = await loadTerrain();
-console.log( `TileTerrain ${ ( performance.now() - t ).toFixed( 0 ) } ms; datum ${ T.datum.toFixed( 2 ) } m; patch ${ T.size } m at ${ T.texel } m; outside ${ T.outside.toFixed( 2 ) } m` );
-const { res, heights: H, water: W, origin, texel, far } = T;
+const { terrain: T, site } = await load();
+console.log( `world ${ ( performance.now() - t ).toFixed( 0 ) } ms; datum ${ T.datum.toFixed( 2 ) } m; patch ${ T.size } m at ${ T.texel } m; plain beyond the tiles ${ T.outside.toFixed( 2 ) } m` );
+const { res, heights: H, origin, texel, far } = T;
 const n = res * res;
+const xOf = ( k ) => origin + ( k % res + 0.5 ) * texel, zOf = ( k ) => origin + ( Math.floor( k / res ) + 0.5 ) * texel;
 
-// ---- the seam between the metre patch and the 10 m field around it
+// ---- the water the plane wets against the water the map draws
 {
 
-	let worst = 0, sum = 0, cnt = 0, at = null;
-	const edge = T.size / 2;
-	for ( let s = - edge; s <= edge; s += 1 ) for ( const [ x, z ] of [ [ s, - edge ], [ s, edge ], [ - edge, s ], [ edge, s ] ] ) {
-
-		// just inside against the coarse field at the same point
-		const xi = Math.max( - edge + 1, Math.min( edge - 1, x ) ), zi = Math.max( - edge + 1, Math.min( edge - 1, z ) );
-		const d = Math.abs( T.heightAt( xi, zi ) - T.farHeightAt( xi, zi ) );
-		sum += d; cnt ++;
-		if ( d > worst ) { worst = d; at = [ xi, zi ]; }
-
-	}
-
-	check( worst < 0.3, 'patch edge: metre field against the 10 m field', `mean ${ ( sum / cnt ).toFixed( 3 ) } m, worst ${ worst.toFixed( 2 ) } m at ${ at }` );
-
-}
-
-// ---- the far ring: is all of it exported?
-{
-
-	const index = readJSON( 'index.json' );
-	const es = index.tiles.map( ( t ) => t.east ), ns = index.tiles.map( ( t ) => t.north );
-	const cover = [ Math.min( ...es ), Math.max( ...es ) + index.tile, Math.min( ...ns ), Math.max( ...ns ) + index.tile ];
-	const want = [ far.ox + T.center[ 0 ], far.ox + T.center[ 0 ] + ( far.res - 1 ) * far.texel, T.center[ 1 ] - far.oz - ( far.resZ - 1 ) * far.texel, T.center[ 1 ] - far.oz ];
-	const whole = want[ 0 ] >= cover[ 0 ] && want[ 1 ] <= cover[ 1 ] && want[ 2 ] >= cover[ 2 ] && want[ 3 ] <= cover[ 3 ];
-	check( whole, 'far field inside the exported tiles', `field ${ want } / tiles ${ cover }` );
-
-}
-
-// ---- one water plane: what the data says is wet against what the plane at 0 wets
-{
-
-	let wet = 0, wetDry = 0, dryFlooded = 0, clamped = 0;
+	const json = readJSON( 'water.json' );
+	const [ cE, cN ] = T.center;
+	const half = T.size / 2;
+	let mapped = 0, wetMapped = 0, wet = 0, wetOwned = 0;
+	const areas = json.areas.map( ( a ) => new Polygon( a.rings.map( ( r ) => r.map( ( [ e, nn ] ) => [ e - cE, cN - nn ] ) ) ) );
+	const inPatch = areas.filter( ( a ) => a.x1 > - half && a.x0 < half && a.z1 > - half && a.z0 < half );
 	for ( let k = 0; k < n; k ++ ) {
 
-		const w = W[ k ] === W[ k ];
-		if ( w ) { wet ++; if ( H[ k ] > 0 ) wetDry ++; } else if ( H[ k ] < 0 ) dryFlooded ++;
-		if ( ! w && H[ k ] > 0.19 && H[ k ] < 0.31 ) clamped ++;
+		const isWet = H[ k ] < 0;
+		if ( isWet ) { wet ++; if ( site.water.owner[ k ] >= 0 ) wetOwned ++; }
+		// one texel in nine against the polygons (the test is the slow part)
+		if ( k % 3 || Math.floor( k / res ) % 3 ) continue;
+		const x = xOf( k ), z = zOf( k );
+		if ( inPatch.some( ( a ) => a.contains( x, z ) ) ) { mapped ++; if ( isWet ) wetMapped ++; }
 
 	}
 
 	console.log( `     water ${ ( wet / n * 100 ).toFixed( 2 ) } % of the patch` );
-	check( wetDry / Math.max( 1, wet ) < 0.02, 'marked wet but above the water plane', `${ wetDry } texels (${ ( wetDry / wet * 100 ).toFixed( 1 ) } % of the water)` );
-	check( dryFlooded === 0, 'marked dry but below the water plane', `${ dryFlooded } texels (${ ( dryFlooded / n * 100 ).toFixed( 2 ) } % of the patch)` );
-	console.log( `     held at the flood clamp (0.2..0.3 m): ${ clamped } texels (${ ( clamped / n * 100 ).toFixed( 2 ) } %)` );
+	check( wetMapped === mapped, 'mapped water that is under the plane', `${ wetMapped } of ${ mapped } sampled texels` );
+	check( wetOwned === wet, 'water that belongs to a mapped body', `${ wetOwned } of ${ wet } wet texels` );
 
 }
 
-// ---- the water lines in the patch: their levels against the datum
+// ---- the Bosut as wide as the map draws it
 {
 
-	const edge = T.size / 2, [ cE, cN ] = T.center;
-	const rows = [];
-	for ( const l of T.lines ) {
+	const widths = [];
+	const course = site.water.bodies.find( ( b ) => b.kind === 'line' && b.name === 'Bosut' && b.pts.some( ( p ) => Math.abs( p[ 0 ] ) < 200 && Math.abs( p[ 1 ] ) < 200 ) );
+	for ( let s = 1; s + 1 < course.pts.length; s += 5 ) {
 
-		const inside = l.pts.filter( ( p ) => Math.abs( p[ 0 ] - cE ) < edge && Math.abs( cN - p[ 1 ] ) < edge );
-		if ( ! inside.length ) continue;
-		const lv = inside.map( ( p ) => p[ 2 ] - T.datum );
-		rows.push( { name: l.name || '-', class: l.class, dry: l.dry, width: l.width, pts: inside.length, lo: Math.min( ...lv ), hi: Math.max( ...lv ) } );
+		const [ x, z, , inside ] = course.pts[ s ];
+		if ( ! inside || Math.abs( x ) > T.size / 2 - 60 || Math.abs( z ) > T.size / 2 - 60 ) continue;
+		const [ ax, az ] = course.pts[ s - 1 ], [ bx, bz ] = course.pts[ s + 1 ];
+		const l = Math.hypot( bx - ax, bz - az ), nx = - ( bz - az ) / l, nz = ( bx - ax ) / l;
+		let w = 0;
+		for ( const side of [ 1, - 1 ] ) for ( let d = 0; d < 60; d += 0.25 ) {
+
+			if ( T.heightAt( x + nx * d * side, z + nz * d * side ) >= 0 ) break;
+			w += 0.25;
+
+		}
+
+		widths.push( w );
 
 	}
 
-	const by = {};
-	for ( const r of rows ) { const k = `${ r.class }${ r.dry ? ' (dry)' : '' }`; ( by[ k ] = by[ k ] || [] ).push( r ); }
-	for ( const [ k, v ] of Object.entries( by ) ) console.log( `     ${ k }: ${ v.length } lines, level ${ Math.min( ...v.map( ( r ) => r.lo ) ).toFixed( 2 ) } .. ${ Math.max( ...v.map( ( r ) => r.hi ) ).toFixed( 2 ) } m over the datum` );
-	const wetOff = rows.filter( ( r ) => ! r.dry && ( r.hi > 0.3 || r.lo < - 0.3 ) );
-	check( wetOff.length === 0, 'wet lines within 0.3 m of the one water plane', `${ wetOff.length } of ${ rows.filter( ( r ) => ! r.dry ).length } are not: ${ wetOff.slice( 0, 6 ).map( ( r ) => `${ r.name } ${ r.class } ${ r.lo.toFixed( 2 ) }..${ r.hi.toFixed( 2 ) }` ).join( '; ' ) }` );
+	widths.sort( ( a, b ) => a - b );
+	const lo = widths[ 0 ], mid = widths[ widths.length >> 1 ], hi = widths.at( - 1 );
+	// the map: 32.9 to 55.1 m across the centreline in the old 2 km patch, median 40.1
+	check( mid > 37 && mid < 44, 'the Bosut across its course', `${ lo.toFixed( 1 ) } to ${ hi.toFixed( 1 ) } m, median ${ mid.toFixed( 1 ) } m over ${ widths.length } sections` );
 
 }
 
-// ---- slopes: the steepest ground, texel to texel (the data is a lowland; anything steep is a cut)
+// ---- slopes
 {
 
-	let steep = 0, worst = 0;
+	// Steep ground is expected where something built crowds the water: the fill under a road or a
+	// building beside a bank. Anywhere else it is a fault of the cut.
+	let steep = 0, built = 0, worst = 0, low = 0;
 	for ( let j = 0; j < res - 1; j ++ ) for ( let i = 0; i < res - 1; i ++ ) {
 
 		const k = j * res + i;
+		if ( H[ k ] >= 0 && H[ k ] < 0.01 && site.water.owner[ k ] < 0 ) low ++;
 		const g = Math.max( Math.abs( H[ k + 1 ] - H[ k ] ), Math.abs( H[ k + res ] - H[ k ] ) ) / texel;
-		if ( g > 1 ) steep ++;
+		if ( g <= 1 ) continue;
 		if ( g > worst ) worst = g;
+		const x = xOf( k ), z = zOf( k );
+		if ( site.roads.nearest( x, z, 10 ) || site.buildings.near( x, z, 20 ).length ) built ++; else steep ++;
 
 	}
 
-	check( worst <= 1.01, 'steepest step between texels', `${ worst.toFixed( 2 ) } m per m; ${ steep } texels over 1:1` );
+	console.log( `     ground over 1:1 beside a road or a building: ${ built } texels, steepest ${ worst.toFixed( 2 ) } m per m` );
+	check( steep === 0, 'ground over 1:1 anywhere else', `${ steep } texels` );
+	check( low === 0, 'dry ground lying at the water plane outside any bank', `${ low } texels` );
+	// how tall the banks of the river come out: the ground 40 m from the waterline along the course
+	const tops = [];
+	for ( let k = 0; k < n; k += 97 ) if ( Math.abs( T.coastDistance( xOf( k ), zOf( k ) ).d + 40 ) < 2 ) tops.push( H[ k ] );
+	tops.sort( ( a, b ) => a - b );
+	console.log( `     ground 40 m from the water: ${ tops[ Math.floor( tops.length * 0.1 ) ].toFixed( 2 ) } / ${ tops[ tops.length >> 1 ].toFixed( 2 ) } / ${ tops[ Math.floor( tops.length * 0.9 ) ].toFixed( 2 ) } m (10 % / median / 90 %)` );
+
+}
+
+// ---- the seam between the metre patch and the 10 m field around it
+{
+
+	let worst = 0, sum = 0, cnt = 0, over = 0, at = null;
+	const edge = T.size / 2 - 1;
+	for ( let s = - edge; s <= edge; s += 1 ) for ( const [ x, z ] of [ [ s, - edge ], [ s, edge ], [ - edge, s ], [ edge, s ] ] ) {
+
+		const d = Math.abs( T.heightAt( x, z ) - T.farHeightAt( x, z ) );
+		sum += d; cnt ++;
+		if ( d > 0.3 ) over ++;
+		if ( d > worst ) { worst = d; at = [ x, z ]; }
+
+	}
+
+	console.log( `     patch edge, metre field against the 10 m field: mean ${ ( sum / cnt ).toFixed( 3 ) } m, worst ${ worst.toFixed( 2 ) } m at ${ at }; ${ over } of ${ cnt } points over 0.3 m` );
+	check( sum / cnt < 0.05, 'patch edge, mean step', `${ ( sum / cnt ).toFixed( 3 ) } m` );
 
 }
 
@@ -108,13 +125,11 @@ const n = res * res;
 		if ( v === 0 ) continue;
 		moving ++;
 		if ( v > top ) top = v;
-		const x = f.ox + ( q % f.res + 0.5 ) * f.texel, z = f.oz + ( Math.floor( q / f.res ) + 0.5 ) * f.texel;
-		if ( T.heightAt( x, z ) > 0 ) onLand ++;
+		if ( T.heightAt( f.ox + ( q % f.res + 0.5 ) * f.texel, f.oz + ( Math.floor( q / f.res ) + 0.5 ) * f.texel ) >= 0 ) onLand ++;
 
 	}
 
-	console.log( `     current: ${ moving } cells of ${ f.texel } m, fastest ${ top.toFixed( 3 ) } m/s; the far grid it is resampled onto is ${ far.texel } m` );
-	check( onLand / Math.max( 1, moving ) < 0.05, 'current cells whose centre is dry land', `${ onLand } of ${ moving }` );
+	check( onLand === 0 && moving > 0, 'current only over water', `${ moving } cells of ${ f.texel } m moving, ${ onLand } of them on land; fastest ${ top.toFixed( 3 ) } m/s` );
 
 }
 

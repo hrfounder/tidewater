@@ -1,34 +1,35 @@
 """Cut an area's terrain into the game's world tiles.
 
-    python3 tools/geodata/tiles.py bosut                         # every tile -> cache/bosut/tiles/
-    python3 tools/geodata/tiles.py bosut core 45.225,18.75,6     # a 6 km block around a point -> public/world/bosut/
+    python3 tools/geodata/tiles.py bosut                          # every tile -> cache/bosut/tiles/
+    python3 tools/geodata/tiles.py bosut core 45.22730,18.74159,12  # a 12 km block around a point -> public/world/bosut/
 
 Tiles are TILE metres square on the HTRS96/TM (EPSG:3765) grid, aligned to multiples of TILE, and named
 by their south-west corner in km: `t_<east>_<north>.bin`. Neighbouring tiles share their edge samples.
 
 Tile file (little endian):
-  0   char[4]  'TWT1'
+  0   char[4]  'TWT2'
   4   u16      n: samples per side (TILE / res + 1)
   6   u16      res: sample spacing (dm)
   8   i32      east, north of the south-west corner (m)
-  16  u16[n*n] ground height (cm above sea level), rows from north to south
-      u16[n*n] water surface level (cm above sea level), 0 where dry
+  16  u16[n*n] dry ground height (cm above sea level), rows from north to south
       u8[n*n]  land cover (ESA WorldCover class)
 
-index.json lists the tiles, the grid and the data credits; rivers.json the water lines over them
-(see terrain.py water_lines.json): the tiles hold the ground without the line channels, which the game
-cuts at full resolution.
+The tiles hold the ground without any water in it (terrain.py). index.json lists the tiles, the grid
+and the data credits; water.json holds the water bodies over them as vectors (terrain.py water.json,
+clipped to the block), which the game cuts into the ground at its own resolution.
 """
 import os, sys, json, math, struct
 import numpy as np
 import rasterio
 from rasterio.warp import reproject, Resampling
 from pyproj import Transformer
-from areas import AREAS
+from shapely.geometry import Polygon, box
 
 HERE = os.path.dirname( os.path.abspath( __file__ ) )
 ROOT = os.path.abspath( os.path.join( HERE, '..', '..' ) )
 TILE = 1000
+# water just outside the block still shapes the ground at its edge: keep this much of it (m)
+MARGIN = 300
 CREDITS = [
     'Map data © OpenStreetMap contributors (ODbL), via Overture Maps',
     'Copernicus DEM GLO-30 © DLR e.V. 2010-2014 and © Airbus 2014-2018, provided under COPERNICUS by the European Union and ESA',
@@ -40,20 +41,16 @@ def main():
 
     area = sys.argv[ 1 ] if len( sys.argv ) > 1 else 'bosut'
     core = len( sys.argv ) > 2 and sys.argv[ 2 ] == 'core'
-    src = os.path.join( HERE, 'cache', area, 'terrain' )
-    # ground without the river channels (the game cuts them from rivers.json); older runs: dtm.tif
-    g = os.path.join( src, 'ground.tif' )
-    with rasterio.open( g if os.path.exists( g ) else os.path.join( src, 'dtm.tif' ) ) as f:
-        dtm, T, crs = f.read( 1 ), f.transform, f.crs
-    with rasterio.open( os.path.join( src, 'water.tif' ) ) as f: water = f.read( 1 )
+    cache = os.path.join( HERE, 'cache', area )
+    src = os.path.join( cache, 'terrain' )
+    with rasterio.open( os.path.join( src, 'ground.tif' ) ) as f: ground, T, crs = f.read( 1 ), f.transform, f.crs
     res = T.a
     x0, y1 = T.c, T.f
-    h, w = dtm.shape
+    h, w = ground.shape
     n = int( TILE / res ) + 1
 
     # land cover on the same grid
     lc = np.zeros( ( h, w ), np.uint8 )
-    cache = os.path.join( HERE, 'cache', area )
     for fn in os.listdir( cache ):
         if fn.startswith( 'ESA_WorldCover' ):
             with rasterio.open( os.path.join( cache, fn ) ) as f:
@@ -63,13 +60,14 @@ def main():
 
     e0, e1 = math.ceil( x0 / TILE ), math.floor( ( x0 + ( w - 1 ) * res ) / TILE )
     n0, n1 = math.ceil( ( y1 - ( h - 1 ) * res ) / TILE ), math.floor( y1 / TILE )
+    center = None
     if core:
         lat, lon, km = map( float, sys.argv[ 3 ].split( ',' ) )
         cx, cy = Transformer.from_crs( 'EPSG:4326', crs, always_xy=True ).transform( lon, lat )
         half = km * 1000 / 2
         e0, e1 = max( e0, math.floor( ( cx - half ) / TILE ) ), min( e1, math.ceil( ( cx + half ) / TILE ) )
         n0, n1 = max( n0, math.floor( ( cy - half ) / TILE ) ), min( n1, math.ceil( ( cy + half ) / TILE ) )
-    center = [ round( cx ), round( cy ) ] if core else None
+        center = [ round( cx ), round( cy ) ]
     out = os.path.join( ROOT, 'public', 'world', area ) if core else os.path.join( cache, 'tiles' )
     os.makedirs( out, exist_ok=True )
 
@@ -79,33 +77,40 @@ def main():
             c = int( round( ( te * TILE - x0 ) / res ) )
             r = int( round( ( y1 - ( tn + 1 ) * TILE ) / res ) )
             if c < 0 or r < 0 or c + n > w or r + n > h: continue
-            hg = dtm[ r:r + n, c:c + n ]
-            wl = water[ r:r + n, c:c + n ]
-            body = struct.pack( '<4sHHii', b'TWT1', n, int( round( res * 10 ) ), te * TILE, tn * TILE )
+            hg = ground[ r:r + n, c:c + n ]
+            body = struct.pack( '<4sHHii', b'TWT2', n, int( round( res * 10 ) ), te * TILE, tn * TILE )
             body += np.clip( np.round( hg * 100 ), 0, 65535 ).astype( '<u2' ).tobytes()
-            body += np.where( np.isfinite( wl ), np.clip( np.round( wl * 100 ), 1, 65535 ), 0 ).astype( '<u2' ).tobytes()
             body += lc[ r:r + n, c:c + n ].astype( np.uint8 ).tobytes()
             name = f't_{te}_{tn}.bin'
             open( os.path.join( out, name ), 'wb' ).write( body )
-            tiles.append( { 'file': name, 'east': te * TILE, 'north': tn * TILE, 'wet': round( float( np.isfinite( wl ).mean() ), 4 ),
-                'min': round( float( hg.min() ), 2 ), 'max': round( float( hg.max() ), 2 ) } )
-    # the rivers, canals and streams over these tiles (+ a margin), clipped to runs of points inside
-    rivers = None
-    lp = os.path.join( src, 'water_lines.json' )
-    if os.path.exists( lp ):
-        M = 300
-        bx0, bx1, by0, by1 = e0 * TILE - M, e1 * TILE + M, n0 * TILE - M, n1 * TILE + M
-        out_lines = []
-        for l in json.load( open( lp, encoding='utf-8' ) )[ 'lines' ]:
+            tiles.append( { 'file': name, 'east': te * TILE, 'north': tn * TILE, 'min': round( float( hg.min() ), 2 ), 'max': round( float( hg.max() ), 2 ) } )
+
+    # the water over these tiles and a margin around them
+    water = json.load( open( os.path.join( src, 'water.json' ), encoding='utf-8' ) )
+    bx0, bx1, by0, by1 = e0 * TILE - MARGIN, e1 * TILE + MARGIN, n0 * TILE - MARGIN, n1 * TILE + MARGIN
+    block = box( bx0, by0, bx1, by1 )
+    ring = lambda r: [ [ round( x, 1 ), round( y, 1 ) ] for x, y in r.coords ]
+    areas = []
+    for a in water[ 'areas' ]:
+        P = Polygon( a[ 'rings' ][ 0 ], a[ 'rings' ][ 1: ] )
+        if not P.intersects( block ): continue
+        # cut at the block's edge: the piece that is left ends in a straight bank out in the margin
+        cut = P.intersection( block )
+        for piece in getattr( cut, 'geoms', [ cut ] ):
+            if piece.geom_type != 'Polygon' or piece.is_empty: continue
+            areas.append( { k: v for k, v in a.items() if k != 'rings' } | { 'rings': [ ring( piece.exterior ) ] + [ ring( r ) for r in piece.interiors ] } )
+    lines = []
+    for l in water[ 'lines' ]:
+        # the runs of points inside the block, each its own line
+        run = []
+        for p in l[ 'pts' ] + [ None ]:
+            if p is not None and bx0 <= p[ 0 ] <= bx1 and by0 <= p[ 1 ] <= by1: run.append( p ); continue
+            if len( run ) > 1: lines.append( { k: v for k, v in l.items() if k != 'pts' } | { 'pts': run } )
             run = []
-            for p in l[ 'pts' ] + [ None ]:
-                if p is not None and bx0 <= p[ 0 ] <= bx1 and by0 <= p[ 1 ] <= by1: run.append( p ); continue
-                if len( run ) > 1: out_lines.append( { k: v for k, v in l.items() if k != 'pts' } | { 'pts': run } )
-                run = []
-        rivers = 'rivers.json'
-        json.dump( { 'crs': str( crs ), 'lines': out_lines }, open( os.path.join( out, rivers ), 'w', encoding='utf-8' ), ensure_ascii=False )
-        print( f'{len( out_lines )} water lines -> {rivers}' )
-    json.dump( { 'version': 1, 'crs': str( crs ), 'center': center, 'rivers': rivers, 'tile': TILE, 'samples': n, 'res': res, 'credits': CREDITS, 'tiles': tiles },
+    json.dump( { 'crs': str( crs ), 'areas': areas, 'lines': lines }, open( os.path.join( out, 'water.json' ), 'w', encoding='utf-8' ), ensure_ascii=False, separators=( ',', ':' ) )
+    print( f'{len( areas )} water areas, {len( lines )} water lines -> water.json' )
+
+    json.dump( { 'version': 2, 'crs': str( crs ), 'center': center, 'water': 'water.json', 'tile': TILE, 'samples': n, 'res': res, 'credits': CREDITS, 'tiles': tiles },
         open( os.path.join( out, 'index.json' ), 'w', encoding='utf-8' ), ensure_ascii=False, indent=1 )
     size = sum( os.path.getsize( os.path.join( out, t[ 'file' ] ) ) for t in tiles )
     print( f'{len( tiles )} tiles of {TILE} m ({n} x {n} samples at {res} m) -> {out} ({size / 1e6:.1f} MB)' )

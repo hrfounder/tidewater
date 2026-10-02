@@ -398,7 +398,7 @@ export class Game {
 
 	habitatAtPoint( x, z, depth ) {
 
-		return sampleAt( { x, z, depth, world: this.app.terrainData } );
+		return sampleAt( { x, z, depth, world: this.app.site } );
 
 	}
 

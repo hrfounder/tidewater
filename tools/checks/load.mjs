@@ -1,26 +1,20 @@
-// Load the Slavonian region's data in plain node, the way the browser does over fetch: the terrain
-// patch from the world tiles and the places of the block. Shared by the checks in this folder.
+// Load the Slavonian world in plain node, through the same loader the browser uses: the files come
+// off the disk instead of over fetch. Shared by the checks in this folder.
 import { readFileSync } from 'node:fs';
-import { TileTerrain } from '../../src/regions/slavonia/TileTerrain.js';
-import { TILES } from '../../src/regions/slavonia/world.js';
+import { loadWorld, TILES } from '../../src/regions/slavonia/world.js';
 
 const dir = new URL( '../../public/' + TILES, import.meta.url );
 
+export const readFile = async ( file ) => {
+
+	const b = readFileSync( new URL( file, dir ) );
+	return b.buffer.slice( b.byteOffset, b.byteOffset + b.byteLength );
+
+};
+
 export const readJSON = ( file ) => JSON.parse( readFileSync( new URL( file, dir ), 'utf8' ) );
 
-export async function loadTerrain( options = {} ) {
-
-	const index = readJSON( 'index.json' );
-	return TileTerrain.load( { index, center: index.center, ...options, readFile: async ( f ) => {
-
-		const b = readFileSync( new URL( f, dir ) );
-		return b.buffer.slice( b.byteOffset, b.byteOffset + b.byteLength );
-
-	} } );
-
-}
-
-export const loadPlaces = () => readJSON( 'places.json' );
+export const load = () => loadWorld( readFile );
 
 // a check: prints one line, and counts the failures for the exit code
 let failures = 0;

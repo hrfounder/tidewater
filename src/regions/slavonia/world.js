@@ -1,25 +1,27 @@
 import { Vector3 } from '../../engine/index.js';
-import { TileTerrain } from './TileTerrain.js';
+import { TileTerrain } from './terrain/TileTerrain.js';
+import { gradeTerrain } from './terrain/Grade.js';
+import { buildSite, occupy, waterDatum } from './site/Site.js';
+import { LANDMARKS } from './Landmarks.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
-import { buildPlatforms } from './Platforms.js';
-import { Flora } from './Flora.js';
-import { buildRoads } from './Roads.js';
-import { buildBuildings } from './Buildings.js';
-import { buildBridges } from './Bridge.js';
-import { loadLandmarks } from './Landmarks.js';
 
-// The Slavonian world as App builds it (?region=slavonia): the real terrain from the world tiles of
-// the core block around Most Bosut (public/world/bosut/), its ground shader, calm river water, and
-// the places in it. Loaded on demand (dynamic import) so the island never pulls it in.
+// The Slavonian world as App builds it (?region=slavonia): the block around Most Bosut from the map
+// data in public/world/bosut/. Loaded on demand (dynamic import) so the island never pulls it in.
+//
+//   map files -> Site (site/Site.js) -> the ground, cut by the Site (terrain/) -> what stands on it
 //
 // Until the shared WORLD layout (world/WorldLayout.js) moves into the regions (docs/slavonia/ROADMAP.md,
 // M2), the layout overrides below are written into WORLD before any system reads it.
 
 export const TILES = 'world/bosut/';
 
+// The side of the patch in metres: the mapped block (places.json is 4 km of roads and buildings)
+// inside the next power of two, which the terrain's quadtree needs.
+export const DOMAIN = 4096;
+
 // x = east, z = south (m) from the bridge; see views.js
 export const LAYOUT = {
-	// on the park bank south-east of the bridge, among the fishing platforms, facing the water
+	// on the park bank south-east of the bridge, facing the water
 	start: { position: new Vector3( 95, 0, - 2 ), yaw: 0.6 },
 	spawn: { position: new Vector3( 95, 0, - 2 ), yaw: 0.6 },
 	// on the water off the park, bow upstream (east)
@@ -30,16 +32,10 @@ export const LAYOUT = {
 	chandlery: { x: 76, z: 12, yaw: Math.PI + 0.2 },
 };
 
-// How fast the water moves, mid-stream, in metres a second. The Bosut is a slow lowland river: at
-// summer level it drifts rather than runs, and a regulated drainage canal barely moves at all. Both
-// the surface current (TileTerrain.buildFlow) and the fishing (fish.js sampleAt) read these.
-export const FLOW = { river: 0.12, canal: 0.05 };
-
-// The Bosut on a still day: a 30 m wide channel about 2.5 m deep, light air, and a fetch of only the
-// river's own width, so the surface carries fine wind ripples and nothing else. The ocean's cascades
-// (733 m down to 7 m) are swell-sized here, so the region sets its own, and the shallow depth puts
-// the dispersion in the right regime. Turbid green-brown water, about a metre of visibility
-// (docs/slavonia/photos).
+// The Bosut on a still day: a channel about 2.5 m deep, light air, so the surface carries fine wind
+// ripples and nothing else. The ocean's cascades (733 m down to 7 m) are swell-sized here, so the
+// region sets its own, and the shallow depth puts the dispersion in the right regime. Turbid
+// green-brown water, about a metre of visibility (docs/slavonia/photos).
 export const WATER = {
 	windSpeed: 2.2,
 	windDir: [ 0.6, - 0.8 ],
@@ -64,54 +60,42 @@ export const WATER = {
 	scattering: [ 0.22, 0.26, 0.14 ],
 };
 
-// How far the ground mesh reaches. The patch is 2 km of real data; past it the heightfield reports
-// the plain's own level, and the Slavonian lowland really does run flat to the horizon, so the mesh
-// carries on rather than ending at a cliff with the water plane showing beyond it. The water grid
-// follows the camera, so the ground has to outrun the view: from the highest progress view (650 m)
-// the horizon is about 90 km away, and 131 km of plain keeps the sea out of every shot. Past the
-// data the ground is flat, so the far nodes are the coarsest the quadtree has.
+// How far the ground mesh reaches. Past the tiles the heightfield reports the level of the plain,
+// and the Slavonian lowland really does run flat to the horizon, so the mesh carries on rather than
+// ending at a cliff with the water plane showing beyond it. The water grid follows the camera, so
+// the ground has to outrun the view: from the highest progress view (650 m) the horizon is about
+// 90 km away, and 131 km of plain keeps the sea out of every shot.
 export const TERRAIN_EXTENT = 131072;
 
 export { GROUND_SURFACE };
 
-// hand-built places in the patch (call once the terrain exists)
-export function buildPlaces( { terrain, scene, places = null } ) {
+// The world from its map files. `read( file )` resolves to the ArrayBuffer of a file of the block
+// (the browser fetches it, the node checks read it off the disk): { site, terrain }.
+export async function loadWorld( read = fetchFile() ) {
 
-	return {
-		roads: buildRoads( { terrain, scene, places } ),
-		bridges: buildBridges( { terrain, scene, places } ),
-		buildings: buildBuildings( { terrain, scene, places, landmarks: places && places.landmarks } ),
-		platforms: buildPlatforms( { terrain, scene } ),
-		flora: new Flora( { scene, terrain, places } ),
-	};
-
-}
-
-// the terrain patch around the bridge (2 km at 1 m)
-export async function loadTerrain( base = typeof document !== 'undefined' ? document.baseURI : '' ) {
-
-	const dir = new URL( TILES, base );
-	const index = await ( await fetch( new URL( 'index.json', dir ) ) ).json();
-	return TileTerrain.load( { index, center: index.center, readFile: async ( f ) => ( await fetch( new URL( f, dir ) ) ).arrayBuffer() } );
+	const json = async ( file ) => JSON.parse( new TextDecoder().decode( await read( file ) ) );
+	const index = await json( 'index.json' );
+	const [ water, places ] = await Promise.all( [ json( index.water ), json( 'places.json' ) ] );
+	const datum = waterDatum( water, index.center );
+	const terrain = await TileTerrain.load( { index, readFile: read, size: DOMAIN, datum } );
+	const landmarks = new Set( LANDMARKS.map( ( l ) => l.name.toLowerCase() ) );
+	const site = buildSite( { index, water, places, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
+	gradeTerrain( terrain, site );
+	occupy( site, terrain );
+	return { site, terrain };
 
 }
 
-// the roads and building footprints of the block (tools/geodata/places.py)
-export async function loadPlaces( base = typeof document !== 'undefined' ? document.baseURI : '' ) {
+function fetchFile( base = document.baseURI ) {
 
-	try {
+	return async ( file ) => ( await fetch( new URL( TILES + file, base ) ) ).arrayBuffer();
 
-		const places = await ( await fetch( new URL( TILES + 'places.json', base ) ) ).json();
-		// the models of the landmarks in the block ride along with the places they stand on
-		places.landmarks = await loadLandmarks( places, base );
-		return places;
+}
 
-	} catch ( e ) {
+// what stands on the ground (call once the terrain exists)
+export function buildPlaces() {
 
-		console.warn( 'places.json missing: no roads or buildings', e );
-		return null;
-
-	}
+	return {};
 
 }
 

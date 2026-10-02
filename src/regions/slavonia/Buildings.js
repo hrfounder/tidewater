@@ -3,6 +3,7 @@ import { prepare, mergePrepared, box, slab, cylinder, mat4 } from '../../world/b
 import { createPropMaterial, PAT } from '../../game/GameMaterials.js';
 import { yardFor, buildYards } from './Yards.js';
 import { buildChurch } from './Church.js';
+import { landmarkFor, placeLandmark } from './Landmarks.js';
 
 // The buildings of the block, from public/world/bosut/places.json (OpenStreetMap via Overture, ODbL).
 //
@@ -25,6 +26,8 @@ const PLINTH = 0x4a443c;
 // which a building stops being a house and becomes a hall
 const PITCH_HOUSE = 0.52, PITCH_SHED = 0.38, PITCH_HALL = 0.18;
 const HOUSE_SPAN = 9, HALL_SPAN = 16;
+// the narrowest carriageway that counts as a street (places.py ROADS: living_street and wider)
+const STREET_WIDTH = 4.5;
 
 // deterministic per-building choice, so the village looks the same every run
 function hash( x, z ) {
@@ -83,6 +86,7 @@ function roadIndex( places, cE, cN, cell = 40 ) {
 	const map = new Map();
 	for ( const r of places.roads || [] ) for ( let i = 0; i + 1 < r.pts.length; i ++ ) {
 
+		if ( r.width < STREET_WIDTH ) break; // a house fronts a street, not a path or a field track
 		const ax = r.pts[ i ][ 0 ] - cE, az = cN - r.pts[ i ][ 1 ];
 		const bx = r.pts[ i + 1 ][ 0 ] - cE, bz = cN - r.pts[ i + 1 ][ 1 ];
 		const steps = Math.max( 1, Math.ceil( Math.hypot( bx - ax, bz - az ) / 8 ) );
@@ -123,7 +127,8 @@ function nearestRoad( idx, x, z ) {
 
 }
 
-export function buildBuildings( { terrain, scene, places } ) {
+// landmarks: the models loaded for this block (Landmarks.js loadLandmarks), by building name
+export function buildBuildings( { terrain, scene, places, landmarks = null } ) {
 
 	if ( ! places || ! places.buildings || ! places.buildings.length ) return null;
 	const [ cE, cN ] = terrain.center;
@@ -155,6 +160,11 @@ export function buildBuildings( { terrain, scene, places } ) {
 
 		}
 
+		// a building modelled from photographs stands on its footprint as that model
+		const model = landmarkFor( landmarks, b );
+		if ( model ) { placeLandmark( parts, model, terrain, r, ring ); count ++; continue; }
+
+		// a church with no model yet takes the interim village-baroque form
 		if ( b.class === 'church' ) { buildChurch( parts, terrain, r ); count ++; continue; }
 
 		const h = hash( r.cx, r.cz );

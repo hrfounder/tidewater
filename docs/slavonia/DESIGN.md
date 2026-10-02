@@ -254,9 +254,11 @@ parish house, and three outlines over a gravel lot and a lawn.
 
 The sweep so far (sheets of 110 m at 0.1 m): round St Andrew's, round St Roch's, Vinkovačka ulica
 from St Roch's to the bridge, Ulica Matije Gupca from the bridge to St Andrew's, the north bank 150 m
-each way from the bridge. It found 19 buildings the map lacks, 8 outlines with nothing in them, 2
-set down in the wrong place and 1 that is two buildings. Not yet swept: everything a street back
-from these.
+each way from the bridge, the south bank behind the marina, and a sheet each west and east of St
+Roch's (the west one is meadow). It found 23 buildings the map lacks, 8 outlines with nothing in
+them, 4 set down in the wrong place and 1 that is two buildings: about one footprint in eight of
+those looked at. Not yet swept: the rest, a street back from these and outward. The survey's fit
+is the weak part: where a paved yard or a shadow lies beside a building it prefers that edge.
 
 A landmark is checked against its photographs before it goes into the game:
 `tools/blender/look.py` renders the model from the places the photographs were taken from.

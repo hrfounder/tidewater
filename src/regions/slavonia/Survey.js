@@ -96,6 +96,10 @@ export const ADDED = [
 	// stands beyond that end: it has no walls and is not built.)
 	{ at: [ - 77.8, 121.3 ], size: [ 13.8, 11.5 ], turn: 42, roof: [ 122, 89, 88 ], source: 'sheet kg' },
 	{ at: [ - 86.0, 112.2 ], size: [ 10.5, 11.0 ], turn: 42, roof: [ 55, 54, 63 ], source: 'sheet kg' },
+	// East of Ulica Stjepana Radića, on the street that leaves it south of St Roch's: a long house
+	// under red tiles between two mapped ones, and a grey-roofed building behind the next
+	{ at: [ 143.6, - 153.8 ], size: [ 17.0, 6.5 ], turn: 66, roof: [ 139, 97, 81 ], source: 'sheet sweep-9' },
+	{ at: [ 159.8, - 119.0 ], size: [ 11.0, 10.0 ], turn: - 15, roof: [ 116, 115, 111 ], source: 'sheet sweep-9' },
 ];
 
 // The buildings. `at` is a point on the building (anywhere inside its footprint); the rest is what was
@@ -155,6 +159,8 @@ export const SEEN = [
 	{ at: [ - 127.5, - 27.5 ], is: 'shed', source: 'sheet sweep-5' },
 	{ at: [ - 77.8, 121.3 ], is: 'public', storeys: 1, form: 'gable', source: 'sheet kg' },
 	{ at: [ - 86.0, 112.2 ], is: 'public', storeys: 1, source: 'sheet kg' },
+	{ at: [ 143.6, - 153.8 ], is: 'longhouse', storeys: 1, form: 'gable', source: 'sheet sweep-9' },
+	{ at: [ 159.8, - 119.0 ], is: 'barn', source: 'sheet sweep-9' },
 	// Ring 1 round St Andrew's, off the orbit of the footage (drone5) and the sheet andrew.
 	// North-east of the church: the house on the street, ochre under a hipped roof of newer red tiles
 	// (the orthophoto's colour of its lit slope, 186, 141, 121, at the survey's gain); the row behind

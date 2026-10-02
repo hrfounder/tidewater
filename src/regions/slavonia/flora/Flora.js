@@ -23,6 +23,9 @@ const REED_FADE = [ REED_REACH - 20, REED_REACH ], TREE_FADE = [ TREE_REACH - 20
 const MASK_TEXEL = 2;
 // grass starts this far above the water: below it the bank is mud and reeds (m)
 const GRASS_FLOOR = 0.15;
+// Within this of a building or a street the grass is kept short (m): a village mows its verges, its
+// yards and the ground round its church; the meadow begins where the houses end.
+const MOWN = 30;
 
 export class Flora {
 
@@ -131,13 +134,28 @@ export class Flora {
 
 }
 
-// Where the grass grows, as the rgba8 mask the grass field takes (r = tall meadow, g = short grass,
-// b = flowers): on ground nobody has taken, less where it is worked field or wood floor; tall on the
-// open ground and the banks, short in the yards and wherever the land cover says built-up.
+// Where the meadow grows, as the rgba8 mask the grass field takes: on ground nobody has taken, less
+// where it is worked field or wood floor, and not where the grass is kept short (the yards, the
+// built-up land cover, the village's own ground).
 function meadowMask( site, terrain ) {
 
 	const res = Math.round( terrain.size / MASK_TEXEL ), step = MASK_TEXEL / terrain.texel;
 	const data = new Uint8Array( res * res * 4 );
+	// how near the village is, on the mask's own grid: 1 at a building or a street, falling to 0 at
+	// MOWN from it (the distance grows a texel at a time, two sweeps of a chamfer transform)
+	const far = new Float32Array( res * res ).fill( MOWN );
+	for ( const b of site.buildings.list ) far[ Math.floor( ( b.z - terrain.origin ) / MASK_TEXEL ) * res + Math.floor( ( b.x - terrain.origin ) / MASK_TEXEL ) ] = 0;
+	for ( const r of site.roads.roads ) if ( r.street ) for ( const p of r.pts ) {
+
+		const i = Math.floor( ( p[ 0 ] - terrain.origin ) / MASK_TEXEL ), j = Math.floor( ( p[ 1 ] - terrain.origin ) / MASK_TEXEL );
+		if ( i >= 0 && j >= 0 && i < res && j < res ) far[ j * res + i ] = 0;
+
+	}
+
+	const relax = ( k, o, w ) => { if ( far[ o ] + w < far[ k ] ) far[ k ] = far[ o ] + w; };
+	const D = MASK_TEXEL * Math.SQRT2;
+	for ( let j = 1; j < res - 1; j ++ ) for ( let i = 1; i < res - 1; i ++ ) { const k = j * res + i; relax( k, k - 1, MASK_TEXEL ); relax( k, k - res, MASK_TEXEL ); relax( k, k - res - 1, D ); relax( k, k - res + 1, D ); }
+	for ( let j = res - 2; j > 0; j -- ) for ( let i = res - 2; i > 0; i -- ) { const k = j * res + i; relax( k, k + 1, MASK_TEXEL ); relax( k, k + res, MASK_TEXEL ); relax( k, k + res + 1, D ); relax( k, k + res - 1, D ); }
 	for ( let j = 0; j < res; j ++ ) for ( let i = 0; i < res; i ++ ) {
 
 		// the terrain texel at the middle of this mask sample
@@ -147,10 +165,12 @@ function meadowMask( site, terrain ) {
 		const crop = terrain.cropland[ k ] / 255, built = terrain.built[ k ] / 255, forest = terrain.forest[ k ] / 255;
 		const open = ( 1 - crop ) * ( 1 - forest * 0.75 );
 		if ( open < 0.1 ) continue;
-		const short = who === YARD ? 1 : built;
+		const short = Math.max( who === YARD ? 1 : built, 1 - far[ j * res + i ] / MOWN );
+		// the grass field's channels (vegetation/GrassField.js): r dune tufts, g tall meadow grass,
+		// b seed heads standing over it, a creeper. Mown ground carries none: it is the ground's own
+		// green.
 		const o = ( j * res + i ) * 4;
-		data[ o ] = Math.round( 255 * open * ( 1 - short ) );
-		data[ o + 1 ] = Math.round( 190 * open );
+		data[ o + 1 ] = Math.round( 255 * open * ( 1 - short ) );
 		data[ o + 2 ] = Math.round( 70 * open * ( 1 - forest ) * ( 1 - short ) );
 
 	}

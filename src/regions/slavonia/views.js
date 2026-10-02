@@ -27,6 +27,10 @@ export const PROGRESS_VIEWS = {
 	village: { pos: [ - 40, 6, - 230 ], ground: true, target: [ - 88, 4, - 318 ], fov: 55 },
 	// on the park bank, looking down at the water's edge
 	waterEdge: { pos: [ 95, 1.7, 3.5 ], ground: true, target: [ 80, - 0.5, - 17 ], fov: 60 },
+	// St Roch's from across Ulica Stjepana Radića: its front and its tower (the texturing target)
+	churchFront: { pos: [ 66, 1.7, - 213 ], ground: true, target: [ 44, 11, - 195 ], fov: 70 },
+	// a long house of that street from its own verge: walls, windows and roof close up
+	houseFront: { pos: [ 275.4, 1.7, - 203.9 ], ground: true, target: [ 273.5, 2.4, - 217.7 ], fov: 65 },
 	// standing on Most Bosut's approach, looking along the road onto the bridge
 	bridgeRoad: { pos: [ 8, 1.7, 65 ], ground: true, target: [ 0, 2.5, 0 ], fov: 60 },
 };

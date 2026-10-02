@@ -84,17 +84,24 @@ export class MeshBuilder {
 
 	// A part of a model (positions, normals, indices as flat arrays in its own frame) set down by a
 	// 3x4 placement: columns X, Y, Z and the origin, each [ x, y, z ] in the world.
+	//
+	// Its uv is laid on each face the way the built walls and roofs carry theirs, in the model's own
+	// metres: u along the face on the level, v up it (up a wall: the height in the model; up a
+	// roof: the distance up the slope). A level face takes the model's x and z.
 	stamp( part, X, Y, Z, O ) {
 
 		const first = this.count, P = part.positions, N = part.normals;
 		for ( let i = 0; i < P.length; i += 3 ) {
 
 			const x = P[ i ], y = P[ i + 1 ], z = P[ i + 2 ], a = N[ i ], b = N[ i + 1 ], c = N[ i + 2 ];
+			// the level direction along the face ( up x normal ), and the one up it ( normal x that )
+			const l = Math.hypot( a, c );
+			const tx = l > 1e-4 ? c / l : 1, tz = l > 1e-4 ? - a / l : 0;
+			const ux = b * tz, uy = c * tx - a * tz, uz = - b * tx;
 			this.vertex(
 				O[ 0 ] + X[ 0 ] * x + Y[ 0 ] * y + Z[ 0 ] * z, O[ 1 ] + X[ 1 ] * x + Y[ 1 ] * y + Z[ 1 ] * z, O[ 2 ] + X[ 2 ] * x + Y[ 2 ] * y + Z[ 2 ] * z,
 				X[ 0 ] * a + Y[ 0 ] * b + Z[ 0 ] * c, X[ 1 ] * a + Y[ 1 ] * b + Z[ 1 ] * c, X[ 2 ] * a + Y[ 2 ] * b + Z[ 2 ] * c,
-				// on a part: across it and up it, in its own metres
-				x, y );
+				x * tx + z * tz, x * ux + y * uy + z * uz );
 
 		}
 

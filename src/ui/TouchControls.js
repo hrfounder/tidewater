@@ -15,6 +15,10 @@ const TRAVEL = 46, DEAD = 0.3, RUN = 0.92;
 const LOOK = 1.6;
 // a screen lower than this (CSS px) while wider than tall is a phone on its side
 const LOW = 520;
+// After the screen changes (turned round, taken whole or given back, the browser's bars sliding) the
+// page is put right at once and again after these waits (ms): a phone's browser reports its new size
+// late, and some of them only after the turn's animation.
+const SETTLE = [ 0, 250, 800 ];
 
 // The buttons: label, and what holding or tapping one does to the Input.
 //   key    a key held while the button is (and hit once as it goes down)
@@ -39,7 +43,7 @@ const CSS = `
 .tw-touch-btn.is-down { background: rgba( 255, 255, 255, 0.5 ); color: #0c161e; text-shadow: none; }
 
 /* the page itself is pinned: nothing of it is ever scrolled out of sight */
-html.tw-touch-on, html.tw-touch-on body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+html.tw-touch-on body { position: fixed; inset: 0; overflow: hidden; }
 
 /* With the thumbs' controls on screen the two bottom corners are theirs: what the HUD keeps there on
    a desktop moves out of the way. The map goes up under the purse and the brand row, smaller; the settings rail goes
@@ -71,10 +75,11 @@ export class TouchControls {
 
 	}
 
-	// input: the game's Input; canvas: where a drag looks around
-	constructor( input, canvas ) {
+	// input: the game's Input; canvas: where a drag looks around; resize(): fits the view to the page
+	constructor( input, canvas, resize ) {
 
 		this.input = input;
+		this.resize = resize;
 		const style = document.createElement( 'style' );
 		style.textContent = CSS;
 		document.head.appendChild( style );
@@ -108,9 +113,18 @@ export class TouchControls {
 
 		};
 		window.addEventListener( 'pointerup', ( e ) => { if ( e.pointerType === 'touch' ) whole(); }, true );
-		const pin = () => { if ( window.scrollX || window.scrollY ) window.scrollTo( 0, 0 ); };
-		for ( const on of [ 'resize', 'orientationchange', 'scroll' ] ) window.addEventListener( on, pin );
-		if ( window.visualViewport ) for ( const on of [ 'resize', 'scroll' ] ) window.visualViewport.addEventListener( on, pin );
+		// the page back where it belongs, and the view fitted to it
+		const right = () => {
+
+			if ( window.scrollX || window.scrollY ) window.scrollTo( 0, 0 );
+			this.resize();
+
+		};
+		const settle = () => { for ( const wait of SETTLE ) setTimeout( right, wait ); };
+		for ( const on of [ 'resize', 'orientationchange', 'scroll' ] ) window.addEventListener( on, settle );
+		for ( const on of [ 'fullscreenchange', 'webkitfullscreenchange' ] ) document.addEventListener( on, settle );
+		if ( window.visualViewport ) for ( const on of [ 'resize', 'scroll' ] ) window.visualViewport.addEventListener( on, settle );
+		if ( screen.orientation ) screen.orientation.addEventListener( 'change', settle );
 
 	}
 

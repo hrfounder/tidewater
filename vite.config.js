@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { REGIONS, DEFAULT_REGION } from './src/regions/index.js';
@@ -54,7 +55,12 @@ function offline() {
 
 }
 
+// which build a page is: the commit it was built from and when (a page says so as it opens)
+const commit = ( () => { try { return execFileSync( 'git', [ 'rev-parse', '--short', 'HEAD' ], { encoding: 'utf8' } ).trim(); } catch { return 'unknown'; } } )();
+const BUILD = `${ commit } ${ new Date().toISOString().slice( 0, 16 ).replace( 'T', ' ' ) }`;
+
 export default defineConfig( {
+	define: { __BUILD__: JSON.stringify( BUILD ) },
 	// relative asset paths: the build runs from any sub-path (GitHub Pages serves it under /tidewater/)
 	base: './',
 	build: { target: 'esnext', chunkSizeWarningLimit: 4000 },

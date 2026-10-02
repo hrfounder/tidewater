@@ -42,7 +42,7 @@ app.init( ( p, text, until ) => ui.setLoading( p, text, until ) ).then( async ()
 	} else app.start();
 	if ( TouchControls.wanted() ) {
 
-		window.__touch = new TouchControls( app.input, app.engine.domElement );
+		window.__touch = new TouchControls( app.input, app.engine.domElement, () => app.engine.resize() );
 		if ( ! app.qs.has( 'scale' ) ) app.setRenderScale( PHONE_SCALE );
 
 	}

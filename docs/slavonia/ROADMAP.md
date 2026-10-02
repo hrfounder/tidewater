@@ -122,8 +122,10 @@ everything else:
   the patch's water lines for the flow, the channel, the weed and the snags. The game no longer
   scores a cast in the Bosut against the island's reef.
 - [x] The region names its own people (Stipo and Kata) and describes its own water in the guide.
-- [ ] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no
-  foam), but the water still reads as a lake surface: no current, no reflection of the banks.
+- [x] The river's wave scale is the region's (ripple-sized FFT cascades, 2.5 m depth, almost no
+  foam), and the water carries a current: `Heightfield.flow`, built from the water lines, which the
+  water surface advects its whole pattern along.
+- [ ] The banks are not reflected in the water.
 - [x] `TileTerrain` (regions/slavonia): a heightfield patch from the tiles, with heights relative to
   the patch's water level. It feeds the existing terrain pipeline unchanged, because the shared
   queries moved into `world/terrain/Heightfield.js`, which the island's `TerrainData` now extends.

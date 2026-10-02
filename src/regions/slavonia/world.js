@@ -5,6 +5,7 @@ import { buildSite, occupy, waterDatum } from './site/Site.js';
 import { LANDMARKS } from './Landmarks.js';
 import { loadModels } from './build/Models.js';
 import { buildVillage } from './build/Village.js';
+import { Flora } from './flora/Flora.js';
 import { FREE } from './site/Occupancy.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
 
@@ -104,7 +105,7 @@ function fetchFile( base = document.baseURI ) {
 // what stands on the ground: world is what loadWorld gave; colliders may be null (a render without a player)
 export function buildPlaces( world, { scene, colliders } ) {
 
-	return { village: buildVillage( world, { scene, colliders } ) };
+	return { village: buildVillage( world, { scene, colliders } ), flora: new Flora( world, { scene } ) };
 
 }
 

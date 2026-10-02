@@ -49,12 +49,11 @@ PANE = 0.012         # how far the glass sits behind the face of its frame
 
 def glazed( S, w, h, depth, mullion=True, transom=None ):
 	"""A window's frame and glass in its opening: the frame's face at `depth` behind the wall face."""
-	face = depth - 0.04
-	S.panel( - w / 2, w / 2, depth + PANE, 0, h, 'glass' )
-	for x0, x1 in ( ( - w / 2, - w / 2 + BAR ), ( w / 2 - BAR, w / 2 ) ): S.box( x0, x1, face, depth + PANE, 0, h, 'joinery', back=False )
-	for z0, z1 in ( ( 0, BAR ), ( h - BAR, h ) ): S.box( - w / 2 + BAR, w / 2 - BAR, face, depth + PANE, z0, z1, 'joinery', back=False )
-	if mullion: S.box( - BAR / 2, BAR / 2, face, depth + PANE, BAR, h - BAR, 'joinery', back=False )
-	if transom: S.box( - w / 2 + BAR, w / 2 - BAR, face - 0.01, depth + PANE, transom - BAR / 2, transom + BAR / 2, 'joinery', back=False )
+	face, back = depth - 0.04, depth + PANE
+	S.panel( - w / 2, w / 2, back, 0, h, 'glass' )
+	S.frame( - w / 2, w / 2, 0, h, BAR, face, back, 'joinery' )
+	if mullion: S.bar( - BAR / 2, BAR / 2, BAR, h - BAR, face, back, 'joinery' )
+	if transom: S.bar( - w / 2 + BAR, w / 2 - BAR, transom - BAR / 2, transom + BAR / 2, face - 0.01, back, 'joinery' )
 
 
 def window_street():
@@ -68,7 +67,7 @@ def window_street():
 	# the hood: a cornice over the head of the surround
 	S.box( - w / 2 - band - 0.07, w / 2 + band + 0.07, - 0.11, 0, h + band, h + band + 0.09, 'surround', back=False )
 	# the sill, running back into the opening as its floor, and the apron under it
-	S.box( - w / 2 - band - 0.05, w / 2 + band + 0.05, - 0.09, depth, - 0.07, 0, 'sill' )
+	S.ledge( - w / 2 - band - 0.05, w / 2 + band + 0.05, - 0.09, depth, - 0.07, 0, 'sill' )
 	S.box( - w / 2 - band, w / 2 + band, - 0.03, 0, - 0.38, - 0.07, 'surround', back=False )
 	return S, dict( w=w, h=h, depth=depth )
 
@@ -78,7 +77,7 @@ def window_plain():
 	w, h, depth = 1.20, 1.30, 0.12
 	S = Shells()
 	glazed( S, w, h, depth )
-	S.box( - w / 2 - 0.04, w / 2 + 0.04, - 0.05, depth, - 0.05, 0, 'sill' )
+	S.ledge( - w / 2 - 0.04, w / 2 + 0.04, - 0.05, depth, - 0.05, 0, 'sill' )
 	return S, dict( w=w, h=h, depth=depth )
 
 
@@ -87,7 +86,7 @@ def window_small():
 	w, h, depth = 0.60, 0.60, 0.10
 	S = Shells()
 	glazed( S, w, h, depth, mullion=False )
-	S.box( - w / 2 - 0.03, w / 2 + 0.03, - 0.04, depth, - 0.04, 0, 'sill' )
+	S.ledge( - w / 2 - 0.03, w / 2 + 0.03, - 0.04, depth, - 0.04, 0, 'sill' )
 	return S, dict( w=w, h=h, depth=depth )
 
 
@@ -106,7 +105,7 @@ def door_house():
 	band = 0.11
 	for x0, x1 in ( ( - w / 2 - band, - w / 2 ), ( w / 2, w / 2 + band ) ): S.box( x0, x1, - 0.03, 0, 0, h, 'surround', back=False )
 	S.box( - w / 2 - band, w / 2 + band, - 0.03, 0, h, h + band, 'surround', back=False )
-	S.box( - w / 2 - 0.25, w / 2 + 0.25, - 0.40, depth + 0.04, - 0.16, 0, 'sill' )
+	S.ledge( - w / 2 - 0.25, w / 2 + 0.25, - 0.40, depth + 0.04, - 0.16, 0, 'sill' )
 	return S, dict( w=w, h=h, depth=depth )
 
 

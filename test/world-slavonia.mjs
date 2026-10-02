@@ -32,6 +32,8 @@ H.before.push( ( cam ) => terrain.update( cam ) );
 const water = new H.E.Mesh( new H.E.PlaneGeometry( 16384, 16384 ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
 H.scene.add( water );
 const places = buildPlaces( world, { scene: H.scene, colliders: null } );
+H.before.push( ( cam ) => places.flora.update( 1 / 60, cam ) );
+console.log( 'flora', JSON.stringify( places.flora.counts ) );
 console.log( 'village', JSON.stringify( places.village.built ), places.village.triangles, 'triangles in', places.village.meshes.length, 'meshes' );
 
 // --look=name:x,y,z:tx,ty,tz[:fov] (any number of them): one-off views, y above the ground there

@@ -14,6 +14,7 @@
 //   invasive  true for the introduced species (sold cheaply; anglers are asked to keep them)
 //
 // Fight, stamina, time and rarity as in the Caribbean table.
+import { FLOW } from './world.js';
 export const FISH = {
 	// small fish: the bread and butter of float fishing, and live bait for the predators
 	bleak: { name: 'Bleak', hr: 'Uklija', sci: 'Alburnus alburnus', lw: [ 0.0069, 3.12 ], model: 'bleak', habitat: { slack: 1, still: 0.7, current: 0.5, shallows: 0.4 }, kg: [ 0.01, 0.05 ], price: 2, fight: 0.05, stamina: 1, time: 'day', rarity: 0.35 },
@@ -98,8 +99,7 @@ function smooth( e0, e1, x ) {
 // Read the spot the bobber is in, off the patch itself (the game asks the region for this).
 //
 //   river   1 in a watercourse, 0 in a pond, an oxbow or a flooded pit
-//   flow    m/s at the surface: the Bosut runs about a third of a metre a second in summer, a
-//           regulated canal less, and the flow falls away toward the bank
+//   flow    m/s at the surface (world.js FLOW), falling away toward the bank
 //   weeds   the reed bed and the soft weed over the shallow margin
 //   cover   fallen willow, the piles of a fishing platform, the shade under the bridge
 //
@@ -134,7 +134,7 @@ export function sampleAt( { x, z, depth, world = null } ) {
 			// how far into the channel the float is: 1 mid-stream, 0 at the bank
 			const across = 1 - Math.min( 1, best / ( bestLine.width / 2 ) );
 			river = Math.min( 1, across * 1.6 );
-			const full = bestLine.class === 'canal' ? 0.12 : 0.34;
+			const full = bestLine.class === 'canal' ? FLOW.canal : FLOW.river;
 			flow = full * ( 0.35 + 0.65 * across );
 			void bestT;
 			// the margin under the bank is where the snags are: fallen branches and platform piles

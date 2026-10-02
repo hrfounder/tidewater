@@ -1,4 +1,5 @@
 import { Heightfield } from '../../world/terrain/Heightfield.js';
+import { FLOW } from './world.js';
 
 // Real-world terrain from the world tiles (tools/geodata/tiles.py): a square patch of the map
 // around a centre point, resampled onto the engine's heightfield (1 m texels by default). The
@@ -427,7 +428,7 @@ export class TileTerrain extends Heightfield {
 		for ( const line of lines ) {
 
 			if ( line.dry ) continue;
-			const full = line.class === 'canal' ? 0.12 : 0.34;
+			const full = line.class === 'canal' ? FLOW.canal : FLOW.river;
 			const half = line.width / 2;
 			const P = line.pts;
 			for ( let k = 0; k + 1 < P.length; k ++ ) {

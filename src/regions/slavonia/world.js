@@ -29,6 +29,11 @@ export const LAYOUT = {
 	chandlery: { x: 76, z: 12, yaw: Math.PI + 0.2 },
 };
 
+// How fast the water moves, mid-stream, in metres a second. The Bosut is a slow lowland river: at
+// summer level it drifts rather than runs, and a regulated drainage canal barely moves at all. Both
+// the surface current (TileTerrain.buildFlow) and the fishing (fish.js sampleAt) read these.
+export const FLOW = { river: 0.12, canal: 0.05 };
+
 // The Bosut on a still day: a 30 m wide channel about 2.5 m deep, light air, and a fetch of only the
 // river's own width, so the surface carries fine wind ripples and nothing else. The ocean's cascades
 // (733 m down to 7 m) are swell-sized here, so the region sets its own, and the shallow depth puts

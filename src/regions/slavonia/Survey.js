@@ -90,6 +90,12 @@ export const ADDED = [
 	// on the north bank: a small house under a dark roof east of the bridge, a shed west of it
 	{ at: [ 70.2, - 93.5 ], size: [ 7.0, 6.5 ], turn: - 22, roof: [ 84, 80, 76 ], source: 'sheet sweep-4b' },
 	{ at: [ - 127.5, - 27.5 ], size: [ 7.0, 4.0 ], turn: 120, roof: [ 126, 111, 103 ], source: 'sheet sweep-5' },
+	// South of the marina's bank, on the street behind it: the building with the playground (a
+	// kindergarten by the look of its yard). The map has its south-east end only; north-west of that
+	// it goes on under dark red tiles with solar panels, and then under a dark roof. (A white canopy
+	// stands beyond that end: it has no walls and is not built.)
+	{ at: [ - 77.8, 121.3 ], size: [ 13.8, 11.5 ], turn: 42, roof: [ 122, 89, 88 ], source: 'sheet kg' },
+	{ at: [ - 86.0, 112.2 ], size: [ 10.5, 11.0 ], turn: 42, roof: [ 55, 54, 63 ], source: 'sheet kg' },
 ];
 
 // The buildings. `at` is a point on the building (anywhere inside its footprint); the rest is what was
@@ -147,6 +153,8 @@ export const SEEN = [
 	{ at: [ - 48.5, 111.5 ], is: 'shed', pitch: 3, source: 'sheet sweep-3' },
 	{ at: [ 70.2, - 93.5 ], is: 'house', storeys: 1, source: 'sheet sweep-4b' },
 	{ at: [ - 127.5, - 27.5 ], is: 'shed', source: 'sheet sweep-5' },
+	{ at: [ - 77.8, 121.3 ], is: 'public', storeys: 1, form: 'gable', source: 'sheet kg' },
+	{ at: [ - 86.0, 112.2 ], is: 'public', storeys: 1, source: 'sheet kg' },
 	// Ring 1 round St Andrew's, off the orbit of the footage (drone5) and the sheet andrew.
 	// North-east of the church: the house on the street, ochre under a hipped roof of newer red tiles
 	// (the orthophoto's colour of its lit slope, 186, 141, 121, at the survey's gain); the row behind
@@ -210,12 +218,17 @@ export const OPEN = [
 	{ ring: [ [ 22, 6 ], [ 100, - 2 ], [ 160, 2 ], [ 232, 44 ], [ 268, 150 ], [ 232, 212 ], [ 128, 148 ], [ 62, 84 ], [ 26, 62 ] ], source: 'sheets park, school, sport' },
 	// the bank west of the bridge, behind the marina: lawn under large trees, between the water and the path
 	{ ring: [ [ - 8, 36 ], [ - 150, 46 ], [ - 150, 60 ], [ - 100, 62 ], [ - 60, 61 ], [ - 6, 64 ] ], source: 'sheet marina; drone2 at 12-18 s' },
+	// the lawn between that bank and the building with the playground
+	{ ring: [ [ - 105, 62 ], [ - 60, 61 ], [ - 55, 80 ], [ - 62, 100 ], [ - 70, 112 ], [ - 92, 112 ], [ - 105, 95 ] ], source: 'sheet sweep-6' },
 ];
 
 // Ground that is made: each a flat surface with straight sides (a ring that bulges nowhere inward).
 //   of   'concrete' (a paved terrace), 'gravel' (a playground's ground), 'track' (red rubber),
 //        'court' (blue acrylic), 'sand', 'brick' (a low brick edge)
 export const AREAS = [
+	// the playground behind the marina's bank: red rubber in a shape of lobes, here the ring round
+	// them (its blue and green patches and its apparatus are not built)
+	{ ring: [ [ - 81.3, 90.2 ], [ - 72.9, 88.4 ], [ - 65.8, 94.0 ], [ - 66.5, 102.2 ], [ - 71.9, 106.7 ], [ - 78.9, 108.5 ], [ - 84.4, 105.6 ], [ - 87.2, 98.3 ], [ - 85.4, 93.3 ] ], of: 'track', source: 'sheet kg' },
 	// the station's loading yard: concrete from the siding's bed to the yard road, from the shed
 	// south of the station house down to where the lorries' trailers stand
 	{ ring: [ [ - 869.3, - 249 ], [ - 857.0, - 249 ], [ - 853.2, - 165 ], [ - 865.3, - 165 ] ], of: 'concrete', source: 'sheet station' },
@@ -244,6 +257,8 @@ export const AREAS = [
 // Trees that were seen where they stand: [ x, z, height ]. The place is the middle of the crown on the
 // orthophoto; the height is judged from the crown's width and its shadow.
 export const TREES = [
+	// on the lawn east of the playground ( sheet sweep-6 )
+	[ - 62, 84, 11 ],
 	// the park on the south bank ( sheets park and school )
 	[ 87.6, 40.2, 15 ], [ 63, 54.6, 15 ], [ 102.4, 9.2, 11 ], [ 116.8, 25, 14 ], [ 125.2, 21.6, 14 ], [ 133.7, 24.1, 13 ],
 	[ 140.4, 18.2, 12 ], [ 144.7, 25, 13 ], [ 159.9, 24.1, 15 ], [ 161.5, 29.6, 12 ], [ 186.9, 20.4, 14 ],

@@ -44,6 +44,9 @@ export const MOVED = [
 	// the house behind the gravel lot south of the municipality: the survey set it on the shadow north
 	// of it; its two slopes lie 4.6 m further south
 	{ at: [ 31.9, - 62.5 ], by: [ 0, 4.6 ], source: 'sheet 1542' },
+	// at the block's north-east edge: a long building end-on to a lane, which the survey set across the
+	// lane. Its pale slab under the trees lies 5 m further from it.
+	{ at: [ 754, - 1083 ], by: [ 4.0, 3.1 ], source: 'sheet 754' },
 ];
 
 // Buildings the map does not have, traced off the orthophoto, each as a rectangle: `at` its middle,

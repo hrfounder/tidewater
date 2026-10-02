@@ -351,8 +351,7 @@ Still to do, in this order:
    Street-level pictures of the other streets are what every further ring needs.
 8. **M7** colour by numbers. (What floats on the water is in: `build/Drift.js`.)
 
-Known and left: one house at 754,-1083, near the block's edge, stands a metre onto a lane that was not surveyed
-(`site.mjs` reports it).
+Nothing is known and left red: the house at 754,-1083 that stood on a lane is moved to its slab (`MOVED`).
 
 How things are run:
 

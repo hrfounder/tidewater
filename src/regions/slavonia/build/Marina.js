@@ -4,8 +4,10 @@ import { SURFACE } from './VillageMaterial.js';
 // What floats and what stands over the water, as surveyed (Survey.js MARINAS and DECKS):
 //
 //   a marina   a long pontoon lying off the bank, finger piers standing out from it on the river's
-//              side for the boats to lie between, and a gangway down to it from the bank
-//   a deck     a platform on piles at the water's edge, railed on the sides that are not the bank's
+//              side for the boats to lie between, a gangway down to it from the bank, and the
+//              boats that lie at it under their covers
+//   a deck     a platform on piles at the water's edge, railed on the sides that are not the bank's,
+//              and the boat that is moored at it
 //
 // The forms are from the drone footage of 2025 (drone2 at 0-18 s): a pontoon of pale decking some
 // 2.4 m wide on concrete floats, round-ended fingers a boat's length long every six or seven
@@ -27,11 +29,24 @@ const DECKING = { color: lin( [ 186, 172, 150 ] ), rough: 0.85, surface: SURFACE
 const FLOATS = { color: lin( [ 150, 150, 146 ] ), rough: 0.95, surface: SURFACE.concrete, seed: 0.3 };
 const STEEL = { color: lin( [ 168, 172, 176 ] ), rough: 0.45, metal: 0.8, surface: SURFACE.plain, seed: 0.2 };
 const RAIL_PAINT = { railing: { color: lin( [ 232, 232, 228 ] ), rough: 0.5, metal: 0.2, surface: SURFACE.plain, seed: 0.2 } };
+// The covers over the moored boats, one after the other along the pontoon: blue, and the dark covers
+// of the newer boats (drone2 at 0-9 s; sRGB). A boat lies this far off what it is moored to (m).
+const COVERS = [ [ 60, 110, 170 ], [ 44, 50, 66 ], [ 60, 110, 170 ], [ 96, 100, 104 ] ];
+const FENDER = 0.25;
 
 // B: ( x, z ) -> the MeshBuilder of that place; returns what was built
 export function buildMarina( B, { site, terrain, models }, colliders ) {
 
-	const built = { pontoons: 0, fingers: 0, gangways: 0, decks: 0 };
+	const built = { pontoons: 0, fingers: 0, gangways: 0, decks: 0, boats: 0 };
+	// a boat of the kit on the water: its middle, the way its bow points, and its cover's colour (or null)
+	const moor = ( name, x, z, bow, cover ) => {
+
+		const boat = models.kit.get( name ), Z = [ bow[ 0 ], 0, bow[ 1 ] ], X = [ Z[ 2 ], 0, - Z[ 0 ] ], M = B( x, z );
+		for ( const part of boat.parts ) M.paint( { color: part.material === 'tarp' && cover ? lin( cover ) : part.color, rough: part.rough, metal: part.metal, surface: SURFACE.plain, seed: 0.5 } ).stamp( part, X, [ 0, 1, 0 ], Z, [ x, 0, z ] );
+		if ( colliders ) colliders.addBox( new Vector3( x, boat.h / 2 - 0.2, z ), new Vector3( boat.w / 2, boat.h / 2 + 0.2, boat.length / 2 ), Math.atan2( bow[ 0 ], bow[ 1 ] ), { tag: 'boat' } );
+		built.boats ++;
+
+	};
 	// a block along a line from a toward the unit direction t: between l0 and l1 along it, o0 and o1
 	// to its right, y0 to y1; its top, its four sides, and its underside
 	const block = ( a, t, l0, l1, o0, o1, y0, y1, paint, walk ) => {
@@ -68,13 +83,17 @@ export function buildMarina( B, { site, terrain, models }, colliders ) {
 		block( m.from, t, 0.1, L - 0.1, - h + 0.1, h - 0.1, - FLOAT.draught, under, FLOATS, false );
 		built.pontoons ++;
 		// the fingers, from the first full space along it
-		const F = m.fingers, out = [ n[ 0 ] * river, n[ 1 ] * river ];
-		for ( let s = F.every / 2; s < L - F.width; s += F.every ) {
+		const F = m.fingers, out = [ n[ 0 ] * river, n[ 1 ] * river ], skiff = models.kit.get( 'skiff' );
+		for ( let s = F.every / 2, k = 0; s < L - F.width; s += F.every, k ++ ) {
 
 			const a = [ m.from[ 0 ] + t[ 0 ] * s + out[ 0 ] * h, m.from[ 1 ] + t[ 1 ] * s + out[ 1 ] * h ];
 			block( a, out, 0, F.length, - F.width / 2, F.width / 2, under, top, DECKING, true );
 			block( a, out, 0, F.length - 0.1, - F.width / 2 + 0.08, F.width / 2 - 0.08, - FLOAT.draught, under, FLOATS, false );
 			built.fingers ++;
+			// a boat at this finger, if the survey has one here: alongside it, its bow to the pontoon
+			if ( ! m.boats.includes( k ) ) continue;
+			const off = F.width / 2 + FENDER + skiff.w / 2, far = FENDER + skiff.length / 2;
+			moor( 'skiff', a[ 0 ] + out[ 0 ] * far + t[ 0 ] * off, a[ 1 ] + out[ 1 ] * far + t[ 1 ] * off, [ - out[ 0 ], - out[ 1 ] ], COVERS[ k % COVERS.length ] );
 
 		}
 
@@ -146,6 +165,14 @@ export function buildMarina( B, { site, terrain, models }, colliders ) {
 				if ( foot >= top - DECK.slab ) continue;
 				M.paint( FLOATS );
 				for ( const [ ax, az, bx, bz ] of [ [ - h, - h, h, - h ], [ h, - h, h, h ], [ h, h, - h, h ], [ - h, h, - h, - h ] ] ) M.polygon( [ [ x + ax, foot, z + az ], [ x + bx, foot, z + bz ], [ x + bx, top - DECK.slab, z + bz ], [ x + ax, top - DECK.slab, z + az ] ], [ [ 0, 0 ], [ DECK.pile, 0 ], [ DECK.pile, top - DECK.slab - foot ], [ 0, top - DECK.slab - foot ] ] );
+
+			}
+
+			// the boat that is moored at the deck lies along the side across from the bank's
+			if ( d.moored && i === ( d.open + n / 2 ) % n ) {
+
+				const boat = models.kit.get( d.moored ), away = ( - t[ 1 ] ) * ( ( p[ 0 ] + q[ 0 ] ) / 2 - middle[ 0 ] ) + t[ 0 ] * ( ( p[ 1 ] + q[ 1 ] ) / 2 - middle[ 1 ] ) > 0 ? [ - t[ 1 ], t[ 0 ] ] : [ t[ 1 ], - t[ 0 ] ];
+				moor( d.moored, ( p[ 0 ] + q[ 0 ] ) / 2 + away[ 0 ] * ( FENDER + boat.w / 2 ), ( p[ 1 ] + q[ 1 ] ) / 2 + away[ 1 ] * ( FENDER + boat.w / 2 ), t, null );
 
 			}
 

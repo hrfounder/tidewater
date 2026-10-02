@@ -23,7 +23,7 @@ windows with a transom, set almost flush with the wall, in a moulded plaster sur
 above and an apron below the sill. Newer houses have plain windows set deeper in a bare opening.
 Sizes are the usual ones for such joinery, not measured.
 """
-import bpy, os
+import bpy, os, math
 
 ROOT = globals().get( 'REPO' ) or os.path.dirname( os.path.dirname( os.path.dirname( os.path.abspath( __file__ ) ) ) )
 OUT = os.path.join( ROOT, 'public', 'models', 'slavonia', 'kit.glb' )
@@ -38,10 +38,14 @@ MATERIALS = {
 	'sill': ( ( 168, 164, 156 ), 0.90, 0.0 ),       # concrete sills and steps
 	'plank': ( ( 112, 92, 70 ), 0.85, 0.0 ),        # bare weathered boards
 	'iron': ( ( 40, 40, 42 ), 0.60, 0.8 ),
-	'railing': ( ( 52, 96, 150 ), 0.50, 0.3 ),      # the blue paint of the bridge's railings
+	'railing': ( ( 52, 96, 150 ), 0.50, 0.3 ),      # a railing (the game paints it: galvanised on the bridge, white on the landing)
 	'zinc': ( ( 150, 154, 156 ), 0.45, 0.9 ),       # galvanised steel: lamp posts
 	'lens': ( ( 230, 226, 210 ), 0.20, 0.0 ),       # a lamp's diffuser
 	'timber': ( ( 128, 108, 84 ), 0.90, 0.0 ),      # sawn boards and posts left to weather
+	'hull': ( ( 232, 232, 226 ), 0.45, 0.0 ),       # a boat's white glass fibre
+	'tarp': ( ( 60, 110, 170 ), 0.80, 0.0 ),        # the cover over a moored boat (the game paints each its own)
+	'motor': ( ( 40, 42, 46 ), 0.50, 0.3 ),         # an outboard
+	'float': ( ( 40, 84, 150 ), 0.60, 0.0 ),        # the excursion boat's blue floats and skirt
 }
 
 BAR = 0.055          # a frame member's face width
@@ -185,6 +189,65 @@ def platform():
 	return S, dict( w=w, h=top, depth=0, out=out, back=back )
 
 
+def skiff():
+	"""A small motor boat lying at a marina's finger under its cover (drone2 at 0-9 s: open boats of
+	four to five metres, each under a tarpaulin, an outboard tilted up at the stern). The origin is on
+	the waterline amidships; the bow points toward -y."""
+	length, beam, free, draught = 4.6, 1.7, 0.5, 0.18
+	S = Shells()
+	# stations from the stern to the bow: where along the boat, the half beam at the gunwale, the
+	# height of the gunwale, and how deep the bottom is there
+	n = 9
+	stations = []
+	for k in range( n + 1 ):
+		t = k / n
+		full = 1.0 if t < 0.5 else max( 0.06, math.sqrt( max( 0.0, 1 - ( ( t - 0.5 ) / 0.5 ) ** 2 ) ) )
+		stations.append( ( length / 2 - length * t, beam / 2 * full, free + 0.14 * t * t, - draught * ( 1 - t ** 3 ) ) )
+	v = []
+	for y, hb, top, keel in stations:
+		# port gunwale, port chine, keel, starboard chine, starboard gunwale, and the cover's ridge over the middle
+		v += [ ( - hb, y, top ), ( - hb * 0.72, y, keel * 0.6 ), ( 0, y, keel ), ( hb * 0.72, y, keel * 0.6 ), ( hb, y, top ), ( 0, y, top + 0.22 * ( hb / ( beam / 2 ) ) ) ]
+	hull, cover = [], []
+	for k in range( n ):
+		a, b = k * 6, ( k + 1 ) * 6
+		hull += [ ( a, b, b + 1, a + 1 ), ( a + 1, b + 1, b + 2, a + 2 ), ( a + 2, b + 2, b + 3, a + 3 ), ( a + 3, b + 3, b + 4, a + 4 ) ]
+		cover += [ ( a + 4, b + 4, b + 5, a + 5 ), ( a + 5, b + 5, b, a ) ]
+	S.shell( v, hull + [ ( 0, 1, 2, 3, 4 ) ], 'hull' )
+	S.shell( v, cover + [ ( 4, 5, 0 ) ], 'tarp' )
+	# the outboard on the transom, tilted up
+	y = length / 2
+	S.box( - 0.16, 0.16, y - 0.05, y + 0.36, free - 0.05, free + 0.42, 'motor' )
+	S.box( - 0.05, 0.05, y + 0.3, y + 0.75, free - 0.1, free + 0.05, 'motor' )
+	return S, dict( w=beam, h=free + 0.42, depth=0, length=length )
+
+
+def excursion():
+	"""The excursion boat at the landing (drone1 at 48-51 s; the orthophoto shows it nine metres by
+	four): a deck on two blue floats under a white canopy on posts, a rail round it. The origin is on
+	the waterline amidships; the bow points toward -y."""
+	length, beam, deck, roof = 9.0, 3.4, 0.6, 2.75
+	S = Shells()
+	for sx in ( - 1, 1 ):
+		x = sx * ( beam / 2 - 0.5 )
+		S.box( x - 0.45, x + 0.45, - length / 2 + 0.5, length / 2, - 0.3, deck - 0.1, 'float' )
+		# the float's bow, drawn in to a point
+		S.shell( [ ( x - 0.45, - length / 2 + 0.5, - 0.3 ), ( x + 0.45, - length / 2 + 0.5, - 0.3 ), ( x + 0.45, - length / 2 + 0.5, deck - 0.1 ), ( x - 0.45, - length / 2 + 0.5, deck - 0.1 ), ( x, - length / 2, deck - 0.1 ), ( x, - length / 2, 0.05 ) ],
+			[ ( 0, 5, 4, 3 ), ( 1, 2, 4, 5 ), ( 3, 4, 2 ), ( 0, 1, 5 ) ], 'float' )
+	S.box( - beam / 2, beam / 2, - length / 2 + 0.6, length / 2, deck - 0.1, deck, 'timber' )
+	S.box( - beam / 2, beam / 2, - length / 2 + 0.6, length / 2, deck, deck + 0.28, 'float' )
+	S.box( - beam / 2 + 0.06, beam / 2 - 0.06, - length / 2 + 0.66, length / 2 - 0.06, deck + 0.02, deck + 0.3, 'timber' )
+	# the posts and the rail between them, and the canopy they carry
+	ys = [ - length / 2 + 0.9 + ( length - 1.3 ) * k / 3 for k in range( 4 ) ]
+	for sx in ( - 1, 1 ):
+		x = sx * ( beam / 2 - 0.08 )
+		for y in ys: S.box( x - 0.03, x + 0.03, y - 0.03, y + 0.03, deck + 0.28, roof, 'joinery' )
+		S.box( x - 0.02, x + 0.02, ys[ 0 ], ys[ - 1 ], deck + 1.0, deck + 1.05, 'joinery' )
+	S.box( - beam / 2 - 0.15, beam / 2 + 0.15, ys[ 0 ] - 0.5, ys[ - 1 ] + 0.3, roof, roof + 0.1, 'joinery' )
+	# the helm: a console forward on the right
+	S.box( beam / 2 - 1.1, beam / 2 - 0.4, ys[ 0 ] + 0.1, ys[ 0 ] + 0.7, deck + 0.28, deck + 1.25, 'joinery' )
+	return S, dict( w=beam, h=roof + 0.1, depth=0, length=length )
+
+
 def gate_yard():
 	"""The gate of a yard on the street: two boarded leaves between two rendered pillars. It stands
 	on its origin, runs along x about it, and faces the street toward -y."""
@@ -198,7 +261,7 @@ def gate_yard():
 	return S, dict( w=w, h=h, depth=0 )
 
 
-PIECES = dict( railing=railing, lamp=lamp, platform=platform, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
+PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

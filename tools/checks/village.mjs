@@ -52,7 +52,11 @@ for ( const br of site.roads.bridges ) {
 	for ( const m of site.marinas ) for ( let k = 0; k <= 20; k ++ ) shallow = Math.min( shallow, - T.heightAt( m.from[ 0 ] + ( m.to[ 0 ] - m.from[ 0 ] ) * k / 20, m.from[ 1 ] + ( m.to[ 1 ] - m.from[ 1 ] ) * k / 20 ) );
 	const dry = site.decks.filter( ( d ) => ! d.ring.some( ( [ x, z ] ) => T.heightAt( x, z ) < 0 ) );
 	const walk = boxes.filter( ( b ) => b.opts.tag === 'marina' && b.opts.walkable ).length;
-	check( shallow > 0.4 && ! dry.length && village.marina.gangways === site.marinas.length, 'the marina afloat, its gangway landed, the deck over the water', `${ village.marina.pontoons } pontoon with ${ village.marina.fingers } fingers in at least ${ shallow.toFixed( 2 ) } m of water, ${ village.marina.gangways } gangway, ${ village.marina.decks } deck (${ dry.length } with no corner over water); ${ walk } boxes to walk on` );
+	check( shallow > 0.4 && ! dry.length && village.marina.gangways === site.marinas.length, 'the marina afloat, its gangway landed, the deck over the water', `${ village.marina.pontoons } pontoon with ${ village.marina.fingers } fingers in at least ${ shallow.toFixed( 2 ) } m of water, ${ village.marina.gangways } gangway, ${ village.marina.decks } deck (${ dry.length } with no corner over water), ${ village.marina.boats } boats moored; ${ walk } boxes to walk on` );
+	// every moored boat lies in water that floats it, clear of the pontoon, the fingers and the deck
+	const hulls = boxes.filter( ( b ) => b.opts.tag === 'boat' );
+	const aground = hulls.filter( ( b ) => T.heightAt( b.center.x, b.center.z ) > - 0.3 );
+	check( hulls.length === village.marina.boats && ! aground.length, 'moored boats afloat', `${ hulls.length } hulls, ${ aground.length } in less than 0.3 m of water` );
 
 }
 

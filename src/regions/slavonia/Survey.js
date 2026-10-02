@@ -109,13 +109,15 @@ export const TREES = [
 // lie along it is judged from the bridge and the bank in those frames, not measured.
 //   a marina   from, to: the pontoon's two ends; width; fingers: one every so many metres, their
 //              length and width; river: the way the open water lies ( x, z ); gangway: how far
-//              along the pontoon it comes down from the bank
+//              along the pontoon it comes down from the bank; boats: the fingers ( counted from
+//              `from` ) that have a boat lying at them
 export const MARINAS = [
-	{ from: [ - 26, 29 ], to: [ - 80, 35 ], width: 2.4, fingers: { every: 6.5, length: 5.5, width: 0.9 }, river: [ 0, - 1 ], gangway: 5, source: 'drone2 at 0-12 s and 30 s' },
+	{ from: [ - 26, 29 ], to: [ - 80, 35 ], width: 2.4, fingers: { every: 6.5, length: 5.5, width: 0.9 }, river: [ 0, - 1 ], gangway: 5, boats: [ 0, 1, 3, 4, 6 ], source: 'drone2 at 0-12 s and 30 s' },
 ];
 //   a deck     ring: a rectangle on the axes; level: its height over the water; open: the side of
-//              the ring ( 0 is from its first corner to its second ) that is the bank's, without a railing
+//              the ring ( 0 is from its first corner to its second ) that is the bank's, without a
+//              railing; moored: the boat of the kit that lies along the side across from it
 export const DECKS = [
 	// the landing by the bridge, where the excursion boat ties up
-	{ ring: [ [ - 20, 25 ], [ - 8, 25 ], [ - 8, 35.5 ], [ - 20, 35.5 ] ], level: 1.5, open: 2, source: 'drone2 at 15-18 s; sheet marina (the landing of 2022 at the same place)' },
+	{ ring: [ [ - 20, 25 ], [ - 8, 25 ], [ - 8, 35.5 ], [ - 20, 35.5 ] ], level: 1.5, open: 2, moored: 'excursion', source: 'drone2 at 15-18 s; sheet marina (the landing of 2022 at the same place)' },
 ];

@@ -59,6 +59,8 @@ How a road is set on its asphalt (the paved classes only: PAVED):
     bays beside the road) the middle is where a band a CARRIAGEWAY wide holds most asphalt, less
     ROAD_PULL for every metre from the mapped line. A station that finds less than HALF asphalt
     says nothing. What the stations say is then the median within SMOOTH metres along the road.
+  - A road that ends up through a building was set on a roof (grey sheet reads as asphalt): it
+    counts as not surveyed.
   - Roads meet at nodes. A node goes where its roads' ends say, as well as they agree (each end
     says how far the node lies to the side of that road, and nothing about along it), held a
     little to its mapped place (DAMP) so that roads in line cannot send it along themselves; every
@@ -391,6 +393,19 @@ def main():
         roofs.append( None if lit[ 1 ] > lit[ 0 ] and lit[ 1 ] > lit[ 2 ] else lit )
         if i % 1000 == 999: print( f'  {i + 1} roofs read ({time.time() - t:.0f} s)', flush=True )
 
+    # ---- a road that was set through a building was set on its roof: grey sheet reads as asphalt.
+    # It is not surveyed after all, and goes with the buildings beside it like any unsurveyed way.
+    from shapely.strtree import STRtree
+    from shapely.geometry import Point
+    rings = [ Polygon( [ ( e + found[ i, 0 ], n + found[ i, 1 ] ) for e, n in b[ 'ring' ] ] ) for i, b in enumerate( B ) ]
+    tree, on_roof = STRtree( rings ), 0
+    for L in lines:
+        if not L[ 'seen' ]: continue
+        P = L[ 'Q' ] + L[ 'N' ] * L[ 'off' ][ :, None ]
+        if any( rings[ k ].contains( Point( e, n ) ) for e, n in P[ 1:- 1 ] for k in tree.query( Point( e, n ) ) ):
+            L[ 'seen' ], L[ 'width' ], on_roof = False, None, on_roof + 1
+            L[ 'off' ] = np.zeros( len( P ) )
+
     # ---- every road to its nodes, the unsurveyed ones with the buildings beside them
     nodes, roads, by = finish_roads( places, lines, went )
     widths = sorted( r[ 'width' ] for r in roads if r[ 'width' ] )
@@ -416,6 +431,7 @@ def main():
     print( f'footprints: {int( sure.sum() )} of {len( B )} moved on their own evidence, {with_street} with their street, {off_asphalt} kept off the asphalt they were moved onto, {len( B ) - int( gone.sum() )} left where the map has them;'
            f' those moved went {far[ len( far ) - int( gone.sum() ) + int( gone.sum() ) // 2 ]:.1f} m (median), by {np.median( found[ gone, 0 ] ):.1f} m east and {np.median( found[ gone, 1 ] ):.1f} m north (median)' )
     by.sort()
+    print( f'{on_roof} roads were set through a building and left to go with their neighbours instead' )
     print( f'roads moved onto their asphalt: {by[ len( by ) // 10 ]:.1f} / {by[ len( by ) // 2 ]:.1f} / {by[ len( by ) * 9 // 10 ]:.1f} m (10 % / median / 90 % of {len( by )} roads);'
            f' asphalt {widths[ len( widths ) // 10 ]:.1f} / {widths[ len( widths ) // 2 ]:.1f} / {widths[ len( widths ) * 9 // 10 ]:.1f} m wide on the {len( widths )} measured' )
     read = [ c for c in out if c ]

@@ -24,7 +24,9 @@ export const HABITATS = {
 	floodplainWood: { plant: 'oak', on: 'wood', spacing: 7, clear: 2.5, stand: [ 40, 0.9 ] },
 	yardFruit: { plant: 'plum', on: 'yard', spacing: 7, clear: 2, stand: [ 30, 0.6 ] },
 	yardShade: { plant: 'lime', on: 'yard', spacing: 22, clear: 4, stand: [ 50, 0.5 ] },
-	streetTrees: { plant: 'lime', on: 'verge', along: ( r ) => r.street, off: 3.2, spacing: 14, clear: 1.5, stand: [ 120, 0.6 ] },
+	// ( rows of street trees are the exception here: the footage of Ulica Matije Gupca, Vinkovačka and
+	// Ulica Vladimira Nazora shows verges of grass and parked cars, a row of young trees now and then )
+	streetTrees: { plant: 'lime', on: 'verge', along: ( r ) => r.street, off: 3.2, spacing: 14, clear: 1.5, stand: [ 120, 0.2 ] },
 	trackPoplars: { plant: 'poplar', on: 'verge', along: ( r ) => r.class === 'track', off: 2.5, spacing: 9, clear: 1.2, stand: [ 220, 0.3 ] },
 };
 

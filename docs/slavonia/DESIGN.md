@@ -259,7 +259,7 @@ Still to do, in this order:
 4. **The cadastre**, when the service answers: parcels for yards, the registry's outlines.
 5. **M7** colour by numbers; what floats on the water to show the current.
 
-Known and left: one house at 840,-1181, at the block's edge, stands half a metre onto a lane
+Known and left: one house at 754,-1083, near the block's edge, stands a metre onto a lane that was not surveyed
 (`site.mjs` reports it).
 
 How things are run:

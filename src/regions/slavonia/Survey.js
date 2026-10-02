@@ -7,6 +7,16 @@
 //
 // Coordinates are the patch's metres, x = east, z = south, read off a sheet.
 
+// Footprints the map draws as one and that are several buildings in a row (a house on the street and
+// the barns behind it under one outline): `at` a point in the footprint, `cuts` the lines it is cut
+// along, each [ [ x, z ], [ x, z ] ] across it where one roof ends and the next begins. Every part is
+// a building of its own from then on, and SEEN finds each by a point in it.
+export const PARTED = [
+	// north-east of St Andrew's: the ochre house on Ulica Matije Gupca, and the long brick row behind it
+	// along the churchyard (the roofs change 9.5 m from the street end)
+	{ at: [ - 12, 169 ], cuts: [ [ [ - 14.1, 156.6 ], [ - 24.9, 168.4 ] ] ], source: 'sheet 1414; drone5 f001, f002' },
+];
+
 // The buildings. `at` is a point on the building (anywhere inside its footprint); the rest is what was
 // seen of it, each optional:
 //   is        the kind of building it is: a name of ARCHETYPES (the rule goes by its footprint alone)
@@ -37,6 +47,27 @@ export const SEEN = [
 	// Matije Gupca; and the red-roofed one beside it, the same
 	{ at: [ - 81, 145 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 236, 228, 208 ] ], form: 'gable', source: 'drone5 f006; sheet andrew-ring1' },
 	{ at: [ - 92, 169 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 236, 228, 208 ] ], form: 'gable', source: 'drone5 f006; sheet andrew-ring1' },
+	// Ring 1 round St Andrew's, off the orbit of the footage (drone5) and the sheet andrew.
+	// North-east of the church: the house on the street, ochre under a hipped roof of newer red tiles
+	// (the orthophoto's colour of its lit slope, 186, 141, 121, at the survey's gain); the row behind
+	// it along the churchyard, bare brick with small shuttered windows under old tiles
+	{ at: [ - 25, 160 ], is: 'house', storeys: 1, walls: [ 'render', [ 226, 180, 96 ] ], form: 'hip', roof: [ 109, 83, 71 ], source: 'drone5 f001, f002; sheet 1414' },
+	{ at: [ - 10, 172 ], is: 'longhouse', storeys: 1, walls: [ 'brick', [ 150, 104, 84 ] ], form: 'gable', source: 'drone5 f001, f002; sheet 1414' },
+	// east of the apse: the small house of bare brick, firewood stacked against it
+	{ at: [ - 9, 195 ], is: 'house', storeys: 1, walls: [ 'brick', [ 150, 104, 84 ] ], form: 'gable', source: 'drone5 f001' },
+	// south-east of it, its pink gable to Ulica Vladimira Nazora: a long white house under old tiles.
+	// The orthophoto has its roof in the shadow of the house behind it; its tiles are those of the
+	// brick row's, whose colour the survey read (73, 61, 55)
+	{ at: [ - 12, 207 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 234, 232, 224 ] ], form: 'gable', roof: [ 73, 61, 55 ], source: 'drone5 f013' },
+	// behind that one: two storeys, pale, under a roof of dark sheet
+	{ at: [ - 8, 216 ], is: 'house', storeys: 2, walls: [ 'render', [ 224, 222, 216 ] ], form: 'gable', source: 'drone5 f013' },
+	// across Ulica Vladimira Nazora from the church: the two-storey house, grey-brown render under
+	// brown tiles, its eaves to the street; the grey garage beside it; the barn of dark boards under
+	// old tiles; and the long white house with its gable to the street
+	{ at: [ - 59, 205 ], is: 'house', storeys: 2, walls: [ 'render', [ 172, 162, 148 ] ], form: 'gable', source: 'drone5 f011' },
+	{ at: [ - 52, 217 ], is: 'shed', storeys: 1, walls: [ 'render', [ 176, 176, 172 ] ], source: 'drone5 f011' },
+	{ at: [ - 44, 226 ], is: 'barn', storeys: 1, walls: [ 'boards', [ 96, 80, 66 ] ], form: 'gable', source: 'drone5 f011' },
+	{ at: [ - 36, 232 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 234, 232, 224 ] ], form: 'gable', source: 'drone5 f012' },
 	// the hall behind it, yellow under a dark roof with solar panels on its south-east slope
 	{ at: [ - 45, 130 ], is: 'hall', walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone5 f009, f010; sheet andrew-ring1' },
 ];

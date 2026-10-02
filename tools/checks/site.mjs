@@ -225,6 +225,19 @@ for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 
 }
 
+// ---- footprints that are several buildings
+{
+
+	const parts = buildings.list.filter( ( b ) => b.part > 0 || buildings.list.some( ( o ) => o !== b && o.index === b.index ) );
+	const whole = new Map();
+	for ( const b of parts ) whole.set( b.index, ( whole.get( b.index ) || 0 ) + b.area );
+	const mapped = readJSON( 'places.json' ).buildings;
+	const area = ( ring ) => Math.abs( ring.reduce( ( s, p, i ) => s + p[ 0 ] * ring[ ( i + 1 ) % ring.length ][ 1 ] - ring[ ( i + 1 ) % ring.length ][ 0 ] * p[ 1 ], 0 ) ) / 2;
+	const off = Math.max( 0, ...[ ...whole ].map( ( [ i, a ] ) => Math.abs( a - area( mapped[ i ].ring.slice( 0, - 1 ) ) ) ) );
+	check( off < 0.5 && parts.every( ( b ) => b.area > 9 ), 'parted footprints: the parts make up the whole', `${ whole.size } footprints in ${ parts.length } parts (${ parts.map( ( b ) => `${ b.index }.${ b.part } ${ b.kind } ${ b.area.toFixed( 0 ) } m2` ).join( ', ' ) }); their areas within ${ off.toFixed( 2 ) } m2 of the footprints'` );
+
+}
+
 // ---- the railway
 {
 

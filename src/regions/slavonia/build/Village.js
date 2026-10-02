@@ -151,7 +151,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 		if ( ! styles.has( plot ) ) {
 
-			const A = archetypeOf( plot.house ), rnd = random( plot.house.index + 77 );
+			const A = archetypeOf( plot.house ), rnd = random( plot.house.seed + 77 );
 			// ( an archetype with no fence styles stands open to its street )
 			const fenced = A && A.fence.length > 0;
 			let lot = fenced ? rnd() * A.fence.reduce( ( s, f ) => s + f[ 1 ], 0 ) : 0;
@@ -340,7 +340,7 @@ function clearOf( wall, p, pieces ) {
 // raise a building by its archetype; returns the height of its top
 function raise( B, b, A, kit, terrain ) {
 
-	const rnd = random( b.index ), pick = ( list ) => list[ Math.floor( rnd() * list.length ) ];
+	const rnd = random( b.seed ), pick = ( list ) => list[ Math.floor( rnd() * list.length ) ];
 	const F = frame( b ), seed = rnd();
 	// ( every pick is made whether or not the survey then says otherwise: what is not surveyed of a
 	// building must not change with what is )

@@ -24,6 +24,8 @@ const JOG = 0.3;
 export const FRONTAGE_REACH = 80;
 // side of the buckets the buildings are sorted into for `near` (m)
 const BUCKET = 32;
+// the parts of one footprint draw their random choices this far apart (more than there are footprints)
+const PART_SEED = 100003;
 
 // What a building is, from its size and where it stands (the archetypes are built from this):
 //   landmark     has a model of its own (Landmarks.js)
@@ -39,10 +41,11 @@ export class Buildings {
 
 	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } );
 	// survey: survey.json, { shifts, roofs } in the order of the map's buildings; seen: the records of
-	// Survey.js SEEN, each with a point on its building.
+	// Survey.js SEEN, each with a point on its building; parted: the records of Survey.js PARTED, the
+	// footprints that are several buildings.
 	// The footprints only: `settle` does the rest, once the roads exist (the roads need the walls
 	// first, to keep clear of them).
-	constructor( places, { center, landmarks, survey, seen } ) {
+	constructor( places, { center, landmarks, survey, seen, parted } ) {
 
 		const [ cE, cN ] = center;
 		// ( a landmark stays where the map has it: its model's script was measured against that place,
@@ -52,6 +55,20 @@ export class Buildings {
 
 			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
 			if ( own && own.plan ) plant( b, own, places.roads, cE, cN );
+
+		}
+
+		// a footprint the map draws as one and that is several buildings: cut along each line, every
+		// part a building of its own from here on
+		for ( const record of parted ) {
+
+			const k = this.list.findIndex( ( b ) => inRing( b.ring, record.at[ 0 ], record.at[ 1 ] ) );
+			if ( k < 0 ) throw new Error( `the survey parts a building at ${ record.at } (${ record.source }), and no footprint is there` );
+			const whole = this.list[ k ];
+			let rings = [ whole.ring ];
+			for ( const [ a, b ] of record.cuts ) rings = rings.flatMap( ( ring ) => [ beside( ring, a, b, 1 ), beside( ring, a, b, - 1 ) ].filter( ( r ) => r.length >= 3 ) );
+			if ( rings.length !== record.cuts.length + 1 ) throw new Error( `the ${ record.cuts.length } cuts through the building at ${ record.at } (${ record.source }) leave ${ rings.length } parts` );
+			this.list.splice( k, 1, ...rings.map( ( ring, part ) => shape( ring, { index: whole.index, part, name: whole.name, class: whole.class, roof: whole.seen.roof } ) ) );
 
 		}
 
@@ -237,12 +254,37 @@ export function toWorld( b, u, v ) {
 
 }
 
+// The part of a ring that lies on one side of the line through a and b (side 1: to its left as one
+// goes from a to b on the map, x east and z south; - 1: to its right): the ring cut straight along it.
+function beside( ring, a, b, side ) {
+
+	const off = ( p ) => side * ( ( b[ 0 ] - a[ 0 ] ) * ( p[ 1 ] - a[ 1 ] ) - ( b[ 1 ] - a[ 1 ] ) * ( p[ 0 ] - a[ 0 ] ) ), out = [];
+	ring.forEach( ( p, i ) => {
+
+		const q = ring[ ( i + 1 ) % ring.length ], dp = off( p ), dq = off( q );
+		if ( dp >= 0 ) out.push( p );
+		if ( ( dp > 0 && dq < 0 ) || ( dp < 0 && dq > 0 ) ) out.push( [ p[ 0 ] + ( q[ 0 ] - p[ 0 ] ) * dp / ( dp - dq ), p[ 1 ] + ( q[ 1 ] - p[ 1 ] ) * dp / ( dp - dq ) ] );
+
+	} );
+	return out;
+
+}
+
 // src: the map's building; shift: [ east, north ], the metres the survey moves it by; roof: what the
 // survey saw of its roof
 function footprint( src, index, cE, cN, shift, roof ) {
 
-	// the ring, open, in the patch's metres, without doubled corners
-	let ring = src.ring.slice( 0, - 1 ).map( ( [ e, n ] ) => [ e + shift[ 0 ] - cE, cN - n - shift[ 1 ] ] );
+	// the ring, open, in the patch's metres
+	const ring = src.ring.slice( 0, - 1 ).map( ( [ e, n ] ) => [ e + shift[ 0 ] - cE, cN - n - shift[ 1 ] ] );
+	return shape( ring, { index, part: 0, name: src.name, class: src.class, roof } );
+
+}
+
+// A building from its ring ( open, in the patch's metres ). index: its footprint's in the map; part:
+// which part of that footprint it is ( 0 for the whole of it ).
+function shape( ring, { index, part, name, class: cls, roof } ) {
+
+	// without doubled corners
 	ring = ring.filter( ( p, i ) => Math.hypot( p[ 0 ] - ring[ ( i + 1 ) % ring.length ][ 0 ], p[ 1 ] - ring[ ( i + 1 ) % ring.length ][ 1 ] ) > JOG );
 	let area = 0;
 	for ( let i = 0; i < ring.length; i ++ ) {
@@ -277,7 +319,8 @@ function footprint( src, index, cE, cN, shift, roof ) {
 	const ou = ( u0 + u1 ) / 2, ov = ( v0 + v1 ) / 2;
 	const rects = rectangles( local.map( ( [ u, v ] ) => [ u - ou, v - ov ] ) );
 	return {
-		index, name: src.name, class: src.class, ring, area,
+		// ( seed: what its random choices are drawn from, its own for every part of a footprint )
+		index, part, seed: index + PART_SEED * part, name, class: cls, ring, area,
 		x: ou * c - ov * s, z: ou * s + ov * c, yaw: - t,
 		// exact: the pieces are the footprint. Otherwise the footprint has walls off its axes (26 of
 		// 3065 here: apses, chamfered corners) and the one piece is the rectangle around it.

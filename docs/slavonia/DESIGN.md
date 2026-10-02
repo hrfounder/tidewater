@@ -247,6 +247,7 @@ a record.
 
 | Record | What it is | Built by |
 |---|---|---|
+| `PARTED` | a footprint the map draws as one and that is several buildings in a row: the lines it is cut along | `site/Buildings.js`, every part a building of its own |
 | `SEEN` | per building: the kind it is, storeys, walls, roof form, a roof colour newer than the orthophoto | `build/Village.js` over its archetype |
 | `BESIDE` | a strip of parking or pavement along a stretch of road | `site/Beside.js`, graded and drawn with the road or as a slab |
 | `OPEN` | ground the land cover calls a wood and is not (a park): nothing planted by rule, the grass mown | `terrain/Grade.js`, `flora/` |
@@ -298,14 +299,16 @@ Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
 | M5 | fences and gates along the plots' street lines; anglers' platforms | `site/Fences.js`, `site/Park.js` | `village.mjs` |
 | M6 | plants from the habitat table and the occupancy map; a landmark's surveyed trees | `flora/` | `tools/checks/flora.mjs` |
 | T1 | the survey of the orthophoto: footprints, roofs, roads | `tools/geodata/survey.py`, `survey.json` | `site.mjs` |
-| T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row, the hall, two long houses | `Survey.js`, `site/Beside.js` | `site.mjs` |
+| T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row, the hall, two long houses; the ochre house and the brick row north-east of the church (one footprint, parted), the houses east of the apse, the four across Ulica Vladimira Nazora | `Survey.js`, `site/Beside.js` | `site.mjs` |
 | T3 | the named places: the municipality and post office, the school, the parish house, the restaurant; the park, the sports ground; the marina and the landing with their boats | `Survey.js`, `build/Marina.js`, `tools/blender/kit.py` | `site.mjs`, `village.mjs`, `flora.mjs` |
 | T4 | the railway: the line and the siding on their ballast, four level crossings, the bridge over the Bosut | `site/Rails.js`, `build/Railway.js`, `terrain/Grade.js` | `site.mjs`, `village.mjs` |
 
 Still to do, in this order:
 
-1. **Ring 1 round St Andrew's**: the rest of its neighbours (walls, storeys, fences, yards), the
-   crossing's markings, the trees of the street.
+1. **Ring 1 round St Andrew's**: what the orbit of the footage does not show (the sheds east of the
+   apse, 1412, 1413, 1415, 1417; the barn 1493), the neighbours' fences and yards, the crossing's
+   markings, the trees of the street. The two-storey house across Ulica Vladimira Nazora is two
+   storeys for 12 m of its 20 and lower beyond: it is built two storeys throughout.
 2. **St Roch's ring**: the houses round it, the shop (Boso), the streets' corner where the stone
    cross and the lime stand (the fence's line there is a guess: the tree and the church's shadow
    hide it on the orthophoto).

@@ -2,7 +2,7 @@ import { Vector3 } from '../../engine/index.js';
 import { TileTerrain } from './terrain/TileTerrain.js';
 import { gradeTerrain } from './terrain/Grade.js';
 import { buildSite, occupy, waterDatum } from './site/Site.js';
-import { SEEN, BESIDE, OPEN, AREAS, TREES, MARINAS, DECKS, PROPS } from './Survey.js';
+import { SEEN, PARTED, BESIDE, OPEN, AREAS, TREES, MARINAS, DECKS, PROPS } from './Survey.js';
 import { LANDMARKS } from './Landmarks.js';
 import { loadModels } from './build/Models.js';
 import { buildVillage } from './build/Village.js';
@@ -72,7 +72,7 @@ export async function loadWorld( read = fetchFile() ) {
 	const terrain = await TileTerrain.load( { index, readFile: tile, size: DOMAIN, datum } );
 	// each landmark as it is declared, with what its model says of itself on the ground
 	const landmarks = new Map( LANDMARKS.map( ( l ) => [ l.name.toLowerCase(), { ...l, plan: models.landmarks.get( l.name.toLowerCase() ).plan } ] ) );
-	const site = buildSite( { index, water, places, survey, seen: SEEN, beside: BESIDE, open: OPEN, areas: AREAS, trees: TREES, marinas: MARINAS, decks: DECKS, props: PROPS, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
+	const site = buildSite( { index, water, places, survey, seen: SEEN, parted: PARTED, beside: BESIDE, open: OPEN, areas: AREAS, trees: TREES, marinas: MARINAS, decks: DECKS, props: PROPS, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
 	gradeTerrain( terrain, site );
 	occupy( site, terrain, models.kit );
 	return { site, terrain, models };

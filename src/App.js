@@ -145,7 +145,7 @@ export class App {
 			const world = await tiles.loadWorld();
 			this.terrainData = world.terrain;
 			this.site = world.site;
-			tiles.applyLayout( WORLD );
+			tiles.applyLayout( WORLD, world );
 
 		} else this.terrainData = new TerrainData();
 		this.colliders = new Colliders();

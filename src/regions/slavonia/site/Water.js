@@ -110,6 +110,23 @@ export class Water {
 
 	}
 
+	// From a point on the water, along a unit direction toward the land: where the water ends
+	// (`edge`) and where the bank stops rising and the plain begins (`top`), each [ x, z ].
+	bankFrom( x, z, dx, dz ) {
+
+		const T = this.terrain, step = T.texel / 4;
+		let d = 0;
+		while ( T.heightAt( x + dx * d, z + dz * d ) < 0 ) d += step;
+		const edge = [ x + dx * d, z + dz * d ];
+		// the bank rises a metre for every `slope` across: it has ended where the ground rises less
+		// than a quarter of that
+		const rise = ( at ) => T.heightAt( x + dx * ( at + T.texel ), z + dz * ( at + T.texel ) ) - T.heightAt( x + dx * at, z + dz * at );
+		const bank = this.bodyAt( x, z ).slope;
+		while ( rise( d ) > T.texel / bank / 4 ) d += step;
+		return { edge, top: [ x + dx * d, z + dz * d ] };
+
+	}
+
 	// The surface current at a point, in metres a second ( east, south ), into `out` [ vx, vz ]; zero
 	// in still water. The direction is the nearest course's; the speed falls with the depth toward
 	// the bank the way a wide channel's does (Manning: speed goes with depth to the two-thirds).

@@ -165,6 +165,9 @@ export class TileTerrain extends Heightfield {
 		this.gully = this.forest;
 		this.scarp = this.track;
 		this.rock = this.road;
+		// the island's seabed masks: none of either here, but whatever reads a terrain (the minimap)
+		// finds the same fields on every one
+		this.seagrass = this.rubble = new Uint8Array( this.res * this.res );
 
 		let mn = Infinity, mx = - Infinity;
 		for ( let k = 0; k < far.heights.length; k ++ ) {

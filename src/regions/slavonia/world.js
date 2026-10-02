@@ -3,6 +3,7 @@ import { TileTerrain } from './terrain/TileTerrain.js';
 import { gradeTerrain } from './terrain/Grade.js';
 import { buildSite, occupy, waterDatum } from './site/Site.js';
 import { LANDMARKS } from './Landmarks.js';
+import { FREE } from './site/Occupancy.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
 
 // The Slavonian world as App builds it (?region=slavonia): the block around Most Bosut from the map
@@ -19,17 +20,22 @@ export const TILES = 'world/bosut/';
 // inside the next power of two, which the terrain's quadtree needs.
 export const DOMAIN = 4096;
 
-// x = east, z = south (m) from the bridge; see views.js
-export const LAYOUT = {
-	// on the park bank south-east of the bridge, facing the water
-	start: { position: new Vector3( 95, 0, - 2 ), yaw: 0.6 },
-	spawn: { position: new Vector3( 95, 0, - 2 ), yaw: 0.6 },
-	// on the water off the park, bow upstream (east)
-	boatDock: { position: new Vector3( 60, 0, - 15 ), heading: Math.PI / 2 },
-	// the two stalls on the park bank, both facing the water ( a stall faces ( sin yaw, cos yaw ),
-	// and the river runs away to the north here, so yaw is near PI )
-	stand: { x: 112, z: 10, yaw: Math.PI - 0.25 },
-	chandlery: { x: 76, z: 12, yaw: Math.PI + 0.2 },
+// Where the game's fixed things stand: on the park, the south bank of the Bosut upstream (east) of
+// Most Bosut. Each is so many metres up the river from the bridge and so far back from the bank,
+// and the Site says where that bank is (`layoutOf`).
+const PARK = {
+	bridge: 'Most Bosut',
+	// looking downstream, the park is on the left bank
+	side: - 1,
+	// metres upstream of the bridge, along the river's course
+	start: 95, boat: 60, stand: 112, chandlery: 76,
+	// the player starts this far back from the top of the bank, the stalls this far (m)
+	startBack: 1.5, stallBack: 7,
+	// the boat lies this far off the waterline (m): clear of the bank's underwater slope
+	boatOff: 8,
+	// a stall needs this much free ground around its middle (m); where its place is taken (the map
+	// has a house on the park) it stands at the next free place up the bank, a step at a time
+	stallClear: 4, stallStep: 4,
 };
 
 // The Bosut on a still day: a channel about 2.5 m deep, light air, so the surface carries fine wind
@@ -99,10 +105,63 @@ export function buildPlaces() {
 
 }
 
-// Write the layout overrides into the shared layout object. Each entry is written into the object
-// already there, never replaced: the stalls and the boat hold those objects by reference.
-export function applyLayout( WORLD ) {
+// Where the game's fixed things stand in this world (the entries of world/WorldLayout.js that a
+// region places): x = east, z = south (m).
+export function layoutOf( { site } ) {
 
-	for ( const [ k, v ] of Object.entries( LAYOUT ) ) Object.assign( WORLD[ k ], v );
+	const { water, roads } = site;
+	const bridge = roads.roads.find( ( r ) => r.bridge && r.name === PARK.bridge );
+	const mid = bridge.pts[ bridge.pts.length >> 1 ];
+	// the river's course under the bridge, and the point of it nearest the bridge
+	let course = null, at = 0, best = Infinity;
+	for ( const b of water.bodies ) if ( b.kind === 'line' && b.current ) b.pts.forEach( ( p, i ) => {
+
+		const d = Math.hypot( p[ 0 ] - mid[ 0 ], p[ 1 ] - mid[ 1 ] );
+		if ( d < best ) { best = d; course = b; at = i; }
+
+	} );
+	// the bank `up` metres upstream of the bridge: the points run downstream, so upstream is back
+	const bank = ( up ) => {
+
+		let i = at, left = up;
+		while ( i > 1 && left > 0 ) { left -= Math.hypot( course.pts[ i ][ 0 ] - course.pts[ i - 1 ][ 0 ], course.pts[ i ][ 1 ] - course.pts[ i - 1 ][ 1 ] ); i --; }
+		const p = course.pts[ i ], q = course.pts[ i + 1 ], l = Math.hypot( q[ 0 ] - p[ 0 ], q[ 1 ] - p[ 1 ] );
+		const tx = ( q[ 0 ] - p[ 0 ] ) / l, tz = ( q[ 1 ] - p[ 1 ] ) / l;
+		// toward the park's bank: left of downstream is ( tz, -tx ), right is ( -tz, tx )
+		const nx = - tz * PARK.side, nz = tx * PARK.side;
+		return { ...water.bankFrom( p[ 0 ], p[ 1 ], nx, nz ), nx, nz, tx, tz };
+
+	};
+	// a spot `back` metres behind the top of the bank ( negative: out over the water from its edge )
+	const spot = ( b, back ) => back >= 0 ? [ b.top[ 0 ] + b.nx * back, b.top[ 1 ] + b.nz * back ] : [ b.edge[ 0 ] + b.nx * back, b.edge[ 1 ] + b.nz * back ];
+	const start = bank( PARK.start ), boat = bank( PARK.boat );
+	const [ sx, sz ] = spot( start, PARK.startBack ), [ bx, bz ] = spot( boat, - PARK.boatOff );
+	// the player looks along -( sin yaw, cos yaw ), a stall faces ( sin yaw, cos yaw ), and both face
+	// the water: back along the bank's normal
+	const here = { position: new Vector3( sx, 0, sz ), yaw: Math.atan2( start.nx, start.nz ) };
+	const stall = ( up ) => {
+
+		for ( ; ; up += PARK.stallStep ) {
+
+			const b = bank( up ), [ x, z ] = spot( b, PARK.stallBack );
+			if ( site.occupancy.within( x, z, PARK.stallClear ) === FREE ) return { x, z, yaw: Math.atan2( - b.nx, - b.nz ) };
+
+		}
+
+	};
+	return {
+		start: here, spawn: { position: here.position.clone(), yaw: here.yaw },
+		// bow upstream
+		boatDock: { position: new Vector3( bx, 0, bz ), heading: Math.atan2( - boat.tx, - boat.tz ) },
+		stand: stall( PARK.stand ), chandlery: stall( PARK.chandlery ),
+	};
+
+}
+
+// Write the layout into the shared layout object. Each entry is written into the object already
+// there, never replaced: the stalls and the boat hold those objects by reference.
+export function applyLayout( WORLD, world ) {
+
+	for ( const [ k, v ] of Object.entries( layoutOf( world ) ) ) Object.assign( WORLD[ k ], v );
 
 }

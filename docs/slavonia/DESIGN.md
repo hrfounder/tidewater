@@ -1,6 +1,7 @@
 # The built world: design
 
-Status: **proposed, awaiting approval** (2026-10-02). Nothing below is built yet.
+Status: **approved 2026-10-02** ("lets start"; "redo the kept parts if you judge it too problematic").
+M0 is done: its findings are section 8, and they moved the water and the patch size into the remake.
 
 This replaces the first pass at Slavonia's roads, houses, yards, bridges, plant placement and river
 current, which was written without a design and then patched. It does not replace the terrain, the
@@ -48,17 +49,33 @@ landmarks ───┘                ├─► meshes        buildings, kit pie
   outbuilding, hall, landmark).
 - **Plots**: the strip of land a house stands on, from its frontage to the next house either side.
   (Real cadastral parcels replace this when the DGU data arrives; the field is the same.)
-- **Water**: the channel lines (kept as they are) and the flow field.
+- **Water**: every body as the map draws it — areas with their true bank line (the Bosut is a mapped
+  polygon, 33 to 55 m wide here), lines with a class width for what has no polygon (ditches, drains)
+  — and one flow function. The fishing, the current and the terrain all read this; none keeps its
+  own copy of the river.
+- **Domain**: one square, the mapped block (4 km). The metre terrain, the places and the Site cover
+  the same ground; nothing is built outside it.
 - **Occupancy**: one raster of who owns each square metre — road, building, yard, water, free. This is
   the only thing plants, grass and props consult. It replaces `builtMask`, `CROWN` and the per-system
   exclusions.
 
-## 3. Roads are terrain, not meshes
+## 3. The ground is the dry plain plus edits; roads are terrain, not meshes
 
-A road is **graded into the heightfield** by the same pass that already cuts the river channels:
-the bed is levelled along the centreline with its camber, the shoulders blend into the ground over
-a metre or two. The terrain mesh then *is* the road, so it cannot float, z-fight, or step, and the
-terrain's LOD handles distance for free.
+The tiles carry the **dry ground**: the bare earth with the water bodies filled back to the level of
+the land around them (the 30 m elevation model cannot see a bank; what it reports beside a river is
+a smear of water, trees and slope). `TileTerrain` only resamples them. Everything cut into that
+ground comes from the Site, in one grading pass at the patch's resolution (`Grade.js`):
+
+1. **Water**: inside a body the bed falls at the bank slope to its depth; outside, the bank rises at
+   the same slope from the waterline until it meets the plain. The bank height is whatever the plain
+   stands above the water, so there is no bank-top parameter, no blend distance, and dry land beside
+   the river cannot end up under it.
+2. **Roads**: the bed is levelled along the centreline with its camber, the shoulders blend into the
+   ground over a metre or two.
+3. **Pads**: the ground under a building is levelled to its floor.
+
+The terrain mesh then *is* the road, so it cannot float, z-fight, or step, and the terrain's LOD
+handles distance for free.
 
 The surface is drawn by the ground shader from a **road mask**: the distance to the carriageway edge
 and the surface class, written into the terrain's rock channel, which is all zeros in this region and
@@ -127,32 +144,46 @@ Every milestone ends with numbers, then a timelapse capture.
 | Colour | each sampled patch within tolerance of its photo-derived target |
 | Island | the Caribbean region loads and renders unchanged after every engine-side change |
 
-## 8. Kept, subject to audit
+## 8. M0: what the audit found (2026-10-02)
 
-Read each, run its checks, fix or flag. In order:
+Measured with `node tools/checks/terrain.mjs` and one-off probes against the real modules.
 
-1. `TileTerrain` — tile mosaic, channel cut, far field (the first pass's "median of dry ground" for
-   the outside height is a guess to re-examine).
-2. `TerrainGPU` / `Heightfield` — far field and flow packed in one texture; `terrainInside`.
-3. `GroundSurface` — far farmland, parcel grid.
-4. Flora's species, leaf stage and impostors (the *placement* is remade, section 6).
-5. Fishing `sampleAt`, region `people` / `intro`.
-6. Geodata tools and the timelapse capture.
+| Part | Finding | Number | Verdict |
+|---|---|---|---|
+| River channel | cut at a constant 32 m around the centreline; the map has the Bosut as a polygon | polygon 32.9 to 55.1 m wide in the patch, median 40.1 | **redo**: bank line from the polygon |
+| River banks | the tiles carry the polygon's basin at 10 m, the game cuts a narrower one at 1 m on top | 5,125 dry texels under the water plane, 20 to 50 m from the centreline, down to -1.64 m | **redo**: dry ground in the tiles, one cut in the game |
+| Bank top | sampled from the 30 m model 25 m beside the channel | 0.35 to 3.18 m over the water along 3 km | **redo**: the bank emerges from the plain |
+| Patch size | metre terrain is 2 km, the places block 4 km | 378 of 3,065 buildings stand on the 10 m field | **redo**: one 4 km domain (load 1.0 s -> 4.1 s, bake 0.23 s -> 0.87 s in node) |
+| Far ring | asks for 12,288 m, the tiles cover 13 km offset by 24 m | one 1 km column filled with a median | fix: the ring is the exported tiles |
+| Patch edge | metre field against the 10 m field | mean 0.05 m; 115 of 8,188 edge points over 0.3 m, all on the river | follows from the redo; re-measure |
+| Flood clamp | dry land under the water plane is held at 0.25 m | 3,068 texels (0.07 %) | keep: one water plane is the engine's limit; named and counted |
+| Current | declared twice (`buildFlow`, `fish.js sampleAt`) with different profiles; `TileTerrain` imports `world.js`, which imports it | — | **redo** in the Site's water |
+| Fine cut | steepest step between texels | 0.65 m per m | fine |
+| `TerrainGPU`, `Heightfield` | far field and current share a texture; lookups match the CPU | read through | keep |
+| `GroundSurface` | structure sound; every colour typed by eye | — | keep; colours in M7 |
+| Flora species, impostors | not audited beyond reading | — | keep; revisit in M6 |
+| Fishing table, people, intro | `test/region-slavonia.mjs` passes | all passed | keep |
+
+Suspected, to be measured in the running game when the terrain is back up: the terrain mesh is 1.6 m
+between vertices at 100 m and 3.2 m at 250 m, and a 1:2 bank moves under that by up to half the
+spacing, so the waterline shifts as the mesh morphs with distance. That would be the "line that
+walks the shoreline" and part of the "artifacts at distance". The ground shader also takes the wet
+band from the mesh height rather than the true height.
 
 ## 9. Order of work
 
 | | Milestone | Ends with |
 |---|---|---|
-| M0 | Audit of section 8 | a list of findings, fixes for anything wrong |
-| M1 | Site model + its checks | the numbers of section 7 that need no rendering |
-| M2 | Roads graded into the terrain, drawn by the ground shader | street-level and aerial captures |
+| M0 | Audit (done) | section 8 |
+| M1 | Water as vectors and dry ground in the tiles; Site model + its checks | the numbers of section 7 that need no rendering |
+| M2 | Grading pass: water, roads, pads; roads drawn by the ground shader | street-level and aerial captures |
 | M3 | Buildings on true footprints by archetype; colliders | village capture; overlap check at 0 |
 | M4 | Landmarks: finish St Roch's, St Andrew's, Most Bosut | side-by-side with each photograph |
 | M5 | Kit pieces, plots, fences | budget check |
 | M6 | Plant placement from occupancy; ground contact | overlap check at 0 |
 | M7 | River current as a flow map; colour and waves by numbers | measured against the photographs |
 
-Removed when their replacement lands: `Roads.js`, `Buildings.js`, `Yards.js`, `Bridge.js`,
+Removed when their replacement lands: `TileTerrain`'s channel cut and flow, `rivers.json`, `Roads.js`, `Buildings.js`, `Yards.js`, `Bridge.js`,
 `Church.js`, and in `Flora.js` the scatter, `builtMask` and the sink.
 
 ## 10. Open, for you to decide when we get there

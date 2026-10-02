@@ -1,13 +1,20 @@
-// Touch controls for a phone held upright (or any screen without a mouse): a stick under the left
-// thumb to walk, a drag anywhere else to look, and the game's actions as buttons under the right
-// thumb. They drive the same Input the keyboard and the mouse do (core/Input.js): the stick holds
-// the walking keys down, the buttons are keys and mouse buttons, a drag is mouse movement.
+// Touch controls for a phone, held upright or on its side (or any screen without a mouse): a stick
+// under the left thumb to walk, a drag anywhere else to look, and the game's actions as buttons under
+// the right thumb. They drive the same Input the keyboard and the mouse do (core/Input.js): the stick
+// holds the walking keys down, the buttons are keys and mouse buttons, a drag is mouse movement.
+//
+// On a phone the game takes the whole screen: the first touch asks the browser for it (a browser
+// only gives it to a touch), and so does the next one whenever the screen has been taken back. And
+// the page is held where it is: a browser that slides its bars in and out, or is turned on its side,
+// can leave a page that does not scroll shifted under them with no way to drag it back.
 
 // How far the stick's knob travels from its centre (px), how far it has to be pushed before a
 // direction counts (share of that travel), and from where it means run.
 const TRAVEL = 46, DEAD = 0.3, RUN = 0.92;
 // degrees of view per pixel of a look drag, as a multiple of a mouse's
 const LOOK = 1.6;
+// a screen lower than this (CSS px) while wider than tall is a phone on its side
+const LOW = 520;
 
 // The buttons: label, and what holding or tapping one does to the Input.
 //   key    a key held while the button is (and hit once as it goes down)
@@ -31,6 +38,9 @@ const CSS = `
 .tw-touch-btn.is-big { grid-column: span 3; width: 84px; height: 84px; font-size: 16px; background: rgba( 64, 176, 160, 0.5 ); justify-self: end; margin-right: 12px; }
 .tw-touch-btn.is-down { background: rgba( 255, 255, 255, 0.5 ); color: #0c161e; text-shadow: none; }
 
+/* the page itself is pinned: nothing of it is ever scrolled out of sight */
+html.tw-touch-on, html.tw-touch-on body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+
 /* With the thumbs' controls on screen the two bottom corners are theirs: what the HUD keeps there on
    a desktop moves out of the way. The map goes up under the purse and the brand row, smaller; the settings rail goes
    to the left edge, above the stick; the boat's instruments and the fight bar sit above the controls. */
@@ -39,6 +49,17 @@ html.tw-touch-on .tw-rail { right: auto; left: var( --tw-3 ); top: 42%; scale: 0
 html.tw-touch-on .tw-root[data-panel='open'] .tw-rail, html.tw-touch-on .tw-root.is-starting .tw-rail { transform: translate( calc( -14 * var( --tw-u ) ), -50% ); }
 html.tw-touch-on .tw-boat { bottom: calc( 190px + env( safe-area-inset-bottom ) ); }
 html.tw-touch-on .gm-fight { bottom: calc( 250px + env( safe-area-inset-bottom ) ); }
+
+/* On its side a phone is too low for the map above the buttons: the map goes to the middle of the top
+   edge, and the stick stands clear of the rail beside it. */
+@media ( orientation: landscape ) and ( max-height: ${ LOW }px ) {
+	html.tw-touch-on .gm-map { top: var( --tw-edge ); right: auto; left: 50%; translate: -50% 0; width: calc( 96 * var( --tw-u ) ); height: calc( 96 * var( --tw-u ) ); }
+	html.tw-touch-on .tw-rail { left: calc( var( --tw-3 ) + env( safe-area-inset-left ) ); top: 50%; scale: 0.74; }
+	.tw-touch-stick { left: calc( 76px + env( safe-area-inset-left ) ); bottom: calc( 18px + env( safe-area-inset-bottom ) ); }
+	.tw-touch-pad { bottom: calc( 14px + env( safe-area-inset-bottom ) ); }
+	html.tw-touch-on .tw-boat { bottom: calc( 160px + env( safe-area-inset-bottom ) ); left: calc( 220px + env( safe-area-inset-left ) ); }
+	html.tw-touch-on .gm-fight { bottom: calc( 20px + env( safe-area-inset-bottom ) ); }
+}
 `;
 
 export class TouchControls {
@@ -71,6 +92,25 @@ export class TouchControls {
 		this._stick( root.querySelector( '.tw-touch-stick' ), root.querySelector( '.tw-touch-knob' ) );
 		for ( const b of BUTTONS ) this._button( root.querySelector( `[data-id="${ b.id }"]` ), b );
 		this._look( canvas );
+		this._screen();
+
+	}
+
+	// the whole screen, and the page held still on it
+	_screen() {
+
+		const whole = () => {
+
+			const el = document.documentElement, ask = el.requestFullscreen || el.webkitRequestFullscreen;
+			if ( document.fullscreenElement || document.webkitFullscreenElement || ! ask ) return;
+			// ( refused where the browser has no such thing for a page, an iPhone's: the game plays on in the page )
+			Promise.resolve( ask.call( el, { navigationUI: 'hide' } ) ).catch( () => {} );
+
+		};
+		window.addEventListener( 'pointerup', ( e ) => { if ( e.pointerType === 'touch' ) whole(); }, true );
+		const pin = () => { if ( window.scrollX || window.scrollY ) window.scrollTo( 0, 0 ); };
+		for ( const on of [ 'resize', 'orientationchange', 'scroll' ] ) window.addEventListener( on, pin );
+		if ( window.visualViewport ) for ( const on of [ 'resize', 'scroll' ] ) window.visualViewport.addEventListener( on, pin );
 
 	}
 

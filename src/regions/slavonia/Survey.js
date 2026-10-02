@@ -26,6 +26,8 @@ export const SEEN = [
 	// the restaurant by the bridge's south end: one storey of dark boards under a bright red roof laid
 	// since the orthophoto was flown
 	{ at: [ 35, 49 ], is: 'house', storeys: 1, walls: [ 'boards', [ 150, 112, 82 ] ], form: 'gable', roof: [ 150, 52, 44 ], source: 'drone2 at 18-21 s' },
+	// the park's pavilion on the bank: one storey of brown boards under a dark red roof
+	{ at: [ 93, 13 ], is: 'house', storeys: 1, walls: [ 'boards', [ 132, 100, 74 ] ], form: 'gable', source: 'drone4 at 3 s; sheet park' },
 	// the primary school by the park: two storeys, pale yellow, windows in rows under a dark red roof
 	{ at: [ 138, 61 ], is: 'public', storeys: 2, walls: [ 'render', [ 236, 222, 168 ] ], form: 'gable', source: 'drone2 at 42 and 60-72 s; drone4; sheet school' },
 	// the long yellow row on the street north-west of St Andrew's, brick at its corners and round its
@@ -76,17 +78,28 @@ export const OPEN = [
 	// the park on the south bank east of the bridge, the school's grounds and the sports ground
 	{ ring: [ [ 22, 6 ], [ 100, - 2 ], [ 160, 2 ], [ 232, 44 ], [ 268, 150 ], [ 232, 212 ], [ 128, 148 ], [ 62, 84 ], [ 26, 62 ] ], source: 'sheets park, school, sport' },
 	// the bank west of the bridge, behind the marina: lawn under large trees, between the water and the path
-	{ ring: [ [ - 8, 36 ], [ - 150, 46 ], [ - 150, 70 ], [ - 100, 72 ], [ - 60, 66 ], [ - 6, 72 ] ], source: 'sheet marina; drone2 at 12-18 s' },
+	{ ring: [ [ - 8, 36 ], [ - 150, 46 ], [ - 150, 60 ], [ - 100, 62 ], [ - 60, 61 ], [ - 6, 64 ] ], source: 'sheet marina; drone2 at 12-18 s' },
 ];
 
 // Ground that is made: each a flat surface with straight sides (a ring that bulges nowhere inward).
 //   of   'concrete' (a paved terrace), 'gravel' (a playground's ground), 'track' (red rubber),
-//        'court' (blue acrylic), 'sand'
+//        'court' (blue acrylic), 'sand', 'brick' (a low brick edge)
 export const AREAS = [
 	// the promenade on the park bank, where the stalls stand
 	{ ring: [ [ 100.7, 10.6 ], [ 129.4, 10.6 ], [ 129.4, 14.8 ], [ 100.7, 14.8 ] ], of: 'concrete', source: 'sheet park' },
 	// the playground west of it
 	{ ring: [ [ 58.4, 26 ], [ 70, 19.9 ], [ 77.8, 24 ], [ 76, 36.8 ], [ 60, 34 ] ], of: 'gravel', source: 'sheet park' },
+	// the outdoor gym: an L of red rubber between the promenade and the school's road, and the square
+	// pit edged in brick at its inner corner. Laid since the orthophoto was flown: its shape is the
+	// footage's (drone2 at 39-48 s), its place is judged from the school, the road and the bank in
+	// those frames, good to ten metres or so.
+	{ ring: [ [ 92, 24 ], [ 114, 24 ], [ 114, 32 ], [ 92, 32 ] ], of: 'track', source: 'drone2 at 39-48 s' },
+	{ ring: [ [ 92, 32 ], [ 102, 32 ], [ 102, 40 ], [ 92, 40 ] ], of: 'track', source: 'drone2 at 39-48 s' },
+	{ ring: [ [ 104, 34 ], [ 111, 34 ], [ 111, 35 ], [ 104, 35 ] ], of: 'brick', source: 'drone2 at 45 s' },
+	{ ring: [ [ 104, 40 ], [ 111, 40 ], [ 111, 41 ], [ 104, 41 ] ], of: 'brick', source: 'drone2 at 45 s' },
+	{ ring: [ [ 104, 35 ], [ 105, 35 ], [ 105, 40 ], [ 104, 40 ] ], of: 'brick', source: 'drone2 at 45 s' },
+	{ ring: [ [ 110, 35 ], [ 111, 35 ], [ 111, 40 ], [ 110, 40 ] ], of: 'brick', source: 'drone2 at 45 s' },
+	{ ring: [ [ 105, 35 ], [ 110, 35 ], [ 110, 40 ], [ 105, 40 ] ], of: 'gravel', source: 'drone2 at 45 s' },
 	// the school's sports ground: the running track, the basketball court, the handball court, the sand court
 	{ ring: [ [ 180.4, 75.2 ], [ 184.6, 71.2 ], [ 263.4, 156 ], [ 259.2, 160 ] ], of: 'track', source: 'sheet sport' },
 	{ ring: [ [ 191.8, 121 ], [ 204.2, 107.8 ], [ 226.4, 129.2 ], [ 213.2, 142.4 ] ], of: 'court', source: 'sheet sport' },
@@ -104,7 +117,7 @@ export const TREES = [
 	[ 176.5, 66.5, 13 ], [ 152.3, 83.8, 14 ], [ 133.8, 96.5, 13 ], [ 159.2, 96.5, 12 ], [ 110.7, 111.5, 12 ], [ 185.7, 96.5, 12 ],
 	// the bank behind the marina ( sheet marina; the game's water lies some metres further up this bank
 	// than the orthophoto's, and the trees nearest it are set back from it )
-	[ - 71.2, 52, 14 ], [ - 60.8, 54, 15 ], [ - 50.3, 51, 14 ], [ - 39.8, 52.2, 15 ], [ - 29.3, 49, 14 ], [ - 22.8, 56.1, 13 ], [ - 81.7, 58.7, 14 ], [ - 73.8, 66.6, 13 ], [ - 37.2, 61.4, 14 ], [ - 13.6, 58.7, 12 ],
+	[ - 71.2, 52, 14 ], [ - 60.8, 54, 15 ], [ - 50.3, 51, 14 ], [ - 39.8, 52.2, 15 ], [ - 29.3, 49, 14 ], [ - 22.8, 56.1, 13 ], [ - 81.7, 58.7, 14 ], [ - 73.8, 58.5, 13 ], [ - 37.2, 58.5, 14 ], [ - 13.6, 58.7, 12 ],
 	// between the track and the river
 	[ 212, 78, 14 ], [ 224, 92, 14 ], [ 236, 106, 13 ], [ 247, 122, 13 ], [ 256, 140, 12 ],
 ];
@@ -126,4 +139,32 @@ export const MARINAS = [
 export const DECKS = [
 	// the landing by the bridge, where the excursion boat ties up
 	{ ring: [ [ - 20, 25 ], [ - 8, 25 ], [ - 8, 35.5 ], [ - 20, 35.5 ] ], level: 1.5, open: 2, moored: 'excursion', source: 'drone2 at 15-18 s; sheet marina (the landing of 2022 at the same place)' },
+];
+
+// Things that stand about: each a piece of the kit (tools/blender/kit.py) at a place, turned by `yaw`
+// degrees (0: the piece's front toward the south, turning toward the east).
+export const PROPS = [
+	// the outdoor gym: its bars, and the machines on the red ground (drone2 at 45 s; their places on
+	// the pad are the footage's, the pad's own place is judged)
+	{ piece: 'gym_bars', at: [ 111, 26 ], yaw: 90, source: 'drone2 at 45 s' },
+	{ piece: 'gym_station', at: [ 96, 26 ], yaw: 30, source: 'drone2 at 45 s' },
+	{ piece: 'gym_station', at: [ 100, 29 ], yaw: 200, source: 'drone2 at 45 s' },
+	{ piece: 'gym_station', at: [ 104, 26.5 ], yaw: 120, source: 'drone2 at 45 s' },
+	{ piece: 'gym_station', at: [ 107, 29.5 ], yaw: 300, source: 'drone2 at 45 s' },
+	{ piece: 'gym_station', at: [ 95, 34 ], yaw: 250, source: 'drone2 at 45 s' },
+	{ piece: 'gym_station', at: [ 99, 37 ], yaw: 60, source: 'drone2 at 45 s' },
+	// benches by the pad and along the promenade, looking at the water; the park's lamps
+	{ piece: 'bench', at: [ 117, 28 ], yaw: 270, source: 'drone2 at 42 s' },
+	{ piece: 'bench', at: [ 106, 9.6 ], yaw: 180, source: 'drone2 at 36-39 s' },
+	{ piece: 'bench', at: [ 116, 9.6 ], yaw: 180, source: 'drone2 at 36-39 s' },
+	{ piece: 'bench', at: [ 126, 9.6 ], yaw: 180, source: 'drone2 at 36-39 s' },
+	{ piece: 'park_lamp', at: [ 102, 16.5 ], yaw: 0, source: 'drone2 at 39 s' },
+	{ piece: 'park_lamp', at: [ 128, 16.5 ], yaw: 0, source: 'drone2 at 39 s' },
+	{ piece: 'park_lamp', at: [ 115, 33.5 ], yaw: 0, source: 'drone2 at 45 s' },
+	// behind the marina: benches under the trees, lamps along the bank's path (drone2 at 12-15 s)
+	{ piece: 'bench', at: [ - 30, 52 ], yaw: 180, source: 'drone2 at 12-15 s' },
+	{ piece: 'bench', at: [ - 45, 54 ], yaw: 180, source: 'drone2 at 12-15 s' },
+	{ piece: 'bench', at: [ - 62, 57 ], yaw: 180, source: 'drone2 at 12-15 s' },
+	{ piece: 'park_lamp', at: [ - 24, 53 ], yaw: 0, source: 'drone2 at 12-15 s' },
+	{ piece: 'park_lamp', at: [ - 52, 57 ], yaw: 0, source: 'drone2 at 12-15 s' },
 ];

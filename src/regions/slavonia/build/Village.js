@@ -4,7 +4,7 @@ import { createVillageMaterial, SURFACE } from './VillageMaterial.js';
 import { archetypeOf, coverSeen, FENCES } from './Archetypes.js';
 import { gable, leanTo, hip, visible, onSlope, roofHeight } from './Roof.js';
 import { LANDMARKS } from '../Landmarks.js';
-import { buildBridges } from './Bridges.js';
+import { buildBridges, LAMP_PAINT } from './Bridges.js';
 import { buildMarina } from './Marina.js';
 
 // Everything built on the Site's footprints: each building raised by its archetype (Archetypes.js)
@@ -36,6 +36,7 @@ const MADE = {
 	track: { kerb: 0.03, colour: [ 150, 62, 52 ], surface: SURFACE.plain },
 	court: { kerb: 0.03, colour: [ 118, 158, 194 ], surface: SURFACE.plain },
 	sand: { kerb: 0.03, colour: [ 206, 190, 150 ], surface: SURFACE.plain },
+	brick: { kerb: 0.3, colour: [ 156, 86, 60 ], surface: SURFACE.brick },
 };
 const PAVING = MADE.paving;
 // half the thickness of the wall round a landmark's grounds, as the player meets it (m)
@@ -51,6 +52,21 @@ const KIT_PAINT = {
 	plank: { color: lin( [ 112, 96, 78 ] ), rough: 0.9, surface: SURFACE.boards },
 	iron: { color: lin( [ 40, 40, 42 ] ), rough: 0.6, metal: 0.8, surface: SURFACE.plain },
 };
+
+// is the point inside the ring?
+function inside( ring, x, z ) {
+
+	let c = false;
+	for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
+
+		const a = ring[ j ], b = ring[ i ];
+		if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) c = ! c;
+
+	}
+
+	return c;
+
+}
 
 // a repeatable stream of numbers in 0..1 from a seed (mulberry32)
 function random( seed ) {
@@ -190,6 +206,21 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 		}
 
 		for ( const [ p, q ] of [ [ strip.inner[ 0 ], strip.outer[ 0 ] ], [ strip.inner[ n - 1 ], strip.outer[ n - 1 ] ] ] ) builder( p[ 0 ], p[ 1 ] ).paint( paving ).polygon( [ foot( p ), foot( q ), top( q ), top( p ) ], [ [ 0, 0 ], [ width, 0 ], [ width, PAVING.kerb + FOOTING ], [ 0, PAVING.kerb + FOOTING ] ] );
+
+	}
+
+	// what stands about: a piece of the kit at its place, on whatever ground (or made ground) is there
+	const PROP_PAINT = { ...KIT_PAINT, ...LAMP_PAINT, timber: { color: lin( [ 128, 108, 84 ] ), rough: 0.9, surface: SURFACE.boards }, joinery: { color: lin( [ 226, 226, 220 ] ), rough: 0.55, surface: SURFACE.plain } };
+	for ( const prop of site.props ) {
+
+		const piece = models.kit.get( prop.piece );
+		if ( ! piece ) throw new Error( `the survey has a ${ prop.piece } at ${ prop.at }, and the kit has no such piece` );
+		const [ x, z ] = prop.at, yaw = prop.yaw * Math.PI / 180, area = site.areas.find( ( a ) => inside( a.ring, x, z ) );
+		const y = area ? area.level + MADE[ area.of ].kerb : terrain.heightAt( x, z );
+		// ( the piece's front, its Blender -y, is the game's +z for it: toward the south at yaw 0 )
+		const Z = [ Math.sin( yaw ), 0, Math.cos( yaw ) ], X = [ Z[ 2 ], 0, - Z[ 0 ] ], B = builder( x, z );
+		for ( const part of piece.parts ) B.paint( { ...PROP_PAINT[ part.material ], seed: 0.4 } ).stamp( part, X, [ 0, 1, 0 ], Z, [ x, y, z ] );
+		if ( colliders ) colliders.addBox( new Vector3( x, y + piece.h / 2, z ), new Vector3( piece.w / 2, piece.h / 2, piece.depth / 2 ), yaw, { tag: 'prop' } );
 
 	}
 

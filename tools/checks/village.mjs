@@ -60,6 +60,15 @@ for ( const br of site.roads.bridges ) {
 
 }
 
+// ---- what stands about: every prop on dry ground, clear of the buildings
+{
+
+	const props = boxes.filter( ( b ) => b.opts.tag === 'prop' );
+	const wet = site.props.filter( ( p ) => T.heightAt( ...p.at ) < 0.2 ), into = site.props.filter( ( p ) => site.buildings.near( p.at[ 0 ], p.at[ 1 ], 30 ).some( ( b ) => insideBuilding( b, p.at[ 0 ], p.at[ 1 ], 0.3 ) ) );
+	check( props.length === site.props.length && ! wet.length && ! into.length, 'benches, lamps and the gym', `${ site.props.length } props, ${ props.length } built; ${ wet.length } in the water, ${ into.length } in a building` );
+
+}
+
 // ---- the fences
 {
 

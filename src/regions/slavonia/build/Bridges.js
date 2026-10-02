@@ -29,7 +29,7 @@ const KINDS = {
 };
 const CONCRETE = { color: lin( [ 158, 155, 148 ] ), rough: 0.95, surface: SURFACE.concrete, seed: 0.5 };
 const RAIL_PAINT = { railing: { color: lin( [ 168, 172, 176 ] ), rough: 0.45, metal: 0.8, surface: SURFACE.plain, seed: 0.2 } };
-const LAMP_PAINT = { zinc: { color: lin( [ 150, 154, 156 ] ), rough: 0.45, metal: 0.9, surface: SURFACE.plain, seed: 0.2 }, lens: { color: lin( [ 230, 226, 210 ] ), rough: 0.2, surface: SURFACE.plain, seed: 0.2 } };
+export const LAMP_PAINT = { zinc: { color: lin( [ 150, 154, 156 ] ), rough: 0.45, metal: 0.9, surface: SURFACE.plain, seed: 0.2 }, lens: { color: lin( [ 230, 226, 210 ] ), rough: 0.2, surface: SURFACE.plain, seed: 0.2 } };
 // a railing stands this far in from the deck's edge; a collider under a deck is this thick (m)
 const RAIL_IN = 0.12, SLAB = 0.25;
 // supports are founded this far under the ground they stand in (m)

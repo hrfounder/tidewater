@@ -248,6 +248,51 @@ def excursion():
 	return S, dict( w=beam, h=roof + 0.1, depth=0, length=length )
 
 
+def bench():
+	"""A park bench: slats on two concrete ends, a back of slats. It stands on its origin and runs
+	along x; one sits on it facing -y."""
+	w = 1.8
+	S = Shells()
+	for sx in ( - 1, 1 ):
+		x = sx * ( w / 2 - 0.12 )
+		S.box( x - 0.05, x + 0.05, - 0.22, 0.24, 0, 0.42, 'sill' )
+		S.box( x - 0.05, x + 0.05, 0.16, 0.24, 0.42, 0.85, 'sill' )
+	for k in range( 4 ): S.box( - w / 2, w / 2, - 0.22 + k * 0.11, - 0.22 + k * 0.11 + 0.09, 0.42, 0.46, 'timber' )
+	for k in range( 3 ): S.box( - w / 2, w / 2, 0.15, 0.19, 0.52 + k * 0.12, 0.52 + k * 0.12 + 0.09, 'timber' )
+	return S, dict( w=w, h=0.85, depth=0.5 )
+
+
+def park_lamp():
+	"""A park's lamp: a slender post with a lantern on its top (drone2 at 39 s)."""
+	h = 4.2
+	S = Shells()
+	S.pole( 0, 0, 0, h, 0.06, 0.04, 'zinc' )
+	S.pole( 0, 0, h, h + 0.12, 0.16, 0.2, 'zinc', seg=8 )
+	S.pole( 0, 0, h + 0.12, h + 0.3, 0.2, 0.05, 'lens', seg=8 )
+	return S, dict( w=0.4, h=h + 0.3, depth=0.4 )
+
+
+def gym_bars():
+	"""Pull-up bars of an outdoor gym: three posts in a row, a bar between each two at its own
+	height. It runs along x."""
+	S = Shells()
+	for k, x in enumerate( ( - 1.3, 0, 1.3 ) ): S.pole( x, 0, 0, 2.5, 0.05, 0.05, 'zinc' )
+	for x0, x1, z in ( ( - 1.3, 0, 2.3 ), ( 0, 1.3, 1.95 ) ): S.box( x0, x1, - 0.018, 0.018, z - 0.018, z + 0.018, 'zinc' )
+	return S, dict( w=2.7, h=2.5, depth=0.2 )
+
+
+def gym_station():
+	"""One apparatus of an outdoor gym: a painted post with a seat on an arm and a pair of handles
+	(the white and grey machines of drone2 at 45 s, no two alike: this is the plainest of them)."""
+	S = Shells()
+	S.pole( 0, 0, 0, 1.5, 0.07, 0.06, 'joinery' )
+	S.box( - 0.04, 0.04, - 0.75, 0, 0.5, 0.58, 'zinc' )
+	S.box( - 0.2, 0.2, - 0.95, - 0.6, 0.58, 0.63, 'iron' )
+	S.box( - 0.45, 0.45, - 0.03, 0.03, 1.2, 1.26, 'zinc' )
+	for sx in ( - 1, 1 ): S.box( sx * 0.45 - 0.02, sx * 0.45 + 0.02, - 0.4, 0, 1.2, 1.26, 'zinc' )
+	return S, dict( w=0.9, h=1.5, depth=1.0 )
+
+
 def gate_yard():
 	"""The gate of a yard on the street: two boarded leaves between two rendered pillars. It stands
 	on its origin, runs along x about it, and faces the street toward -y."""
@@ -261,7 +306,7 @@ def gate_yard():
 	return S, dict( w=w, h=h, depth=0 )
 
 
-PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
+PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, bench=bench, park_lamp=park_lamp, gym_bars=gym_bars, gym_station=gym_station, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

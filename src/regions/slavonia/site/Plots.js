@@ -13,7 +13,8 @@ import { project, pointAt } from './Roads.js';
 //     back     as far back as its buildings reach, and a yard's width more
 //
 // A landmark with grounds of its own (Buildings.js) has no plot: its grounds are its land, and the
-// plots beside it stop at them.
+// plots beside it stop at them. Nor has a building that stands in ground the survey found open (a
+// park's pavilion, a school): a park is not fenced into yards.
 //
 // Real cadastral parcels replace this when they are available; what reads a plot stays the same.
 
@@ -25,14 +26,16 @@ const YARD_BACK = 6;
 // a plot is looked at this often along its street for a landmark's grounds in it (m)
 const LOOK = 0.5;
 
-export function buildPlots( buildings, roads ) {
+export function buildPlots( buildings, roads, open ) {
+
+	const inOpen = ( b ) => open.some( ( o ) => inRing( o.ring, b.x, b.z ) );
 
 	// every building against its street: the stretch it covers and how far out it stands
 	const rows = new Map();
 	for ( const b of buildings.list ) {
 
 		const f = b.frontage;
-		if ( ! f || b.grounds ) continue;
+		if ( ! f || b.grounds || inOpen( b ) ) continue;
 		let s0 = Infinity, s1 = - Infinity, d0 = Infinity, d1 = - Infinity;
 		for ( const [ x, z ] of b.ring ) {
 
@@ -84,7 +87,23 @@ export function buildPlots( buildings, roads ) {
 	}
 
 	for ( const b of buildings.list ) if ( b.grounds ) for ( const plot of plots ) stopAt( plot, b.grounds.ring );
+	for ( const o of open ) for ( const plot of plots ) stopAt( plot, o.ring );
 	return plots.filter( ( p ) => p.s1 > p.s0 );
+
+}
+
+// is the point inside the ring?
+function inRing( ring, x, z ) {
+
+	let c = false;
+	for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
+
+		const a = ring[ j ], b = ring[ i ];
+		if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) c = ! c;
+
+	}
+
+	return c;
 
 }
 
@@ -92,19 +111,7 @@ export function buildPlots( buildings, roads ) {
 // keeps the part its own house stands in.
 function stopAt( plot, ring ) {
 
-	const inside = ( [ x, z ] ) => {
-
-		let c = false;
-		for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
-
-			const a = ring[ j ], b = ring[ i ];
-			if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) c = ! c;
-
-		}
-
-		return c;
-
-	};
+	const inside = ( [ x, z ] ) => inRing( ring, x, z );
 	const taken = ( s ) => [ plot.front, ( plot.front + plot.back ) / 2, plot.back ].some( ( d ) => inside( pointAt( plot.road, s, d, plot.side ) ) );
 	const home = Math.min( plot.s1, Math.max( plot.s0, plot.house.frontage.s ) );
 	if ( taken( home ) ) return;

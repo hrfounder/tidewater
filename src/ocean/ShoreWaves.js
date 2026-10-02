@@ -601,7 +601,10 @@ fn shoreSwashRunup( sh: vec4f, along: f32, groundH: f32 ) -> ShoreRunup {
 // thin, so the sheet ends on the analytic front instead of the mesh triangles at ~no cost.
 fn shoreSwashEdge( p: vec2f, t: f32 ) -> vec4f {
 	var out = vec4f( t, 1e3, 0.0, 0.0 );
-	if ( t < 0.3 ) {
+	// no surf, no swash sheet (a river, a lake): the water simply meets the bank. Without this the
+	// run-up of a surf that is switched off is zero, and a film clipped to it is no film at all: the
+	// water was left undrawn in a strip along the waterline, as wide as the waves made it.
+	if ( t < 0.3 && shoreP.enabled > 0.0 ) {
 		let g = terrainHeightAt( p );
 		if ( g > frame.seaLevel - 0.8 ) {
 			let ph = shorePhaseAt( p );

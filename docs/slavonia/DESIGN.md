@@ -121,9 +121,12 @@ the yard opens. It is instanced kit panels with a fade distance, not merged pick
 - **Ground contact**: plants hung in the air because the terrain mesh cuts convex corners between
   its vertices. The fix belongs in the plant, not the placement: each model's root runs below its
   origin, so it meets the ground whatever the mesh does. "Sink by a fraction" goes.
-- **Current**: two copies of the wave pattern, each carried along the flow for a few seconds and
-  cross-faded as it resets (a flow map). The distortion is bounded by that period, instead of growing
-  for as long as the game runs.
+- **Current**: the wave pattern is not carried along the flow. The first pass offset it by
+  flow x time, which sheared it into streaks; a two-phase flow map would bound that, at twice the
+  cost of every wave sample, to show a drift of 0.12 m/s that wind ripples cannot show anyway. The
+  current is shown by what floats on it (M7: flecks and leaves on the surface, the float, the boat).
+  Fixed 2026-10-02, with the strip of undrawn water along the bank (the island's swash sheet was
+  still clipping the water on a river with no surf: the "line that walks the shoreline").
 - **Colour by numbers**: the water, grass, roofs and walls are matched to your photographs as
   measured values, not by eye — sampled patches, corrected for the light in each photo, compared
   against the same patches rendered at the matching sun height and season. Wave height and frequency
@@ -181,7 +184,7 @@ band from the mesh height rather than the true height.
 | M4 | Landmarks: finish St Roch's, St Andrew's, Most Bosut | side-by-side with each photograph |
 | M5 | Kit pieces, plots, fences | budget check |
 | M6 | Plant placement from occupancy; ground contact | overlap check at 0 |
-| M7 | River current as a flow map; colour and waves by numbers | measured against the photographs |
+| M7 | The current shown by what floats; colour and waves by numbers | measured against the photographs |
 
 Removed when their replacement lands: `TileTerrain`'s channel cut and flow, `rivers.json`, `Roads.js`, `Buildings.js`, `Yards.js`, `Bridge.js`,
 `Church.js`, and in `Flora.js` the scatter, `builtMask` and the sink.

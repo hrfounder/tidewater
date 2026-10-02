@@ -29,6 +29,19 @@ for ( const br of site.roads.bridges ) {
 
 }
 
+// ---- the anglers' platforms: each at the waterline, its front over water and its back on the bank
+{
+
+	const deck = world.models.kit.get( 'platform' ), P = site.park.platforms;
+	const off = P.filter( ( p ) => Math.abs( T.heightAt( p.x, p.z ) ) > 0.15 );
+	const dry = P.filter( ( p ) => T.heightAt( p.x + p.toWater[ 0 ] * deck.out, p.z + p.toWater[ 1 ] * deck.out ) >= 0 );
+	const afloat = P.filter( ( p ) => T.heightAt( p.x - p.toWater[ 0 ] * deck.back, p.z - p.toWater[ 1 ] * deck.back ) < 0 );
+	check( P.length > 20 && ! off.length && ! dry.length && ! afloat.length, 'anglers\' platforms on the waterline', `${ P.length }; ${ off.length } off the waterline, ${ dry.length } with their front on dry land, ${ afloat.length } with their back in the water` );
+	const park = site.park;
+	console.log( `     the player starts at ${ park.start.x.toFixed( 0 ) },${ park.start.z.toFixed( 0 ) } on ground ${ T.heightAt( park.start.x, park.start.z ).toFixed( 2 ) } m over the water; the boat lies in ${ ( - T.heightAt( park.boat.x, park.boat.z ) ).toFixed( 2 ) } m of water; stalls at ${ park.stand.x.toFixed( 0 ) },${ park.stand.z.toFixed( 0 ) } and ${ park.chandlery.x.toFixed( 0 ) },${ park.chandlery.z.toFixed( 0 ) }` );
+
+}
+
 // ---- the geometry is sound: finite, and every mesh stands between the ground and a church's height
 {
 

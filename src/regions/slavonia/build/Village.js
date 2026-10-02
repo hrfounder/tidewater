@@ -85,6 +85,23 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	const bridges = buildBridges( builder, { site, terrain, models }, colliders );
 
+	// the anglers' platforms along the bank: the kit's piece at each of the Site's places for one
+	const platform = models.kit.get( 'platform' );
+	for ( const p of site.park.platforms ) {
+
+		// the piece's +z is the water's side, its origin on the waterline at the water's level
+		const Z = [ p.toWater[ 0 ], 0, p.toWater[ 1 ] ], X = [ Z[ 2 ], 0, - Z[ 0 ] ];
+		const B = builder( p.x, p.z );
+		for ( const part of platform.parts ) B.paint( { color: part.color, rough: part.rough, surface: SURFACE.plain, seed: 0.6 } ).stamp( part, X, [ 0, 1, 0 ], Z, [ p.x, 0, p.z ] );
+		if ( colliders ) {
+
+			const mid = ( platform.out - platform.back ) / 2;
+			colliders.addBox( new Vector3( p.x + Z[ 0 ] * mid, platform.h - 0.05, p.z + Z[ 2 ] * mid ), new Vector3( platform.w / 2, 0.05, ( platform.out + platform.back ) / 2 ), Math.atan2( Z[ 0 ], Z[ 2 ] ), { walkable: true, tag: 'platform' } );
+
+		}
+
+	}
+
 	const meshes = [];
 	let triangles = 0;
 	for ( const [ key, B ] of cells ) {
@@ -97,7 +114,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	return { meshes, material, built, waiting, bridges, triangles };
+	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, triangles };
 
 }
 

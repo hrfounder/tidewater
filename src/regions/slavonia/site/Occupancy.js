@@ -33,6 +33,13 @@ export class Occupancy {
 
 	}
 
+	// take the ground inside a polygon [ [ x, z ], ... ] for `what`, where nothing higher has it
+	claim( polygon, what ) {
+
+		fillPolygon( this.grid, polygon, ( k ) => { if ( this.of[ k ] < what ) this.of[ k ] = what; } );
+
+	}
+
 	at( x, z ) {
 
 		const { res, texel, ox, oz } = this.grid;

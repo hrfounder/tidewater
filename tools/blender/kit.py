@@ -41,6 +41,7 @@ MATERIALS = {
 	'railing': ( ( 52, 96, 150 ), 0.50, 0.3 ),      # the blue paint of the bridge's railings
 	'zinc': ( ( 150, 154, 156 ), 0.45, 0.9 ),       # galvanised steel: lamp posts
 	'lens': ( ( 230, 226, 210 ), 0.20, 0.0 ),       # a lamp's diffuser
+	'timber': ( ( 128, 108, 84 ), 0.90, 0.0 ),      # sawn boards and posts left to weather
 }
 
 BAR = 0.055          # a frame member's face width
@@ -166,7 +167,25 @@ def lamp():
 	return S, dict( w=0.24, h=h, depth=0, reach=reach )
 
 
-PIECES = dict( railing=railing, lamp=lamp, window_street=window_street, window_plain=window_plain, window_small=window_small,
+def platform():
+	"""An angler's platform (docs/slavonia/photos/bosut-winter-platforms-bridge.jpg): a deck of boards
+	on four posts driven into the bed, a knee above the water, its back on the bank. The origin is
+	on the waterline at the middle of the deck's width, at the water's level; +y is the bank."""
+	w, out, back, top, board = 2.4, 1.8, 0.9, 0.45, 0.2
+	S = Shells()
+	n = round( ( out + back ) / board )
+	for k in range( n ):
+		y0 = - out + ( out + back ) * k / n
+		S.box( - w / 2, w / 2, y0 + 0.01, y0 + ( out + back ) / n - 0.01, top - 0.035, top, 'timber' )
+	# two bearers under the boards, and the posts: the two at the front stand up as rod rests
+	for x in ( - w / 2 + 0.25, w / 2 - 0.25 ):
+		S.box( x - 0.04, x + 0.04, - out, back, top - 0.16, top - 0.035, 'timber' )
+		S.pole( x, - out + 0.12, - 3.0, top + 0.55, 0.06, 0.05, 'timber', seg=6 )
+		S.pole( x, - 0.2, - 3.0, top - 0.035, 0.06, 0.06, 'timber', seg=6 )
+	return S, dict( w=w, h=top, depth=0, out=out, back=back )
+
+
+PIECES = dict( railing=railing, lamp=lamp, platform=platform, window_street=window_street, window_plain=window_plain, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

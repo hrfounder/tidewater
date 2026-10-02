@@ -17,6 +17,20 @@ export const PARTED = [
 	{ at: [ - 12, 169 ], cuts: [ [ [ - 14.1, 156.6 ], [ - 24.9, 168.4 ] ] ], source: 'sheet 1414; drone5 f001, f002' },
 ];
 
+// Footprints of the map where nothing stands on the orthophoto (a building pulled down, a yard drawn
+// as one): `at` a point in the footprint as the survey has it.
+export const GONE = [
+	// south of the municipality: a gravel lot where lorries stand, a lawn, a hedge
+	{ at: [ 12, - 56.5 ], source: 'sheet 1542' },
+	{ at: [ 8, - 75.3 ], source: 'sheet 1542' },
+	{ at: [ 17.4, - 74.3 ], source: 'sheet 1542' },
+	// west of Vinkovačka ulica opposite the municipality the map has three small outlines where two
+	// halls and a flat-roofed building stand (ADDED): each is a corner of one of them
+	{ at: [ - 15.2, - 141.6 ], source: 'sheet blue' },
+	{ at: [ - 13.5, - 122.9 ], source: 'sheet blue' },
+	{ at: [ - 14.2, - 108.6 ], source: 'sheet blue' },
+];
+
 // Footprints the survey of the orthophoto set down in the wrong place (its fit goes by the contrast
 // along the walls, and a paved yard's edge can outdo a roof's): `at` a point in the footprint where
 // the survey has it, `by` the metres [ east, south ] from there to where its roof is on the sheet.
@@ -24,6 +38,9 @@ export const MOVED = [
 	// the station house of Andrijaševci: the survey took the edge of the concrete before it for its
 	// south wall. Its roof (the shaded north slope and the lit south one) lies 6.2 m further north.
 	{ at: [ - 862, - 273 ], by: [ 0, - 6.2 ], source: 'sheet station' },
+	// the house behind the gravel lot south of the municipality: the survey set it on the shadow north
+	// of it; its two slopes lie 4.6 m further south
+	{ at: [ 31.9, - 62.5 ], by: [ 0, 4.6 ], source: 'sheet 1542' },
 ];
 
 // Buildings the map does not have, traced off the orthophoto, each as a rectangle: `at` its middle,
@@ -43,6 +60,18 @@ export const ADDED = [
 	{ at: [ 53.6, - 175.4 ], size: [ 7.0, 10.5 ], turn: - 17.6, roof: [ 125, 110, 103 ], source: 'sheet roch-rot' },
 	{ at: [ 40.7, - 172.1 ], size: [ 9.7, 8.0 ], turn: - 17.6, roof: [ 160, 116, 95 ], source: 'sheet roch-rot' },
 	{ at: [ 26.6, - 171.2 ], size: [ 10.7, 6.0 ], turn: 11, roof: [ 114, 87, 87 ], source: 'sheet roch-rot' },
+	// West of the parish house, on the street that leaves Vinkovačka ulica there: an L of two long
+	// houses under old tiles, its one arm along the street and the other down the yard's west side,
+	// and the sheds beyond its foot
+	{ at: [ - 40.0, - 56.2 ], size: [ 16.0, 6.8 ], turn: 0, roof: [ 132, 115, 106 ], source: 'sheet parish' },
+	{ at: [ - 53.7, - 51.6 ], size: [ 14.5, 6.8 ], turn: 108.4, roof: [ 75, 69, 67 ], source: 'sheet parish' },
+	{ at: [ - 56.2, - 39.9 ], size: [ 9.0, 6.0 ], turn: 108.4, roof: [ 95, 87, 77 ], source: 'sheet parish' },
+	// West of Vinkovačka ulica opposite the municipality: a hall under blue sheet, solar panels on the
+	// east half of its roof; a longer hall under grey sheet against its south wall; and a low building
+	// with a flat white roof before that one, on the street
+	{ at: [ - 23.5, - 135.3 ], size: [ 22.5, 11.2 ], turn: 14, roof: [ 74, 109, 154 ], source: 'sheet blue' },
+	{ at: [ - 24.1, - 125.0 ], size: [ 28.8, 9.0 ], turn: 14, roof: [ 106, 117, 125 ], source: 'sheet blue' },
+	{ at: [ - 18.3, - 115.3 ], size: [ 11.8, 6.0 ], turn: 14, roof: [ 215, 220, 225 ], source: 'sheet blue' },
 ];
 
 // The buildings. `at` is a point on the building (anywhere inside its footprint); the rest is what was
@@ -52,6 +81,7 @@ export const ADDED = [
 //   walls     [ surface, [ r, g, b ] ]: what its walls are (a name of the village material's SURFACE)
 //             and their colour, sRGB 0-255
 //   form      its roof's: 'gable' or 'hip'
+//   pitch     its roof's pitch (degrees), where it is not its kind's: a flat roof falls 3
 //   roof      its roof's colour, where it is not what the orthophoto has (a roof laid since): [ r, g, b ]
 //   source    where it was seen: the frame or the sheet
 export const SEEN = [
@@ -84,6 +114,14 @@ export const SEEN = [
 	{ at: [ 53.6, - 175.4 ], is: 'barn', source: 'sheet roch-rot' },
 	{ at: [ 40.7, - 172.1 ], is: 'house', form: 'gable', source: 'sheet roch-rot' },
 	{ at: [ 26.6, - 171.2 ], is: 'shed', source: 'sheet roch-rot' },
+	// The centre, between the churches. Of the buildings the map lacks there (ADDED) only the roofs were
+	// seen: what each is by its size and its place, and the flat roof's pitch
+	{ at: [ - 40.0, - 56.2 ], is: 'longhouse', storeys: 1, form: 'gable', source: 'sheet parish' },
+	{ at: [ - 53.7, - 51.6 ], is: 'longhouse', storeys: 1, form: 'gable', source: 'sheet parish' },
+	{ at: [ - 56.2, - 39.9 ], is: 'barn', source: 'sheet parish' },
+	{ at: [ - 23.5, - 135.3 ], is: 'hall', source: 'sheet blue' },
+	{ at: [ - 24.1, - 125.0 ], is: 'hall', source: 'sheet blue' },
+	{ at: [ - 18.3, - 115.3 ], is: 'public', storeys: 1, pitch: 3, source: 'sheet blue' },
 	// Ring 1 round St Andrew's, off the orbit of the footage (drone5) and the sheet andrew.
 	// North-east of the church: the house on the street, ochre under a hipped roof of newer red tiles
 	// (the orthophoto's colour of its lit slope, 186, 141, 121, at the survey's gain); the row behind

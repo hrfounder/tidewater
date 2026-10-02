@@ -240,10 +240,17 @@ A ring is worked with a survey sheet: `python tools/geodata/sheet.py bosut <x>,<
 <out.jpg>` draws the orthophoto of a square with every footprint numbered (mapped and surveyed),
 the roads, and a grid in the game's metres. What is read off it goes into `Survey.js`.
 
-Where the map lacks buildings, the sheet is turned to the row's own axes and gridded (5 m), the
-rectangles are read off it, and `tools/geodata/survey.py`'s measure reads each roof inside its
-rectangle. South of St Roch's six stood unmapped; the churchyard's ring in the model was drawn
-through the corner of one of them, and now goes round it.
+Where the map lacks buildings, the sheet is turned to the row's own axes and gridded (`sheet.py`
+with a turn: 5 m, u across and v down), the rectangles are read off it, and `tools/geodata/trace.py`
+gives each back as a record of `ADDED`, its roof read inside it by `survey.py`'s own measure. South
+of St Roch's six stood unmapped; the churchyard's ring in the model was drawn through the corner of
+one of them, and now goes round it. In the centre the map had three small outlines where two halls
+and a flat-roofed building stand opposite the municipality, nothing for the L of long houses by the
+parish house, and three outlines over a gravel lot and a lawn.
+
+The sweep so far (sheets of 110 m at 0.1 m): round St Andrew's, round St Roch's, Vinkovačka ulica
+from St Roch's to the bridge. Not yet swept: Ulica Matije Gupca from the bridge to St Andrew's, and
+everything a street back from these.
 
 A landmark is checked against its photographs before it goes into the game:
 `tools/blender/look.py` renders the model from the places the photographs were taken from.
@@ -255,6 +262,7 @@ a record.
 
 | Record | What it is | Built by |
 |---|---|---|
+| `GONE` | a footprint of the map where nothing stands on the orthophoto | `site/Buildings.js`: left out |
 | `MOVED` | a footprint the survey set down in the wrong place, and how far from there its roof is | `site/Buildings.js` |
 | `ADDED` | a building the map lacks, traced off the orthophoto as a rectangle, with its roof's colour read off the same picture | `site/Buildings.js`, numbered on after the map's |
 | `PARTED` | a footprint the map draws as one and that is several buildings in a row: the lines it is cut along | `site/Buildings.js`, every part a building of its own |
@@ -319,20 +327,22 @@ Still to do, in this order:
    apse, 1412, 1413, 1415, 1417; the barn 1493), the neighbours' fences and yards, the crossing's
    markings, the trees of the street. The two-storey house across Ulica Vladimira Nazora is two
    storeys for 12 m of its 20 and lower beyond: it is built two storeys throughout.
-2. **St Roch's ring**: the six buildings south of it that the map lacks are in (of five only the
+2. **The sweep** of the rest of the centre for what the map lacks, has twice or has in the wrong
+   place (see section 11), then outward.
+3. **St Roch's ring**: the six buildings south of it that the map lacks are in (of five only the
    roofs were seen: their walls are the rule's). Still: the mapped houses round it as they are, the
    shop (Boso) and its yellow roof, the streets' corner where the stone cross and the lime stand
    (the fence's line there is a guess: the tree and the church's shadow hide it on the orthophoto).
-3. **The park's newer things**, which are in the footage of 2025 and not on the orthophoto: the
+4. **The park's newer things**, which are in the footage of 2025 and not on the orthophoto: the
    outdoor gym on its red ground, the fire pit, the benches and lamps, the bank's paved edge at the
    marina. Their places have to be judged from the frames.
-4. **The station**: its platform, the house's walls and roof as they are (nothing shows them yet),
+5. **The station**: its platform, the house's walls and roof as they are (nothing shows them yet),
    the yard road's line (the survey has it on the concrete's edge, not on its asphalt).
-5. **The cadastre**, when the service answers (it failed on five tries, the last on 2026-10-03): parcels for
+6. **The cadastre**, when the service answers (it failed on five tries, the last on 2026-10-03): parcels for
    yards and fences, the registry's outlines, and with them storeys from shadows.
-6. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
+7. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
    Street-level pictures of the other streets are what every further ring needs.
-7. **M7** colour by numbers; what floats on the water to show the current.
+8. **M7** colour by numbers; what floats on the water to show the current.
 
 Known and left: one house at 754,-1083, near the block's edge, stands a metre onto a lane that was not surveyed
 (`site.mjs` reports it).
@@ -349,6 +359,9 @@ How things are run:
 - Geodata: `terrain.py bosut`, `tiles.py bosut core 45.22730,18.74159,12`, `places.py bosut 45.22730,18.74159,4`,
   `survey.py bosut 45.22730,18.74159,4` (with `rails` after it: the tracks only, into the survey
   there is), `sheet.py`, `cadastre.py` (the cache is on F:).
+- Tracing: `python tools/geodata/sheet.py bosut <x>,<z> <half side> <out.jpg> <m/px> <turn>` for a
+  turned, gridded sheet; `python tools/geodata/trace.py bosut <x>,<z> <turn> <u0>,<u1>,<v0>,<v1> ...`
+  (in `tools/geodata/`) for the records.
 - A ring: `python tools/geodata/sheet.py bosut <x>,<z> <half side> <out.jpg>` for the sheet,
   `node tools/checks/ring.mjs <x> <z> <metres>` for its buildings, `node tools/checks/around.mjs
   "<name>"` for a landmark's neighbours in its model's frame.

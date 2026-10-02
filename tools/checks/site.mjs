@@ -244,6 +244,11 @@ for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 	const added = buildings.list.filter( ( b ) => b.added );
 	const none = added.filter( ( b ) => ! b.frontage || ! b.kind );
 	check( none.length === 0, 'added buildings: each has its street and its kind', `${ added.length } added (${ added.map( ( b ) => `${ b.index } ${ b.seen.is || b.kind } ${ b.area.toFixed( 0 ) } m2 on ${ b.frontage ? b.frontage.road.name : '-' }` ).join( '; ' ) })` );
+	// what the survey says is not there is not there
+	const mapped = readJSON( 'places.json' ).buildings.length, there = new Set( buildings.list.map( ( b ) => b.index ) );
+	let out = 0;
+	for ( let i = 0; i < mapped; i ++ ) if ( ! there.has( i ) ) out ++;
+	console.log( `     ${ out } of the map's ${ mapped } footprints have nothing standing in them and are left out` );
 
 }
 

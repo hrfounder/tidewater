@@ -45,10 +45,11 @@ export class Buildings {
 	// survey: survey.json, { shifts, roofs, gain } in the order of the map's buildings; seen: the
 	// records of Survey.js SEEN, each with a point on its building; parted: the records of Survey.js
 	// PARTED, the footprints that are several buildings; added: those of ADDED, the buildings the
-	// map lacks; moved: those of MOVED, the footprints the survey set down in the wrong place.
+	// map lacks; moved: those of MOVED, the footprints the survey set down in the wrong place;
+	// gone: those of GONE, the footprints where nothing stands.
 	// The footprints only: `settle` does the rest, once the roads exist (the roads need the walls
 	// first, to keep clear of them).
-	constructor( places, { center, landmarks, survey, seen, parted, added, moved } ) {
+	constructor( places, { center, landmarks, survey, seen, parted, added, moved, gone } ) {
 
 		const [ cE, cN ] = center;
 		// ( a landmark stays where the map has it: its model's script was measured against that place,
@@ -58,6 +59,15 @@ export class Buildings {
 
 			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
 			if ( own && own.plan ) plant( b, own, places.roads, cE, cN );
+
+		}
+
+		// a footprint where nothing stands: out
+		for ( const record of gone ) {
+
+			const k = this.list.findIndex( ( b ) => inRing( b.ring, record.at[ 0 ], record.at[ 1 ] ) );
+			if ( k < 0 ) throw new Error( `the survey has nothing standing at ${ record.at } (${ record.source }), and no footprint is there` );
+			this.list.splice( k, 1 );
 
 		}
 

@@ -1,13 +1,19 @@
 """A survey sheet: the orthophoto of a square of the block with the map drawn over it, for looking at
 what really stands there building by building.
 
-    python3 tools/geodata/sheet.py bosut <x>,<z> <half side, m> <out.jpg> [metres per pixel]
+    python3 tools/geodata/sheet.py bosut <x>,<z> <half side, m> <out.jpg> [metres per pixel [turn]]
 
 ( x, z ) is the square's middle in the game's metres (east and south of the block's centre). The
 mapped footprints are outlined (thin, blue) and numbered with their index in places.json, each again
 where the survey moved it to (survey.json, if there is one: thick, yellow-green), the mapped roads
 drawn as their centrelines (thin, yellow) and the surveyed ones as their middle and their two edges
 (orange), the mapped tracks (thin, magenta) and the surveyed ones (thick, a ring at each end of a bridge), and a grid of 10 m ticks runs along the edges with the game's coordinates.
+
+With `turn` the sheet is for tracing what the map lacks: it is turned about its middle so that the
+direction `turn` degrees from east toward south runs to the right (a row of buildings is turned to
+lie along the sheet), and a grid of 5 m is drawn over it in the turned frame: u to the right, v down,
+both 0 at the middle. A rectangle read off that grid goes to trace.py, which gives it back as a
+record of Survey.js ADDED.
 
 The orthophoto is the State Geodetic Administration's (see survey.py). The service stamps its mark
 across the middle of every picture, so the square is asked for as one quarter of a picture four
@@ -30,6 +36,7 @@ def main():
     half = float( sys.argv[ 3 ] )
     out = sys.argv[ 4 ]
     metre = float( sys.argv[ 5 ] ) if len( sys.argv ) > 5 else 0.1
+    turn = float( sys.argv[ 6 ] ) if len( sys.argv ) > 6 else None
     places = json.load( open( os.path.join( ROOT, 'public', 'world', area, 'places.json' ), encoding='utf-8' ) )
     cE, cN = places[ 'center' ]
     survey = os.path.join( ROOT, 'public', 'world', area, 'survey.json' )
@@ -86,9 +93,19 @@ def main():
         p = ( gz - ( z - half ) ) / metre
         d.line( [ ( 0, p ), ( 14 if gz % 50 else 30, p ) ], fill=( 255, 255, 255 ), width=2 )
         if gz % 50 == 0: d.text( ( 34, p + 2 ), f'z {gz}', fill=( 255, 255, 255 ), font=font )
+    if turn is not None:
+        # ( PIL turns a picture anticlockwise as it is looked at: the direction `turn` comes to lie along +x )
+        im = im.rotate( turn, resample=Image.BICUBIC, center=( side / 2, side / 2 ) )
+        d = ImageDraw.Draw( im )
+        for m in range( - int( half // 5 ) * 5, int( half ) + 1, 5 ):
+            p = side / 2 + m / metre
+            d.line( [ ( p, 0 ), ( p, side ) ], fill=( 255, 255, 255 ), width=1 )
+            d.line( [ ( 0, p ), ( side, p ) ], fill=( 255, 255, 255 ), width=1 )
+            d.text( ( p + 3, 3 ), f'u{m}', fill=( 255, 255, 0 ), font=font )
+            d.text( ( 3, p + 3 ), f'v{m}', fill=( 255, 255, 0 ), font=font )
     os.makedirs( os.path.dirname( os.path.abspath( out ) ), exist_ok=True )
     im.save( out, quality=92 )
-    print( f'{side} px square, {metre} m a pixel, middle {x},{z} -> {out}' )
+    print( f'{side} px square, {metre} m a pixel, middle {x},{z}{"" if turn is None else f", turned {turn} degrees"} -> {out}' )
 
 
 if __name__ == '__main__':

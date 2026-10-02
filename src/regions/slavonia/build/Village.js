@@ -376,7 +376,7 @@ function raise( B, b, A, kit, terrain ) {
 	}
 
 	const gabled = pieces.filter( ( p ) => ! hosts.has( p ) ), axes = new Map( gabled.map( ( p ) => [ p, p.hu >= p.hv ? 0 : 1 ] ) );
-	const tan = Math.tan( ( A.roof.tiled && cover.surface === SURFACE.tile ? A.roof.tiled : A.roof.pitch ) * Math.PI / 180 );
+	const tan = Math.tan( ( b.seen.pitch || ( A.roof.tiled && cover.surface === SURFACE.tile ? A.roof.tiled : A.roof.pitch ) ) * Math.PI / 180 );
 	const roofs = new Map( pieces.map( ( p ) => [ p,
 		hosts.has( p ) ? leanTo( p, hosts.get( p ), { topY: eaveY - LEAN.drop, tan: Math.tan( LEAN.pitch * Math.PI / 180 ), lowest: floorY + LEAN.wall, eave: A.roof.eave / 2, verge: A.roof.verge } )
 		: ( b.seen.form || A.roof.form ) === 'hip' && pieces.length === 1 ? hip( p, { eaveY, tan, eave: A.roof.eave } )

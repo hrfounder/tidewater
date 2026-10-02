@@ -33,15 +33,16 @@ export { waterDatum };
 
 // index: the tiles' index.json; water, places: water.json and places.json of the block; survey: its
 // survey.json, what was measured on the orthophoto (tools/geodata/survey.py); seen, beside: what was
-// seen by eye of its buildings and along its roads (Survey.js); parted, added, moved: the footprints that are
-// several buildings, the buildings the map lacks, and the footprints the survey misplaced; open, areas, trees: the rest of what was seen; marinas, decks: on the water;
+// seen by eye of its buildings and along its roads (Survey.js); parted, added, moved, gone: the footprints
+// that are several buildings, the buildings the map lacks, the footprints the survey misplaced and
+// those where nothing stands; open, areas, trees: the rest of what was seen; marinas, decks: on the water;
 // ground( x, z ): the height of the dry ground, before anything is cut into it;
 // landmarks: the buildings that have a model of their own, by name in lower case (Landmarks.js),
 // each with the plan its model carries (build/Models.js), if it has one
-export function buildSite( { index, water, places, survey, seen, parted, added, moved, beside, open, areas, trees, marinas, decks, props, ground, datum, landmarks } ) {
+export function buildSite( { index, water, places, survey, seen, parted, added, moved, gone, beside, open, areas, trees, marinas, decks, props, ground, datum, landmarks } ) {
 
 	const center = index.center;
-	const buildings = new Buildings( places, { center, landmarks, survey, seen, parted, added, moved } );
+	const buildings = new Buildings( places, { center, landmarks, survey, seen, parted, added, moved, gone } );
 	const rails = new Rails( places, { center, ground, survey } );
 	const roads = new Roads( places, { center, ground, walls: buildings, survey, rails } );
 	buildings.settle( { roads, ground, landmarks } );

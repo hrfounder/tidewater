@@ -50,7 +50,7 @@ export class FishStand {
 		// (local z 0.12: clear of the shelf at -0.78..-0.48 and the counter top from 0.58)
 		const local = new Vector3( 0.2, 0, 0.12 ).applyAxisAngle( new Vector3( 0, 1, 0 ), STAND.yaw );
 		this.vendor = new Vendor( {
-			name: 'Joe · Fish buyer',
+			name: `${ REGION.people.buyer.name } · ${ REGION.people.buyer.role }`,
 			kind: 'buyer',
 			position: new Vector3( STAND.x + local.x, y + STALL_FLOOR, STAND.z + local.z ),
 			yaw: STAND.yaw,

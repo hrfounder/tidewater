@@ -1,4 +1,5 @@
 import { icon, brandMark } from './icons.js';
+import { REGION } from '../regions/index.js';
 
 // Tidewater UI: settings panel (tabs → folders → controls), HUD, help,
 // photo mode, start overlay and loader. Plain DOM, no dependencies.
@@ -2167,7 +2168,7 @@ export class UI {
 					</section>
 				</div>
 				<div class="tw-help-guide">
-					<span><b>How to play:</b> catch fish, sell them to Joe at the fish stand by the pier, and buy upgrades from Marta at the chandlery by the boathouse. Both are on the map (lower right).</span>
+					<span><b>How to play:</b> catch fish, sell them to ${ REGION.people.buyer.name } at the ${ REGION.people.buyer.where }, and buy upgrades from ${ REGION.people.shop.name } at the ${ REGION.people.shop.where }. Both are on the map (lower right).</span>
 					<button type="button" class="gm-btn is-ghost tw-help-replay">Replay the guide</button>
 				</div>
 			</div>`;

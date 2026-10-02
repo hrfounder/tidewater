@@ -1,5 +1,6 @@
 import { STAND } from './FishStand.js';
 import { CHANDLERY } from './Chandlery.js';
+import { REGION } from '../regions/index.js';
 
 // First-play guide:
 //  - an intro (3 cards) the first time the game starts, after the start overlay: the goal, the fishing
@@ -65,12 +66,16 @@ const CSS = /* css */`
 const k = ( ...keys ) => keys.map( ( x ) => `<kbd>${ x }</kbd>` ).join( '' );
 const row = ( keys, text ) => `<div class="gm-guide-row"><span class="k">${ keys }</span><span>${ text }</span></div>`;
 
+// who the player deals with and what this water is, from the region (regions/index.js)
+const P = REGION.people, INTRO = REGION.intro;
+const BUYER = P.buyer.name, SHOP = P.shop.name;
+
 const CARDS = [
 	{
 		eyebrow: 'Welcome to Tidewater',
-		title: 'Fish the island, sell your catch',
-		body: `<p>Catch fish from the <b>beach</b>, the <b>pier</b> or your <b>boat</b>. Different fish bite in the shallows, around the pier, over the reef and out in deep water, and they change with the time of day.</p>
-			<p>Sell your catch to <b>Joe</b> at the fish stand by the pier, then spend the money on upgrades from <b>Marta</b> at the chandlery by the boathouse: stronger line, a faster reel, a bigger hold, a fish finder and lights for fishing at night.</p>`,
+		title: INTRO.title,
+		body: `<p>${ INTRO.waters }</p>
+			<p>Sell your catch to <b>${ BUYER }</b> at the ${ P.buyer.where }, then spend the money on upgrades from <b>${ SHOP }</b> at the ${ P.shop.where }: stronger line, a faster reel, a bigger hold, a fish finder and lights for fishing at night.</p>`,
 	},
 	{
 		eyebrow: 'Fishing',
@@ -86,29 +91,29 @@ const CARDS = [
 	},
 	{
 		eyebrow: 'Getting around',
-		title: 'Joe and Marta',
+		title: `${ BUYER } and ${ SHOP }`,
 		body: `<div class="gm-guide-list">
 			${ row( k( 'W', 'A', 'S', 'D' ), 'Move, mouse to look, <kbd>Shift</kbd> to run' ) }
-			${ row( k( 'E' ), 'Board the boat, take the helm, talk to Joe and Marta' ) }
+			${ row( k( 'E' ), `Board the boat, take the helm, talk to ${ BUYER } and ${ SHOP }` ) }
 			${ row( k( 'F1' ), 'All controls, and this guide again' ) }
 		</div>
 		<div class="gm-guide-where">
-			<div class="is-joe"><i></i><span><b>Joe</b> · fish stand by the pier</span><em data-where="joe"></em></div>
-			<div class="is-marta"><i></i><span><b>Marta</b> · chandlery by the boathouse</span><em data-where="marta"></em></div>
+			<div class="is-joe"><i></i><span><b>${ BUYER }</b> · ${ P.buyer.where }</span><em data-where="joe"></em></div>
+			<div class="is-marta"><i></i><span><b>${ SHOP }</b> · ${ P.shop.where }</span><em data-where="marta"></em></div>
 		</div>
 		<p style="margin:0;color:var(--tw-ink-3);font-size:var(--tw-fs-sm)">Both are marked on the map in the lower right.</p>`,
 	},
 ];
 
 const TIPS = {
-	rodOut: 'Hold the <b>left mouse button</b> to wind up and release to cast. Try deeper water, around the pier or over the reef.',
+	rodOut: `Hold the <b>left mouse button</b> to wind up and release to cast. Try ${ INTRO.spots }.`,
 	nibble: 'The bobber is dipping: something is <b>nibbling</b>. Wait until it is <b>pulled under</b>, then click to strike.',
 	fishOn: '<b>Hold the left mouse button</b> to reel. When the tension needle nears the <b>red</b>, let go until it settles, then reel again.',
-	caught: 'Into the cooler (<kbd>I</kbd>). Sell your catch to <b>Joe</b> at the fish stand by the pier: he is on the map.',
-	full: 'Your cooler is <b>full</b>. Sell to Joe, or buy a bigger hold from Marta at the chandlery.',
-	boat: 'Your boat. <kbd>E</kbd> to board, <kbd>E</kbd> again at the wheel to drive (<kbd>W</kbd><kbd>S</kbd> throttle, <kbd>A</kbd><kbd>D</kbd> steer). Diesel is sold by Marta.',
-	joe: '<b>Joe</b> buys your fish. <kbd>E</kbd> to see what he will pay.',
-	marta: '<b>Marta</b> sells upgrades and diesel. <kbd>E</kbd> to see her stock.',
+	caught: `Into the cooler (<kbd>I</kbd>). Sell your catch to <b>${ BUYER }</b> at the ${ P.buyer.where }: marked on the map.`,
+	full: `Your cooler is <b>full</b>. Sell to ${ BUYER }, or buy a bigger hold from ${ SHOP } at the chandlery.`,
+	boat: `Your boat. <kbd>E</kbd> to board, <kbd>E</kbd> again at the wheel to drive (<kbd>W</kbd><kbd>S</kbd> throttle, <kbd>A</kbd><kbd>D</kbd> steer). Diesel is sold by ${ SHOP }.`,
+	joe: `<b>${ BUYER }</b> buys your fish. <kbd>E</kbd> to see what they will pay.`,
+	marta: `<b>${ SHOP }</b> sells upgrades and diesel. <kbd>E</kbd> to see the stock.`,
 };
 
 const h = ( tag, cls, html ) => {

@@ -4,6 +4,7 @@ import { createPropMaterial, PAT } from './GameMaterials.js';
 import { Vendor } from './Vendor.js';
 import { loadStallAssets, KitBuilder, LAYER, ATLAS, place, Shapes } from './StallKit.js';
 import { WORLD } from '../world/WorldLayout.js';
+import { REGION } from '../regions/index.js';
 
 // The upgrade trader by the boathouse: a scanned work table with a tackle box, spools of line and
 // reels, display shelves of rope and floats behind her, a rack of rods, jerrycans of diesel, fenders,
@@ -41,7 +42,7 @@ export class Chandlery {
 		const local = new Vector3( 0, 0, - 0.75 ).applyAxisAngle( new Vector3( 0, 1, 0 ), CHANDLERY.yaw );
 		const vx = CHANDLERY.x + local.x, vz = CHANDLERY.z + local.z;
 		this.vendor = new Vendor( {
-			name: 'Marta · Chandlery',
+			name: `${ REGION.people.shop.name } · ${ REGION.people.shop.role }`,
 			kind: 'shop',
 			position: new Vector3( vx, terrain.heightAt( vx, vz ), vz ),
 			yaw: CHANDLERY.yaw,

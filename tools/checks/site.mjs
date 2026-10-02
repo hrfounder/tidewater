@@ -8,7 +8,7 @@ import { reachOf, ROAD_CLASSES } from '../../src/regions/slavonia/site/Roads.js'
 import { plotCorners } from '../../src/regions/slavonia/site/Plots.js';
 import { FREE, YARD, WATER, ROAD, BUILDING } from '../../src/regions/slavonia/site/Occupancy.js';
 
-const { terrain: T, site } = await load();
+const { terrain: T, site, models } = await load();
 const { roads, buildings, plots, occupancy, water } = site;
 const count = ( list, key ) => list.reduce( ( m, e ) => ( m[ key( e ) ] = ( m[ key( e ) ] || 0 ) + 1, m ), {} );
 const pct = ( a, b ) => `${ ( a / b * 100 ).toFixed( 1 ) } %`;
@@ -111,6 +111,31 @@ const pct = ( a, b ) => `${ ( a / b * 100 ).toFixed( 1 ) } %`;
 	}
 
 	console.log( `     floors against the ground at the walls: at most ${ hang.toFixed( 2 ) } m above it, ${ deep.toFixed( 2 ) } m below it` );
+
+}
+
+// ---- landmarks: the foot of each model against the footprint it stands on
+for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
+
+	const model = models.landmarks.get( b.name.toLowerCase() ), ring = new Polygon( [ b.ring ] );
+	const toRing = ( x, z ) => Math.min( ...b.ring.map( ( p, i ) => {
+
+		const q = b.ring[ ( i + 1 ) % b.ring.length ], dx = q[ 0 ] - p[ 0 ], dz = q[ 1 ] - p[ 1 ];
+		const t = Math.min( 1, Math.max( 0, ( ( x - p[ 0 ] ) * dx + ( z - p[ 1 ] ) * dz ) / ( dx * dx + dz * dz ) ) );
+		return Math.hypot( x - p[ 0 ] - dx * t, z - p[ 1 ] - dz * t );
+
+	} ) );
+	// the model's vertices below 0.7 m (its plinth), in the world, as the village's builder stands it
+	let worst = 0, top = [ 0, - Infinity, 0 ];
+	for ( const part of model.parts ) for ( let i = 0; i < part.positions.length; i += 3 ) {
+
+		const [ x, z ] = toWorld( b, part.positions[ i ], part.positions[ i + 2 ] );
+		if ( part.positions[ i + 1 ] > top[ 1 ] ) top = [ x, part.positions[ i + 1 ], z ];
+		if ( part.positions[ i + 1 ] < 0.7 && ! ring.contains( x, z ) ) worst = Math.max( worst, toRing( x, z ) );
+
+	}
+
+	check( worst < 0.5, `${ b.name }: its foot outside its footprint`, `at most ${ worst.toFixed( 2 ) } m; fronts ${ b.frontage.road.name }; its top (${ top[ 1 ].toFixed( 1 ) } m) stands ${ Math.hypot( top[ 0 ] - b.frontage.x, top[ 2 ] - b.frontage.z ).toFixed( 1 ) } m from that street, the footprint's middle ${ Math.hypot( b.x - b.frontage.x, b.z - b.frontage.z ).toFixed( 1 ) } m` );
 
 }
 

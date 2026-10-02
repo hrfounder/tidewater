@@ -1,7 +1,7 @@
 // The Slavonian world (regions/slavonia/world.js) through the engine's terrain pipeline
 // (TerrainGPU -> Terrain) and whatever the region stands on it, rendered headless. Needs the block's
 // map files in public/world/bosut/ (tools/geodata).
-//   node test/world-slavonia.mjs [outDir] [--view=name] [--small]
+//   node test/world-slavonia.mjs [outDir] [--view=name] [--small] [--look=name:x,y,z:tx,ty,tz[:fov] ...]
 // The views are the fixed progress views (regions/slavonia/views.js).
 import { tmpdir } from 'node:os';
 import { worldHarness, done } from './world-harness.mjs';
@@ -16,7 +16,7 @@ import { GROUND_SURFACE, TERRAIN_EXTENT, buildPlaces } from '../src/regions/slav
 const out = process.argv[ 2 ] && ! process.argv[ 2 ].startsWith( '--' ) ? process.argv[ 2 ] : tmpdir();
 const small = process.argv.includes( '--small' );
 let t = performance.now();
-const { terrain: data, site } = await load();
+const world = await load(), { terrain: data, site } = world;
 console.log( 'world', ( performance.now() - t ).toFixed( 0 ), 'ms; datum', data.datum.toFixed( 2 ), 'm a.s.l.' );
 
 const H = await worldHarness( { sun: [ 0.5, 0.42, 0.45 ], ...( small ? { width: 960, height: 540 } : {} ) } );
@@ -31,7 +31,19 @@ H.before.push( ( cam ) => terrain.update( cam ) );
 // dark olive plane at the water level
 const water = new H.E.Mesh( new H.E.PlaneGeometry( 16384, 16384 ).rotateX( - Math.PI / 2 ), new Material( { name: 'water', color: 0x2c3524, roughness: 0.08 } ) );
 H.scene.add( water );
-buildPlaces( { terrain: data, site, scene: H.scene, colliders: null } );
+const places = buildPlaces( world, { scene: H.scene, colliders: null } );
+console.log( 'village', JSON.stringify( places.village.built ), places.village.triangles, 'triangles in', places.village.meshes.length, 'meshes' );
+
+// --look=name:x,y,z:tx,ty,tz[:fov] (any number of them): one-off views, y above the ground there
+const looks = process.argv.filter( ( a ) => a.startsWith( '--look=' ) ).map( ( a ) => a.slice( 7 ).split( ':' ) );
+for ( const [ name, pos, target, fov ] of looks ) {
+
+	const [ x, y, z ] = pos.split( ',' ).map( Number );
+	await H.shot( `${ out }/look-${ name }.png`, { pos: [ x, data.heightAt( x, z ) + y, z ], target: target.split( ',' ).map( Number ), fov: Number( fov ) || 55 } );
+
+}
+
+if ( looks.length ) await done();
 
 // `ground` heights are above the ground there
 const only = process.argv.find( ( a ) => a.startsWith( '--view=' ) );

@@ -21,7 +21,7 @@ export { waterDatum };
 
 // index: the tiles' index.json; water, places: water.json and places.json of the block;
 // ground( x, z ): the height of the dry ground, before anything is cut into it;
-// landmarks: the names (lower case) of the buildings that have a model of their own
+// landmarks: the buildings that have a model of their own, by name in lower case (Landmarks.js)
 export function buildSite( { index, water, places, ground, datum, landmarks } ) {
 
 	const center = index.center;

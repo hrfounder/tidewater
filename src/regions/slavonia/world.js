@@ -3,6 +3,8 @@ import { TileTerrain } from './terrain/TileTerrain.js';
 import { gradeTerrain } from './terrain/Grade.js';
 import { buildSite, occupy, waterDatum } from './site/Site.js';
 import { LANDMARKS } from './Landmarks.js';
+import { loadModels } from './build/Models.js';
+import { buildVillage } from './build/Village.js';
 import { FREE } from './site/Occupancy.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
 
@@ -75,33 +77,34 @@ export const TERRAIN_EXTENT = 131072;
 
 export { GROUND_SURFACE };
 
-// The world from its map files. `read( file )` resolves to the ArrayBuffer of a file of the block
-// (the browser fetches it, the node checks read it off the disk): { site, terrain }.
+// The world from its files. `read( path )` resolves to the ArrayBuffer of a file under public/ (the
+// browser fetches it, the node checks read it off the disk): { site, terrain, models }.
 export async function loadWorld( read = fetchFile() ) {
 
-	const json = async ( file ) => JSON.parse( new TextDecoder().decode( await read( file ) ) );
+	const tile = ( file ) => read( TILES + file );
+	const json = async ( file ) => JSON.parse( new TextDecoder().decode( await tile( file ) ) );
 	const index = await json( 'index.json' );
-	const [ water, places ] = await Promise.all( [ json( index.water ), json( 'places.json' ) ] );
+	const [ water, places, models ] = await Promise.all( [ json( index.water ), json( 'places.json' ), loadModels( read ) ] );
 	const datum = waterDatum( water, index.center );
-	const terrain = await TileTerrain.load( { index, readFile: read, size: DOMAIN, datum } );
-	const landmarks = new Set( LANDMARKS.map( ( l ) => l.name.toLowerCase() ) );
+	const terrain = await TileTerrain.load( { index, readFile: tile, size: DOMAIN, datum } );
+	const landmarks = new Map( LANDMARKS.map( ( l ) => [ l.name.toLowerCase(), l ] ) );
 	const site = buildSite( { index, water, places, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
 	gradeTerrain( terrain, site );
 	occupy( site, terrain );
-	return { site, terrain };
+	return { site, terrain, models };
 
 }
 
 function fetchFile( base = document.baseURI ) {
 
-	return async ( file ) => ( await fetch( new URL( TILES + file, base ) ) ).arrayBuffer();
+	return async ( path ) => ( await fetch( new URL( path, base ) ) ).arrayBuffer();
 
 }
 
-// what stands on the ground (call once the terrain exists)
-export function buildPlaces() {
+// what stands on the ground: world is what loadWorld gave; colliders may be null (a render without a player)
+export function buildPlaces( world, { scene, colliders } ) {
 
-	return {};
+	return { village: buildVillage( world, { scene, colliders } ) };
 
 }
 

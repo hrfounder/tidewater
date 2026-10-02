@@ -46,16 +46,20 @@ export class Buildings {
 
 	}
 
-	// roads: the Site's Roads; ground( x, z ): the dry ground's height; landmarks: the names that
-	// have a model
+	// roads: the Site's Roads; ground( x, z ): the dry ground's height; landmarks: the buildings that
+	// have a model, as Map( name, lower case -> { faces: the name of the street it fronts } )
 	settle( { roads, ground, landmarks } ) {
 
 		for ( const b of this.list ) {
 
-			// the street it faces: the nearest one, and the local axis that points at it becomes +z
-			const f = roads.nearest( b.x, b.z, FRONTAGE_REACH, ( r ) => r.street );
+			// the street it faces: the nearest one (a landmark's own, if it says which), and the local
+			// axis that points at it becomes +z
+			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
+			const f = roads.nearest( b.x, b.z, FRONTAGE_REACH, ( r ) => r.street && ( ! own || r.name === own.faces ) );
 			b.frontage = f;
 			if ( f ) face( b, f.x - b.x, f.z - b.z );
+			// the largest piece first: the main body
+			b.pieces.sort( ( p, q ) => q.hu * q.hv - p.hu * p.hv );
 			// the floor stands on the highest ground under the walls, so no wall hangs over a dip
 			b.floor = Math.max( ...b.ring.map( ( [ x, z ] ) => ground( x, z ) ) );
 
@@ -246,8 +250,6 @@ function face( b, dx, dz ) {
 	}
 
 	b.yaw += q * Math.PI / 2;
-	// the largest piece first: the main body
-	b.pieces.sort( ( p, q ) => q.hu * q.hv - p.hu * p.hv );
 
 }
 

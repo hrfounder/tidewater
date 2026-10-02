@@ -3,11 +3,14 @@
 import { readFileSync } from 'node:fs';
 import { loadWorld, TILES } from '../../src/regions/slavonia/world.js';
 
+const pub = new URL( '../../public/', import.meta.url );
+
 const dir = new URL( '../../public/' + TILES, import.meta.url );
 
-export const readFile = async ( file ) => {
+// a file under public/, as the game's loader asks for it
+export const readFile = async ( path ) => {
 
-	const b = readFileSync( new URL( file, dir ) );
+	const b = readFileSync( new URL( path, pub ) );
 	return b.buffer.slice( b.byteOffset, b.byteOffset + b.byteLength );
 
 };

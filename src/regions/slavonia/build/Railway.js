@@ -36,11 +36,14 @@ const BED_STEP = 1;
 export const BRIDGE = { between: 4.6, girder: { thick: 0.45, depth: 2.6, above: 1.1 }, floor: 0.35, span: 27, support: 1.6 };
 // supports are founded this far under the ground they stand in (m)
 const FOUNDED = 0.8;
+// A St Andrew's cross stands before each crossing on the right of the road that comes up to it:
+// this far from the track's middle, and this far outside the road's shoulder (m).
+const SIGN = { before: 5, beside: 0.6 };
 
 // B: ( x, z ) -> the MeshBuilder of that place; returns what was built
-export function buildRailway( B, { site, terrain }, colliders ) {
+export function buildRailway( B, { site, terrain, models }, colliders ) {
 
-	const built = { tracks: 0, metres: 0, sleepers: 0, crossings: 0, bridges: [] };
+	const built = { tracks: 0, metres: 0, sleepers: 0, crossings: 0, signs: 0, bridges: [] };
 	const { rail, sleeper, ballast, gauge } = RAIL;
 	const pictured = ( paint ) => ( { ...paint, color: lin( paint.pictured.map( ( v ) => v * site.rails.gain ) ) } );
 	// the widest a road reaches from its middle: how far to look for one across the track
@@ -161,6 +164,22 @@ export function buildRailway( B, { site, terrain }, colliders ) {
 
 		built.tracks ++;
 		built.metres += L;
+
+	}
+
+	// ---- the crossings' signs: on each side of the track, where a road comes up to it
+	const cross = models.kit.get( 'crossbuck' );
+	for ( const c of site.roads.crossings ) for ( const side of [ - 1, 1 ] ) {
+
+		const f = frameAt( c.track, c.s ), r = site.roads.nearest( c.x + f.nx * side * SIGN.before, c.z + f.nz * side * SIGN.before, widest, ( road ) => ! road.bridge );
+		if ( ! r ) continue;
+		// the way the traffic comes: along the road toward the track; the sign on its right, facing it
+		const toward = ( c.x - r.x ) * r.tx + ( c.z - r.z ) * r.tz > 0 ? 1 : - 1, d = [ r.tx * toward, r.tz * toward ], right = [ - d[ 1 ], d[ 0 ] ];
+		const off = reachOf( r.road ) + SIGN.beside, x = r.x + right[ 0 ] * off, z = r.z + right[ 1 ] * off, y = terrain.heightAt( x, z );
+		const Z = [ - d[ 0 ], 0, - d[ 1 ] ], X = [ Z[ 2 ], 0, - Z[ 0 ] ], M = B( x, z );
+		for ( const part of cross.parts ) M.paint( { color: part.color, rough: part.rough, metal: part.metal, surface: SURFACE.plain, seed: 0.3 } ).stamp( part, X, [ 0, 1, 0 ], Z, [ x, y, z ] );
+		if ( colliders ) colliders.addBox( new Vector3( x, y + cross.h / 2, z ), new Vector3( cross.depth, cross.h / 2, cross.depth ), 0, { tag: 'railway' } );
+		built.signs ++;
 
 	}
 

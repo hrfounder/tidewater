@@ -125,7 +125,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	const bridges = buildBridges( builder, { site, terrain, models }, colliders );
 	const marina = buildMarina( builder, { site, terrain, models }, colliders );
-	const railway = buildRailway( builder, { site, terrain }, colliders );
+	const railway = buildRailway( builder, { site, terrain, models }, colliders );
 
 	// the anglers' platforms along the bank: the kit's piece at each of the Site's places for one
 	const platform = models.kit.get( 'platform' );

@@ -46,6 +46,8 @@ MATERIALS = {
 	'tarp': ( ( 60, 110, 170 ), 0.80, 0.0 ),        # the cover over a moored boat (the game paints each its own)
 	'motor': ( ( 40, 42, 46 ), 0.50, 0.3 ),         # an outboard
 	'float': ( ( 40, 84, 150 ), 0.60, 0.0 ),        # the excursion boat's blue floats and skirt
+	'sign_white': ( ( 236, 236, 232 ), 0.50, 0.0 ), # a road sign's white
+	'sign_red': ( ( 190, 36, 40 ), 0.50, 0.0 ),     # and its red
 }
 
 BAR = 0.055          # a frame member's face width
@@ -293,6 +295,23 @@ def gym_station():
 	return S, dict( w=0.9, h=1.5, depth=1.0 )
 
 
+def crossbuck():
+	"""The St Andrew's cross that stands before a level crossing without barriers: two boards crossed
+	on a post, white with red ends. It stands on its origin and faces -y. Its sizes are the usual
+	ones for the sign, not measured."""
+	h, arm, wide, thick, post = 2.3, 1.2, 0.12, 0.02, 0.04
+	S = Shells()
+	S.pole( 0, 0, 0, h + 0.3, post, post, 'zinc' )
+	r = math.sqrt( 0.5 )
+	for k, sx in enumerate( ( - 1, 1 ) ):
+		# along the board and across it, in the sign's plane; the second board lies before the first
+		a, n, y1 = ( sx * r, r ), ( - r, sx * r ), - post - k * thick
+		for t0, t1, mat in ( ( - arm / 2, - arm / 4, 'sign_red' ), ( - arm / 4, arm / 4, 'sign_white' ), ( arm / 4, arm / 2, 'sign_red' ) ):
+			corners = [ ( t0, - wide / 2 ), ( t1, - wide / 2 ), ( t1, wide / 2 ), ( t0, wide / 2 ) ]
+			S.prism( [ ( t * a[ 0 ] + c * n[ 0 ], h + t * a[ 1 ] + c * n[ 1 ] ) for t, c in corners ][ ::sx ], y1 - thick, y1, mat, plane='xz' )
+	return S, dict( w=arm * r + wide, h=h + arm * r / 2 + wide, depth=2 * post + 2 * thick )
+
+
 def gate_yard():
 	"""The gate of a yard on the street: two boarded leaves between two rendered pillars. It stands
 	on its origin, runs along x about it, and faces the street toward -y."""
@@ -306,7 +325,7 @@ def gate_yard():
 	return S, dict( w=w, h=h, depth=0 )
 
 
-PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, bench=bench, park_lamp=park_lamp, gym_bars=gym_bars, gym_station=gym_station, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
+PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, bench=bench, park_lamp=park_lamp, gym_bars=gym_bars, gym_station=gym_station, crossbuck=crossbuck, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

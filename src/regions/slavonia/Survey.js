@@ -17,6 +17,15 @@ export const PARTED = [
 	{ at: [ - 12, 169 ], cuts: [ [ [ - 14.1, 156.6 ], [ - 24.9, 168.4 ] ] ], source: 'sheet 1414; drone5 f001, f002' },
 ];
 
+// Footprints the survey of the orthophoto set down in the wrong place (its fit goes by the contrast
+// along the walls, and a paved yard's edge can outdo a roof's): `at` a point in the footprint where
+// the survey has it, `by` the metres [ east, south ] from there to where its roof is on the sheet.
+export const MOVED = [
+	// the station house of Andrijaševci: the survey took the edge of the concrete before it for its
+	// south wall. Its roof (the shaded north slope and the lit south one) lies 6.2 m further north.
+	{ at: [ - 862, - 273 ], by: [ 0, - 6.2 ], source: 'sheet station' },
+];
+
 // Buildings the map does not have, traced off the orthophoto, each as a rectangle: `at` its middle,
 // `size` its [ length, width ] (m), `turn` the direction of its length (degrees from east toward
 // south), `roof` the colour of its roof's lit slope as that picture has it (sRGB 0-255, read by
@@ -144,6 +153,9 @@ export const OPEN = [
 //   of   'concrete' (a paved terrace), 'gravel' (a playground's ground), 'track' (red rubber),
 //        'court' (blue acrylic), 'sand', 'brick' (a low brick edge)
 export const AREAS = [
+	// the station's loading yard: concrete from the siding's bed to the yard road, from the shed
+	// south of the station house down to where the lorries' trailers stand
+	{ ring: [ [ - 869.3, - 249 ], [ - 857.0, - 249 ], [ - 853.2, - 165 ], [ - 865.3, - 165 ] ], of: 'concrete', source: 'sheet station' },
 	// the promenade on the park bank, where the stalls stand
 	{ ring: [ [ 100.7, 10.6 ], [ 129.4, 10.6 ], [ 129.4, 14.8 ], [ 100.7, 14.8 ] ], of: 'concrete', source: 'sheet park' },
 	// the playground west of it

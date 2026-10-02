@@ -230,8 +230,11 @@ graded as a formation with the bed's core heaped on it (`terrain/Grade.js`), bui
 sleepers and rails (`build/Railway.js`). Where a road's line meets a track's the road takes the
 rails' level and the nodes within 40 m rise with it: four level crossings. Over the Bosut it is
 carried by a bridge read off the orthophoto: 52.7 m between the map's two ends, green plate girders
-on a pier at the middle. What is not built yet: the station's platform, the crossings' signs and
-barriers, the turnouts' blades (the siding's rails simply run into the line's).
+on a pier at the middle. A St Andrew's cross (the kit's `crossbuck`) stands on the right of each
+road that comes up to a crossing. At the station the loading yard is concrete from the siding to
+the yard road, and the station house stands where its roof is (the survey had taken the yard's edge
+for its wall). What is not built yet: the platform by the house, the turnouts' blades (the siding's
+rails simply run into the line's), the house's walls as they are (no picture of them).
 
 A ring is worked with a survey sheet: `python tools/geodata/sheet.py bosut <x>,<z> <half side>
 <out.jpg>` draws the orthophoto of a square with every footprint numbered (mapped and surveyed),
@@ -252,6 +255,7 @@ a record.
 
 | Record | What it is | Built by |
 |---|---|---|
+| `MOVED` | a footprint the survey set down in the wrong place, and how far from there its roof is | `site/Buildings.js` |
 | `ADDED` | a building the map lacks, traced off the orthophoto as a rectangle, with its roof's colour read off the same picture | `site/Buildings.js`, numbered on after the map's |
 | `PARTED` | a footprint the map draws as one and that is several buildings in a row: the lines it is cut along | `site/Buildings.js`, every part a building of its own |
 | `SEEN` | per building: the kind it is, storeys, walls, roof form, a roof colour newer than the orthophoto | `build/Village.js` over its archetype |
@@ -322,9 +326,9 @@ Still to do, in this order:
 3. **The park's newer things**, which are in the footage of 2025 and not on the orthophoto: the
    outdoor gym on its red ground, the fire pit, the benches and lamps, the bank's paved edge at the
    marina. Their places have to be judged from the frames.
-4. **The station**: its platform and yard (the concrete east of the siding), the house's walls and
-   roof as they are, the crossings' signs and barriers.
-5. **The cadastre**, when the service answers (it failed on three tries on 2026-10-02): parcels for
+4. **The station**: its platform, the house's walls and roof as they are (nothing shows them yet),
+   the yard road's line (the survey has it on the concrete's edge, not on its asphalt).
+5. **The cadastre**, when the service answers (it failed on five tries, the last on 2026-10-03): parcels for
    yards and fences, the registry's outlines, and with them storeys from shadows.
 6. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
    Street-level pictures of the other streets are what every further ring needs.

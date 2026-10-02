@@ -66,9 +66,9 @@ for ( const br of site.roads.bridges ) {
 {
 
 	const R = village.railway, laid = site.rails.tracks.reduce( ( s, t ) => s + t.length, 0 );
-	const girders = boxes.filter( ( b ) => b.opts.tag === 'railway' && ! b.opts.walkable ).length, decks = boxes.filter( ( b ) => b.opts.tag === 'railway' && b.opts.walkable ).length;
-	check( R.tracks === site.rails.tracks.length && R.crossings > 0 && R.crossings <= site.roads.crossings.length && R.bridges.length === site.rails.tracks.reduce( ( s, t ) => s + t.bridges.length, 0 ) && decks === R.bridges.length,
-		'the railway built', `${ R.tracks } tracks, ${ R.metres.toFixed( 0 ) } m, ${ R.sleepers } sleepers (${ ( laid / R.sleepers ).toFixed( 2 ) } m apart); the bed opens ${ R.crossings } times for ${ site.roads.crossings.length } crossings; ${ R.bridges.map( ( b ) => `a bridge ${ b.length.toFixed( 1 ) } m long, ${ b.width.toFixed( 1 ) } m wide, ${ b.spans } spans, its girders ${ b.clear.toFixed( 2 ) } m clear of the water` ).join( '; ' ) }; ${ decks } deck and ${ girders } other boxes` );
+	const girders = boxes.filter( ( b ) => b.opts.tag === 'railway' && ! b.opts.walkable ).length - R.signs, decks = boxes.filter( ( b ) => b.opts.tag === 'railway' && b.opts.walkable ).length;
+	check( R.tracks === site.rails.tracks.length && R.signs >= site.roads.crossings.length && R.crossings > 0 && R.crossings <= site.roads.crossings.length && R.bridges.length === site.rails.tracks.reduce( ( s, t ) => s + t.bridges.length, 0 ) && decks === R.bridges.length,
+		'the railway built', `${ R.tracks } tracks, ${ R.metres.toFixed( 0 ) } m, ${ R.sleepers } sleepers (${ ( laid / R.sleepers ).toFixed( 2 ) } m apart); the bed opens ${ R.crossings } times for ${ site.roads.crossings.length } crossings, ${ R.signs } St Andrew's crosses before them; ${ R.bridges.map( ( b ) => `a bridge ${ b.length.toFixed( 1 ) } m long, ${ b.width.toFixed( 1 ) } m wide, ${ b.spans } spans, its girders ${ b.clear.toFixed( 2 ) } m clear of the water` ).join( '; ' ) }; ${ decks } deck and ${ girders } other boxes` );
 	// on a bridge the track stays between the girders: they are straight, it need not be
 	const bows = site.rails.tracks.flatMap( ( t ) => t.bridges.map( ( b ) => {
 

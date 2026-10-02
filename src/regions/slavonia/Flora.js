@@ -214,6 +214,8 @@ function mulberry( a ) {
 // eaves and the yard path, and the roads with their shoulders. Nothing is planted there, and the
 // meadow stops at its edge, so no tree grows through a wall and no reed bed crosses a lane.
 const BUILT_TEXEL = 2;
+// how far a crown reaches from its trunk: nothing is planted within this of a wall
+const CROWN = 5;
 
 function builtMask( terrain, places ) {
 
@@ -221,6 +223,16 @@ function builtMask( terrain, places ) {
 	const m = new Uint8Array( res * res );
 	if ( ! places ) return { m, res, texel: BUILT_TEXEL, origin: terrain.origin };
 	const [ cE, cN ] = terrain.center;
+	const fill = ( x0, z0, x1, z1 ) => {
+
+		const i0 = Math.max( 0, Math.floor( ( x0 - terrain.origin ) / BUILT_TEXEL ) );
+		const i1 = Math.min( res - 1, Math.ceil( ( x1 - terrain.origin ) / BUILT_TEXEL ) );
+		const j0 = Math.max( 0, Math.floor( ( z0 - terrain.origin ) / BUILT_TEXEL ) );
+		const j1 = Math.min( res - 1, Math.ceil( ( z1 - terrain.origin ) / BUILT_TEXEL ) );
+		for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) m[ j * res + i ] = 255;
+
+	};
+
 	const mark = ( x, z, r ) => {
 
 		const i0 = Math.max( 0, Math.floor( ( x - r - terrain.origin ) / BUILT_TEXEL ) );
@@ -233,8 +245,19 @@ function builtMask( terrain, places ) {
 
 	for ( const b of places.buildings || [] ) {
 
-		// the footprint's own points, each given the eaves and a metre of standing room
-		for ( const [ e, n ] of b.ring ) mark( e - cE, cN - n, 3 );
+		// The whole footprint, not just its outline points: a tree whose trunk missed the ring still
+		// put its crown through the roof. The box around the ring is filled, with room for the eaves
+		// and for a crown to stand clear of the wall.
+		let x0 = Infinity, x1 = - Infinity, z0 = Infinity, z1 = - Infinity;
+		for ( const [ e, n ] of b.ring ) {
+
+			const x = e - cE, z = cN - n;
+			if ( x < x0 ) x0 = x; if ( x > x1 ) x1 = x;
+			if ( z < z0 ) z0 = z; if ( z > z1 ) z1 = z;
+
+		}
+
+		fill( x0 - CROWN, z0 - CROWN, x1 + CROWN, z1 + CROWN );
 
 	}
 
@@ -320,7 +343,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// reeds: the shallows and the wet toe of the bank, in broken stands
 		if ( h > - 0.6 && h < 0.4 && rand() < 0.9 ) {
 
-			out.reeds.push( rec( terrain, px, pz, rand, 0.8 + rand() * 0.5, REED_FADE[ 1 ] + 8 ) );
+			out.reeds.push( rec( terrain, px, pz, rand, 0.8 + rand() * 0.5, REED_FADE[ 1 ] + 8, 0.35 ) );
 			continue;
 
 		}
@@ -328,7 +351,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// willows: the bank top, within a dozen metres of the water, leaning out over it
 		if ( d > 0 && d < 13 && h > 0.2 && built < 0.4 && rand() < 0.16 ) {
 
-			const r = rec( terrain, px, pz, rand, 0.85 + rand() * 0.4, CANOPY_FAR[ 1 ] + 12 );
+			const r = rec( terrain, px, pz, rand, 0.85 + rand() * 0.4, CANOPY_FAR[ 1 ] + 12, 0.4 );
 			// lean toward the water: the record's yaw turns the crown, the lean rides on the scale
 			out.willows.push( r );
 			continue;
@@ -338,7 +361,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// the floodplain wood
 		if ( forest > 0.5 && rand() < 0.42 ) {
 
-			out.oaks.push( rec( terrain, px, pz, rand, 0.8 + rand() * 0.5, CANOPY_FAR[ 1 ] + 12 ) );
+			out.oaks.push( rec( terrain, px, pz, rand, 0.8 + rand() * 0.5, CANOPY_FAR[ 1 ] + 12, 0.4 ) );
 			continue;
 
 		}
@@ -346,7 +369,7 @@ function scatter( terrain, taken, seed = 4201 ) {
 		// poplar rows: a line of them along the edges of the worked strips, away from the water
 		if ( crop > 0.45 && d > 25 && rand() < 0.02 ) {
 
-			out.poplars.push( rec( terrain, px, pz, rand, 0.85 + rand() * 0.35, CANOPY_FAR[ 1 ] + 12 ) );
+			out.poplars.push( rec( terrain, px, pz, rand, 0.85 + rand() * 0.35, CANOPY_FAR[ 1 ] + 12, 0.4 ) );
 			continue;
 
 		}
@@ -357,9 +380,14 @@ function scatter( terrain, taken, seed = 4201 ) {
 
 }
 
-function rec( terrain, x, z, rand, s, qr ) {
+// A plant is set a little into the ground rather than exactly on it. The terrain mesh is a CDLOD
+// surface: between its vertices it cuts the corner off a convex lip, so a plant placed at the
+// sampled height stands clear of the ground it is supposed to be rooted in — most visible along the
+// bank, which is nothing but convex lips. Sinking by a fraction of the plant's own size hides the
+// root without burying the plant.
+function rec( terrain, x, z, rand, s, qr, sink = 0 ) {
 
-	return { x, y: terrain.heightAt( x, z ), z, s, yaw: rand() * Math.PI * 2, H: 1, seed: rand(), qr };
+	return { x, y: terrain.heightAt( x, z ) - sink * s, z, s, yaw: rand() * Math.PI * 2, H: 1, seed: rand(), qr };
 
 }
 

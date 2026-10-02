@@ -3,18 +3,24 @@ import { prepare, mergePrepared, box, cylinder, mat4 } from '../../world/boat/Ge
 import { createPropMaterial, PAT } from '../../game/GameMaterials.js';
 
 // The road bridges of the block, built on the segments places.json flags as bridges (Roads.js leaves
-// their decks out). The one that matters is Most Bosut, the two-lane crossing between Rokovci on the
-// north bank and Andrijaševci on the south, which the patch is centred on
-// (docs/slavonia/photos/bosut-winter-platforms-bridge.jpg).
+// their decks out). The one that matters is Most Bosut, the crossing between Rokovci on the north
+// bank and Andrijaševci on the south, which the patch is centred on.
 //
-// Each is a concrete beam bridge as they are built here: a deck carried on a pair of edge beams,
-// standing on a cutwater pier or two in the channel and an abutment at each bank, with a steel pipe
-// railing along both kerbs and a footway cantilevered on one side.
+// From the photographs of it: a concrete beam bridge, the deck carried on a deep fascia beam whose
+// outer face is battered, standing on plain blade piers — concrete walls set across the current with
+// a chamfered nose, not round cutwaters. A kerbed footway runs along each side of the carriageway,
+// with drainage gratings in the kerb line. The parapet is a steel baluster railing, painted blue:
+// posts every couple of metres, a flat top rail, a mid rail, and close-set vertical bars. Lamp
+// standards stand on the kerb at intervals.
 
-const CONCRETE = 0xa8a49c;
-const CONCRETE_WET = 0x8e8a82; // the piers, stained to the waterline
-const RAIL = 0x6f7276;
-const DECK_LIFT = 1.15; // the deck stands this far over the bank top, so the road rises to it
+const CONCRETE = 0xb4ae9f; // the deck and the fascia, weathered pale
+const CONCRETE_WET = 0x8e8a7e; // the piers, stained to the waterline
+const KERB = 0xc2bcb0;
+const RAIL = 0x2f6ea8; // the blue of the railing
+const ASPHALT = 0x3a3a38;
+const LAMP = 0x8d9298;
+
+const DECK_LIFT = 1.25; // the deck stands this far over the bank top
 
 export function buildBridges( { terrain, scene, places } ) {
 
@@ -30,95 +36,120 @@ export function buildBridges( { terrain, scene, places } ) {
 		const pts = road.pts.map( ( [ e, n ] ) => ( { x: e - cE, z: cN - n } ) );
 		if ( ! pts.some( ( p ) => Math.abs( p.x ) < half && Math.abs( p.z ) < half ) ) continue;
 
-		// the crossing runs from the first point to the last; the deck is a straight span between
-		// the two bank tops, which is what these beam bridges are
 		const a = pts[ 0 ], b = pts[ pts.length - 1 ];
 		const dx = b.x - a.x, dz = b.z - a.z;
 		const span = Math.hypot( dx, dz );
 		if ( span < 8 ) continue;
 		const yaw = Math.atan2( dx, dz );
 		const mx = ( a.x + b.x ) / 2, mz = ( a.z + b.z ) / 2;
-		// the deck sits over the higher of the two banks, so neither approach dips into it
 		const deckY = Math.max( terrain.heightAt( a.x, a.z ), terrain.heightAt( b.x, b.z ) ) + DECK_LIFT;
-		const w = road.width;
+		const road_w = road.width;
+		const foot = 1.3; // the footway each side
+		const full = road_w + foot * 2;
 
-		// the deck slab, with a kerb either side
-		parts.push( prepare( box( w, 0.42, span ), {
-			color: CONCRETE, rough: 0.88, pattern: PAT.plain, matrix: mat4( mx, deckY - 0.21, mz, 0, yaw, 0 ),
-		} ) );
-		// the wearing course: the road surface carried across
-		parts.push( prepare( box( w - 0.5, 0.08, span ), {
-			color: 0x3a3a38, rough: 0.72, pattern: PAT.plain, matrix: mat4( mx, deckY + 0.04, mz, 0, yaw, 0 ),
-		} ) );
-		// the edge beams under the deck, deeper than the slab
+		// the deck slab, and under it the fascia beam that carries the edge
+		push( parts, box( full, 0.45, span ), CONCRETE, 0.88, mat4( mx, deckY - 0.22, mz, 0, yaw, 0 ) );
 		for ( const side of [ - 1, 1 ] ) {
 
-			const ex = mx + Math.cos( yaw ) * side * ( w / 2 - 0.25 );
-			const ez = mz - Math.sin( yaw ) * side * ( w / 2 - 0.25 );
-			parts.push( prepare( box( 0.42, 0.85, span ), {
-				color: CONCRETE, rough: 0.9, pattern: PAT.plain, matrix: mat4( ex, deckY - 0.75, ez, 0, yaw, 0 ),
-			} ) );
+			const ex = mx + Math.cos( yaw ) * side * ( full / 2 - 0.2 );
+			const ez = mz - Math.sin( yaw ) * side * ( full / 2 - 0.2 );
+			// deep, with the outer face battered back toward the soffit
+			push( parts, box( 0.44, 0.95, span ), CONCRETE, 0.9, mat4( ex, deckY - 0.9, ez, 0, yaw, 0 ) );
+			push( parts, box( 0.3, 0.5, span ), CONCRETE, 0.9, mat4( ex - Math.cos( yaw ) * side * 0.1, deckY - 1.55, ez + Math.sin( yaw ) * side * 0.1, 0, yaw, 0 ) );
 
 		}
 
-		// piers: where the deck crosses open water, a pier every ~16 m of span
-		const bays = Math.max( 2, Math.round( span / 16 ) );
+		// the carriageway, and the raised footway with its kerb either side
+		push( parts, box( road_w, 0.09, span ), ASPHALT, 0.74, mat4( mx, deckY + 0.045, mz, 0, yaw, 0 ) );
+		for ( const side of [ - 1, 1 ] ) {
+
+			const fx = mx + Math.cos( yaw ) * side * ( road_w / 2 + foot / 2 );
+			const fz = mz - Math.sin( yaw ) * side * ( road_w / 2 + foot / 2 );
+			push( parts, box( foot, 0.18, span ), KERB, 0.86, mat4( fx, deckY + 0.09, fz, 0, yaw, 0 ) );
+			// the drainage gratings set in the kerb line
+			const grates = Math.max( 2, Math.round( span / 9 ) );
+			for ( let i = 0; i < grates; i ++ ) {
+
+				const t = ( i + 0.5 ) / grates;
+				const gx = a.x + dx * t + Math.cos( yaw ) * side * ( road_w / 2 - 0.2 );
+				const gz = a.z + dz * t - Math.sin( yaw ) * side * ( road_w / 2 - 0.2 );
+				push( parts, box( 0.34, 0.04, 0.5 ), 0x4a4d50, 0.6, mat4( gx, deckY + 0.11, gz, 0, yaw, 0 ), 0.5 );
+
+			}
+
+		}
+
+		// the piers: concrete blades across the current, with a chamfered nose
+		const bays = Math.max( 2, Math.round( span / 17 ) );
 		for ( let i = 1; i < bays; i ++ ) {
 
 			const t = i / bays;
 			const px = a.x + dx * t, pz = a.z + dz * t;
 			const bed = terrain.heightAt( px, pz );
-			if ( bed > deckY - 1.5 ) continue; // on the bank: the abutment carries it
-			const h = deckY - 0.95 - bed;
-			parts.push( prepare( box( 1.1, h, 2.6 ), {
-				color: CONCRETE_WET, rough: 0.93, pattern: PAT.plain, matrix: mat4( px, bed + h / 2, pz, 0, yaw, 0 ),
-			} ) );
-			// the cutwater: a round nose upstream and down, so the pier parts the current
+			if ( bed > deckY - 1.8 ) continue; // on the bank: the abutment carries it
+			const h = deckY - 1.6 - bed;
+			push( parts, box( 1.0, h, 3.2 ), CONCRETE_WET, 0.93, mat4( px, bed + h / 2, pz, 0, yaw, 0 ) );
 			for ( const end of [ - 1, 1 ] ) {
 
-				const nx = px - Math.sin( yaw ) * end * 1.3, nz = pz - Math.cos( yaw ) * end * 1.3;
-				parts.push( prepare( cylinder( 0.55, 0.55, h, 10 ), {
-					color: CONCRETE_WET, rough: 0.93, pattern: PAT.plain, matrix: mat4( nx, bed + h / 2, nz, 0, 0, 0 ),
-				} ) );
+				const nx = px - Math.sin( yaw ) * end * 1.6, nz = pz - Math.cos( yaw ) * end * 1.6;
+				push( parts, box( 0.72, h, 0.72 ), CONCRETE_WET, 0.93, mat4( nx, bed + h / 2, nz, 0, yaw + Math.PI / 4, 0 ) );
 
 			}
 
+			// the head the deck beams bear on
+			push( parts, box( 1.3, 0.5, 4.2 ), CONCRETE, 0.9, mat4( px, deckY - 1.45, pz, 0, yaw, 0 ) );
+
 		}
 
-		// the abutments: a block at each bank carrying the deck down to the ground
+		// the abutments at each bank
 		for ( const end of [ a, b ] ) {
 
 			const g = terrain.heightAt( end.x, end.z );
-			const h = Math.max( 0.6, deckY - 0.95 - g + 0.6 );
-			const ex = end.x + ( end === a ? dx : - dx ) / span * 1.2;
-			const ez = end.z + ( end === a ? dz : - dz ) / span * 1.2;
-			parts.push( prepare( box( w + 0.8, h, 2.4 ), {
-				color: CONCRETE, rough: 0.9, pattern: PAT.plain, matrix: mat4( ex, g + h / 2 - 0.3, ez, 0, yaw, 0 ),
-			} ) );
+			const h = Math.max( 0.7, deckY - 1.5 - g + 0.7 );
+			const ex = end.x + ( end === a ? dx : - dx ) / span * 1.3;
+			const ez = end.z + ( end === a ? dz : - dz ) / span * 1.3;
+			push( parts, box( full + 0.6, h, 2.6 ), CONCRETE, 0.9, mat4( ex, g + h / 2 - 0.35, ez, 0, yaw, 0 ) );
 
 		}
 
-		// the railing: a top rail and a lower rail on posts, both kerbs
+		// ---- the parapet: posts, a flat top rail, a mid rail and close vertical bars, all blue
 		for ( const side of [ - 1, 1 ] ) {
 
-			const rx = mx + Math.cos( yaw ) * side * w / 2, rz = mz - Math.sin( yaw ) * side * w / 2;
-			for ( const [ ry, rr ] of [ [ 1.05, 0.045 ], [ 0.55, 0.035 ] ] ) {
-
-				parts.push( prepare( box( rr * 2, rr * 2, span ), {
-					color: RAIL, rough: 0.5, metal: 0.8, pattern: PAT.machined, matrix: mat4( rx, deckY + ry, rz, 0, yaw, 0 ),
-				} ) );
-
-			}
-
+			const rx = mx + Math.cos( yaw ) * side * ( full / 2 - 0.18 );
+			const rz = mz - Math.sin( yaw ) * side * ( full / 2 - 0.18 );
+			const base = deckY + 0.18;
+			push( parts, box( 0.1, 0.07, span ), RAIL, 0.5, mat4( rx, base + 1.06, rz, 0, yaw, 0 ), 0.75 );
+			push( parts, box( 0.07, 0.05, span ), RAIL, 0.5, mat4( rx, base + 0.55, rz, 0, yaw, 0 ), 0.75 );
 			const posts = Math.max( 2, Math.round( span / 2.2 ) );
 			for ( let i = 0; i <= posts; i ++ ) {
 
 				const t = i / posts;
-				const px = a.x + dx * t + Math.cos( yaw ) * side * w / 2;
-				const pz = a.z + dz * t - Math.sin( yaw ) * side * w / 2;
-				parts.push( prepare( box( 0.07, 1.15, 0.07 ), {
-					color: RAIL, rough: 0.5, metal: 0.8, pattern: PAT.machined, matrix: mat4( px, deckY + 0.55, pz, 0, yaw, 0 ),
-				} ) );
+				const px = a.x + dx * t + Math.cos( yaw ) * side * ( full / 2 - 0.18 );
+				const pz = a.z + dz * t - Math.sin( yaw ) * side * ( full / 2 - 0.18 );
+				push( parts, box( 0.09, 1.1, 0.09 ), RAIL, 0.5, mat4( px, base + 0.55, pz, 0, yaw, 0 ), 0.75 );
+
+			}
+
+			// the bars between them
+			const bars = Math.max( 4, Math.round( span / 0.14 ) );
+			for ( let i = 0; i < bars; i ++ ) {
+
+				const t = ( i + 0.5 ) / bars;
+				const px = a.x + dx * t + Math.cos( yaw ) * side * ( full / 2 - 0.18 );
+				const pz = a.z + dz * t - Math.sin( yaw ) * side * ( full / 2 - 0.18 );
+				push( parts, box( 0.025, 1.0, 0.025 ), RAIL, 0.5, mat4( px, base + 0.53, pz, 0, yaw, 0 ), 0.75 );
+
+			}
+
+			// lamp standards on the kerb
+			const lamps = Math.max( 1, Math.round( span / 18 ) );
+			if ( side > 0 ) for ( let i = 0; i < lamps; i ++ ) {
+
+				const t = ( i + 0.5 ) / lamps;
+				const px = a.x + dx * t + Math.cos( yaw ) * side * ( full / 2 - 0.5 );
+				const pz = a.z + dz * t - Math.sin( yaw ) * side * ( full / 2 - 0.5 );
+				push( parts, cylinder( 0.07, 0.11, 7.0, 8 ), LAMP, 0.45, mat4( px, base + 3.5, pz, 0, yaw, 0 ), 0.6 );
+				push( parts, box( 0.5, 0.12, 0.26 ), LAMP, 0.45, mat4( px - Math.cos( yaw ) * side * 0.3, base + 7.0, pz + Math.sin( yaw ) * side * 0.3, 0, yaw, 0 ), 0.6 );
 
 			}
 
@@ -136,5 +167,11 @@ export function buildBridges( { terrain, scene, places } ) {
 	mesh.userData.count = count;
 	scene.add( mesh );
 	return mesh;
+
+}
+
+function push( parts, geo, color, rough, matrix, metal = 0 ) {
+
+	parts.push( prepare( geo, { color, rough, metal, pattern: PAT.plain, matrix } ) );
 
 }

@@ -2,6 +2,7 @@ import { Mesh, Vector3 } from '../../engine/index.js';
 import { prepare, mergePrepared, box, slab, cylinder, mat4 } from '../../world/boat/GeoKit.js';
 import { createPropMaterial, PAT } from '../../game/GameMaterials.js';
 import { yardFor, buildYards } from './Yards.js';
+import { buildChurch } from './Church.js';
 
 // The buildings of the block, from public/world/bosut/places.json (OpenStreetMap via Overture, ODbL).
 //
@@ -19,6 +20,11 @@ const WALL = [ 0xd8d2c2, 0xe6dcc4, 0xd9c9a3, 0xc9d3cf, 0xe0d6cc, 0xcdbfa2 ]; // 
 const TILE = [ 0x8a4a33, 0x95543a, 0x7d4531, 0x8f5c3f ]; // clay tile, weathered to brown-red
 const SHED = [ 0xa8a091, 0x9c927f, 0xb2a894 ]; // unpainted render and old timber
 const PLINTH = 0x4a443c;
+
+// roof pitch as rise per metre of width (the slope's tangent is twice this), and the widths between
+// which a building stops being a house and becomes a hall
+const PITCH_HOUSE = 0.52, PITCH_SHED = 0.38, PITCH_HALL = 0.18;
+const HOUSE_SPAN = 9, HALL_SPAN = 16;
 
 // deterministic per-building choice, so the village looks the same every run
 function hash( x, z ) {
@@ -57,82 +63,63 @@ function minAreaRect( ring ) {
 	const { ux, uz, x0, x1, z0, z1 } = best;
 	const ca = ( x0 + x1 ) / 2, cb = ( z0 + z1 ) / 2;
 	const cx = ca * ux - cb * uz, cz = ca * uz + cb * ux;
-	let w = x1 - x0, d = z1 - z0, ang = Math.atan2( ux, uz );
-	// the long side runs along the local z, so the ridge follows it
-	if ( w > d ) { const t = w; w = d; d = t; ang += Math.PI / 2; }
-	return { cx, cz, w, d, ang };
+	// The rectangle's two extents: eu along the edge direction u, ev along its perpendicular
+	// v = ( -uz, ux ). A box turned by `ang` about y has its local z along ( sin ang, cos ang ), so the
+	// long side (d, which the ridge follows) has to be the extent along whichever axis local z is
+	// turned onto. Pairing u's angle with v's extent builds every elongated house at right angles to
+	// its footprint.
+	const eu = x1 - x0, ev = z1 - z0;
+	return eu >= ev
+		? { cx, cz, w: ev, d: eu, ang: Math.atan2( ux, uz ) }
+		: { cx, cz, w: eu, d: ev, ang: Math.atan2( - uz, ux ) };
 
 }
 
-// A village parish church: a long nave under a steep tiled roof with a half-hipped apse at the
-// altar end, and the bell tower over the west door carrying a tapered spire. Catholic churches here
-// are laid out east-west with the altar east, so the tower goes on the western end of the footprint.
-function church( parts, terrain, r ) {
+// Every road station in the block, on a coarse grid, so a house can find the lane it fronts without
+// walking all of them. A Slavonian plot shows the street its gable, and the fence, the windows and
+// the door all follow from which end that is.
+function roadIndex( places, cE, cN, cell = 40 ) {
 
-	const y = terrain.heightAt( r.cx, r.cz );
-	const navW = Math.min( r.w, 12 ), navL = r.d;
-	const eaves = 9.5, rise = navW * 0.55;
-	const ang = r.ang;
-	// the nave, which the rectangle's long side already orients
-	parts.push( prepare( box( navW, eaves, navL ), {
-		color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( r.cx, y + eaves / 2, r.cz, 0, ang, 0 ),
-	} ) );
-	const slope = Math.atan2( rise, navW / 2 );
-	const slabLen = Math.hypot( rise, navW / 2 + 0.35 );
-	for ( const side of [ - 1, 1 ] ) {
+	const map = new Map();
+	for ( const r of places.roads || [] ) for ( let i = 0; i + 1 < r.pts.length; i ++ ) {
 
-		const sx = r.cx + Math.cos( ang ) * side * ( navW / 4 + 0.18 );
-		const sz = r.cz - Math.sin( ang ) * side * ( navW / 4 + 0.18 );
-		parts.push( prepare( box( slabLen, 0.16, navL + 0.7 ), {
-			color: 0x7d4531, rough: 0.82, pattern: PAT.plain,
-			matrix: mat4( sx, y + eaves + rise / 2, sz, 0, ang, - side * slope, 1, 1, 1, 'YZX' ),
-		} ) );
+		const ax = r.pts[ i ][ 0 ] - cE, az = cN - r.pts[ i ][ 1 ];
+		const bx = r.pts[ i + 1 ][ 0 ] - cE, bz = cN - r.pts[ i + 1 ][ 1 ];
+		const steps = Math.max( 1, Math.ceil( Math.hypot( bx - ax, bz - az ) / 8 ) );
+		for ( let k = 0; k <= steps; k ++ ) {
+
+			const x = ax + ( bx - ax ) * k / steps, z = az + ( bz - az ) * k / steps;
+			const key = Math.floor( x / cell ) + ',' + Math.floor( z / cell );
+			let a = map.get( key );
+			if ( ! a ) map.set( key, a = [] );
+			a.push( x, z );
+
+		}
 
 	}
 
-	for ( const end of [ - 1, 1 ] ) {
+	return { map, cell };
 
-		const gx = r.cx - Math.sin( ang ) * end * navL / 2, gz = r.cz - Math.cos( ang ) * end * navL / 2;
-		const tri = slab( [ [ - navW / 2, 0 ], [ navW / 2, 0 ], [ 0, rise ] ], [], ( u, v, sd ) => new Vector3( u, v, sd * 0.11 ), { edges: false } );
-		parts.push( prepare( tri, { color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( gx, y + eaves, gz, 0, ang, 0 ) } ) );
+}
 
-	}
+function nearestRoad( idx, x, z ) {
 
-	// which end of the nave lies west: the tower stands there, the altar at the other
-	const ex = - Math.sin( ang ), ez = - Math.cos( ang ); // the local long axis in world x / z
-	const west = ex < 0 ? 1 : - 1;
-	const tx = r.cx + ex * west * ( navL / 2 + 2.4 ), tz = r.cz + ez * west * ( navL / 2 + 2.4 );
-	const towerW = Math.min( 5.5, navW * 0.62 ), towerH = 20;
-	parts.push( prepare( box( towerW, towerH, towerW ), {
-		color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( tx, y + towerH / 2, tz, 0, ang, 0 ),
-	} ) );
-	// the belfry openings, then the cornice and the spire
-	for ( const f of [ 0, 1 ] ) {
+	let bx = 0, bz = 0, best = Infinity;
+	const ci = Math.floor( x / idx.cell ), cj = Math.floor( z / idx.cell );
+	for ( let j = cj - 1; j <= cj + 1; j ++ ) for ( let i = ci - 1; i <= ci + 1; i ++ ) {
 
-		const o = f ? Math.cos( ang ) : - Math.sin( ang ), o2 = f ? - Math.sin( ang ) : - Math.cos( ang );
-		parts.push( prepare( box( f ? 0.12 : 1.5, 2.6, f ? 1.5 : 0.12 ), {
-			color: 0x2b2f33, rough: 0.6, pattern: PAT.plain,
-			matrix: mat4( tx + o * towerW / 2, y + towerH - 3.4, tz + o2 * towerW / 2, 0, ang, 0 ),
-		} ) );
+		const a = idx.map.get( i + ',' + j );
+		if ( ! a ) continue;
+		for ( let k = 0; k < a.length; k += 2 ) {
+
+			const d = ( a[ k ] - x ) ** 2 + ( a[ k + 1 ] - z ) ** 2;
+			if ( d < best ) { best = d; bx = a[ k ]; bz = a[ k + 1 ]; }
+
+		}
 
 	}
 
-	parts.push( prepare( box( towerW + 0.7, 0.35, towerW + 0.7 ), {
-		color: 0xd8d0c0, rough: 0.9, pattern: PAT.plain, matrix: mat4( tx, y + towerH + 0.18, tz, 0, ang, 0 ),
-	} ) );
-	parts.push( prepare( cylinder( 0.0, towerW * 0.78, 9.5, 4 ), {
-		color: 0x55606a, rough: 0.55, metal: 0.35, pattern: PAT.plain,
-		matrix: mat4( tx, y + towerH + 0.35 + 4.75, tz, 0, ang + Math.PI / 4, 0 ),
-	} ) );
-	// the cross on the spire
-	parts.push( prepare( box( 0.1, 1.5, 0.1 ), { color: 0x3c3f42, rough: 0.5, metal: 0.7, pattern: PAT.machined, matrix: mat4( tx, y + towerH + 10.6, tz, 0, ang, 0 ) } ) );
-	parts.push( prepare( box( 0.7, 0.1, 0.1 ), { color: 0x3c3f42, rough: 0.5, metal: 0.7, pattern: PAT.machined, matrix: mat4( tx, y + towerH + 10.9, tz, 0, ang, 0 ) } ) );
-
-	// the apse at the altar end
-	const axp = r.cx - ex * west * ( navL / 2 + 1.6 ), azp = r.cz - ez * west * ( navL / 2 + 1.6 );
-	parts.push( prepare( cylinder( navW * 0.34, navW * 0.34, eaves * 0.86, 10 ), {
-		color: 0xe8e2d2, rough: 0.9, pattern: PAT.plain, matrix: mat4( axp, y + eaves * 0.43, azp, 0, 0, 0 ),
-	} ) );
+	return best < Infinity ? { x: bx, z: bz, d: Math.sqrt( best ) } : null;
 
 }
 
@@ -140,6 +127,7 @@ export function buildBuildings( { terrain, scene, places } ) {
 
 	if ( ! places || ! places.buildings || ! places.buildings.length ) return null;
 	const [ cE, cN ] = terrain.center;
+	const roads = roadIndex( places, cE, cN );
 	const half = terrain.size / 2 - 6;
 	const parts = [];
 	const yards = [];
@@ -155,7 +143,19 @@ export function buildBuildings( { terrain, scene, places } ) {
 		const ground = terrain.heightAt( r.cx, r.cz );
 		if ( ! ( ground > - 1 ) ) continue;
 
-		if ( b.class === 'church' ) { church( parts, terrain, r ); count ++; continue; }
+		// Turn the house so its gable (which carries the windows and the door, and which the fence
+		// runs from) faces the lane it stands on. The rectangle's axes come from the footprint; only
+		// which end is the street end is decided here.
+		const near = nearestRoad( roads, r.cx, r.cz );
+		if ( near && near.d < 60 ) {
+
+			// the gable sits at the -z end of the local frame: ( -sin, -cos ) in world
+			const gx = - Math.sin( r.ang ), gz = - Math.cos( r.ang );
+			if ( ( near.x - r.cx ) * gx + ( near.z - r.cz ) * gz < 0 ) r.ang += Math.PI;
+
+		}
+
+		if ( b.class === 'church' ) { buildChurch( parts, terrain, r ); count ++; continue; }
 
 		const h = hash( r.cx, r.cz );
 		const area = r.w * r.d;
@@ -176,8 +176,12 @@ export function buildBuildings( { terrain, scene, places } ) {
 		} ) );
 
 		// the roof: a gable along the long side, as two pitched slabs meeting at the ridge
-		const pitch = isShed ? 0.38 : 0.52; // rise over half-span; a Slavonian roof is steep
-		const rise = r.w / 2 * pitch * 2;
+		// Rise per metre of width. A house roof here is steep (about 46 degrees); a shed's is lower;
+		// and a wide hall or barn carries a shallow one (about 20 degrees), or a 25 m span would
+		// stand a 13 m roof on 4 m walls.
+		const span = Math.min( 1, Math.max( 0, ( r.w - HOUSE_SPAN ) / ( HALL_SPAN - HOUSE_SPAN ) ) );
+		const pitch = ( isShed ? PITCH_SHED : PITCH_HOUSE ) * ( 1 - span ) + PITCH_HALL * span;
+		const rise = r.w * pitch;
 		const over = 0.4; // the eaves overhang
 		const slope = Math.atan2( rise, r.w / 2 );
 		const slabLen = Math.hypot( rise, r.w / 2 + over );

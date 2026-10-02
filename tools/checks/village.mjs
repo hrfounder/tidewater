@@ -26,6 +26,7 @@ for ( const br of site.roads.bridges ) {
 	let room = Infinity;
 	for ( const p of P ) if ( T.heightAt( p[ 0 ], p[ 1 ] ) < 0 ) room = Math.min( room, p[ 2 ] );
 	const made = village.bridges.find( ( m ) => m.length === br.main.length );
+	if ( br.main.half >= 1.5 ) check( made.walks[ 0 ] >= 1.4 && made.walks[ 1 ] >= 1.4, `bridge ${ br.main.name || br.main.class }: a walk on each side of the carriageway`, `${ made.walks[ 0 ].toFixed( 2 ) } m on the left, ${ made.walks[ 1 ].toFixed( 2 ) } m on the right` );
 	check( ends < 0.02, `bridge ${ br.main.name || br.main.class }: deck against the road at its two ends`, `${ ( ends * 100 ).toFixed( 1 ) } cm; ${ made.length.toFixed( 1 ) } m long, ${ made.width.toFixed( 1 ) } m wide, ${ made.spans } spans, ${ made.panels } railing panels, ${ made.lamps } lamps; ${ br.members.length } lanes beside it; deck top ${ room === Infinity ? 'not over water' : room.toFixed( 2 ) + ' m over the water at its lowest' }` );
 
 }

@@ -7,6 +7,9 @@ import { SURFACE } from './VillageMaterial.js';
 // spans and an abutment at each end; along its edges the kit's railing; lamps where its kind has them.
 //
 // What a bridge is, by what it carries:
+//   footway  the walk a road bridge carries on each side of its carriageway (m). The map draws
+//            Most Bosut's as a footway beside the road, on one side only; the bridge has one on
+//            both, and a deck is at least this wide whatever the map drew beside it
 //   edge     the strip outside the outermost lane, where the railing stands (m)
 //   kerb     how far everything but the carriageway stands above it (m)
 //   depth    the deck from its top to its underside (m)
@@ -19,8 +22,8 @@ import { SURFACE } from './VillageMaterial.js';
 // the usual ones for such a bridge, not measured.
 const lin = ( c ) => c.map( ( v ) => Math.pow( v / 255, 2.2 ) );
 const KINDS = {
-	road: { edge: 0.35, kerb: 0.15, depth: 0.95, span: 18, pier: [ 0.8, 0.6 ], lamps: 26, surface: [ SURFACE.concrete, [ 92, 92, 94 ] ] },
-	foot: { edge: 0.12, kerb: 0, depth: 0.3, span: 10, pier: [ 0.3, 0.1 ], lamps: 0, surface: [ SURFACE.boards, [ 122, 102, 80 ] ] },
+	road: { footway: 1.5, edge: 0.35, kerb: 0.15, depth: 0.95, span: 18, pier: [ 0.8, 0.6 ], lamps: 26, surface: [ SURFACE.concrete, [ 92, 92, 94 ] ] },
+	foot: { footway: 0, edge: 0.12, kerb: 0, depth: 0.3, span: 10, pier: [ 0.3, 0.1 ], lamps: 0, surface: [ SURFACE.boards, [ 122, 102, 80 ] ] },
 };
 const CONCRETE = { color: lin( [ 158, 155, 148 ] ), rough: 0.95, surface: SURFACE.concrete, seed: 0.5 };
 const RAIL_PAINT = { railing: { color: lin( [ 52, 96, 150 ] ), rough: 0.5, metal: 0.3, surface: SURFACE.plain, seed: 0.2 } };
@@ -40,7 +43,7 @@ export function buildBridges( B, { site, terrain, models }, colliders ) {
 		const M = B( P[ P.length >> 1 ][ 0 ], P[ P.length >> 1 ][ 1 ] );
 		// the deck across: from left to right of the road's direction, the carriageway level and
 		// everything else a kerb higher
-		const left = bridge.left - K.edge, right = bridge.right + K.edge;
+		const left = Math.min( bridge.left, - main.half - K.footway ) - K.edge, right = Math.max( bridge.right, main.half + K.footway ) + K.edge;
 		const lane = K === KINDS.road ? [ - main.half, main.half ] : [ left, right ];
 		const strips = [ [ left, lane[ 0 ], K.kerb ], [ lane[ 0 ], lane[ 1 ], 0 ], [ lane[ 1 ], right, K.kerb ] ].filter( ( [ a, b ] ) => b - a > 1e-3 );
 		// the frame at a distance along the road: the point on its centreline, its direction, its right
@@ -138,7 +141,8 @@ export function buildBridges( B, { site, terrain, models }, colliders ) {
 
 		}
 
-		built.push( { name: main.name, class: main.class, length: L, width: right - left, spans, panels: 2 * panels, lamps } );
+		// ( walks: the raised strip on each side of the carriageway, inside the railing )
+		built.push( { name: main.name, class: main.class, length: L, width: right - left, walks: [ lane[ 0 ] - left - K.edge, right - lane[ 1 ] - K.edge ], spans, panels: 2 * panels, lamps } );
 
 	}
 

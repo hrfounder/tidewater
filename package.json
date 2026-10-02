@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5189",
     "dev:lan": "vite --host 0.0.0.0 --port 5192",
+    "preview:lan": "vite build && vite preview --host 0.0.0.0 --port 5193",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node test/game-logic.mjs && node test/region-slavonia.mjs && node test/engine-smoke.mjs"

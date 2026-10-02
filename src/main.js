@@ -3,6 +3,7 @@ import { App } from './App.js';
 import { UI } from './ui/UI.js';
 import { AppUI } from './ui/AppUI.js';
 import { TouchControls } from './ui/TouchControls.js';
+import { startOffline } from './offline/Offline.js';
 
 // A phone draws at this share of its screen's pixels unless ?scale= says otherwise: its GPU is a
 // fraction of a desktop's, and the temporal upscaler reconstructs the rest.
@@ -16,6 +17,8 @@ if ( /[?&]bench\b/.test( location.search ) ) {
 	window.cancelAnimationFrame = ( id ) => ( clearTimeout( id ), caf( id ) );
 
 }
+
+startOffline();
 
 const ui = new UI();
 const app = new App();

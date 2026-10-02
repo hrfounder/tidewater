@@ -12,6 +12,9 @@ import { project, pointAt } from './Roads.js';
 //     front    the street line: where the front wall of its house stands
 //     back     as far back as its buildings reach, and a yard's width more
 //
+// A landmark with grounds of its own (Buildings.js) has no plot: its grounds are its land, and the
+// plots beside it stop at them.
+//
 // Real cadastral parcels replace this when they are available; what reads a plot stays the same.
 
 // The frontage a village plot has on its street (m): a šor plot is about ten fathoms wide. A plot
@@ -19,6 +22,8 @@ import { project, pointAt } from './Roads.js';
 const PLOT_FRONTAGE = 20;
 // the yard behind the last building of a plot (m)
 const YARD_BACK = 6;
+// a plot is looked at this often along its street for a landmark's grounds in it (m)
+const LOOK = 0.5;
 
 export function buildPlots( buildings, roads ) {
 
@@ -27,7 +32,7 @@ export function buildPlots( buildings, roads ) {
 	for ( const b of buildings.list ) {
 
 		const f = b.frontage;
-		if ( ! f ) continue;
+		if ( ! f || b.grounds ) continue;
 		let s0 = Infinity, s1 = - Infinity, d0 = Infinity, d1 = - Infinity;
 		for ( const [ x, z ] of b.ring ) {
 
@@ -78,7 +83,33 @@ export function buildPlots( buildings, roads ) {
 
 	}
 
-	return plots;
+	for ( const b of buildings.list ) if ( b.grounds ) for ( const plot of plots ) stopAt( plot, b.grounds.ring );
+	return plots.filter( ( p ) => p.s1 > p.s0 );
+
+}
+
+// Cut a plot's stretch of the street back to where a ring (a landmark's grounds) begins: the plot
+// keeps the part its own house stands in.
+function stopAt( plot, ring ) {
+
+	const inside = ( [ x, z ] ) => {
+
+		let c = false;
+		for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
+
+			const a = ring[ j ], b = ring[ i ];
+			if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) c = ! c;
+
+		}
+
+		return c;
+
+	};
+	const taken = ( s ) => [ plot.front, ( plot.front + plot.back ) / 2, plot.back ].some( ( d ) => inside( pointAt( plot.road, s, d, plot.side ) ) );
+	const home = Math.min( plot.s1, Math.max( plot.s0, plot.house.frontage.s ) );
+	if ( taken( home ) ) return;
+	for ( let s = home; s >= plot.s0; s -= LOOK ) if ( taken( s ) ) { plot.s0 = s + LOOK; break; }
+	for ( let s = home; s <= plot.s1; s += LOOK ) if ( taken( s ) ) { plot.s1 = s - LOOK; break; }
 
 }
 

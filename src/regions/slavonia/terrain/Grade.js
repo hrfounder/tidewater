@@ -10,7 +10,8 @@ import { gridOf } from '../site/Raster.js';
 //           outside, the bank rises at the same slope until it meets the plain. The bank is as tall
 //           as the plain stands over the water: nothing sets its height or how far it reaches.
 //   pads    the ground under a building is levelled to its floor (before the water is cut: a bank
-//           takes the edge of a pad that stands too close to it).
+//           takes the edge of a pad that stands too close to it); a landmark's grounds with it,
+//           so that its fence and its paving stand on the level they were modelled on.
 //   roads   the bed is levelled across at the road's own level, with its camber, and meets the
 //           ground beside it over the verge. The terrain mesh is the road. Bridges are left out:
 //           their decks are built, not graded.
@@ -104,7 +105,38 @@ export function gradePads( terrain, buildings ) {
 
 	}
 
+	for ( const b of buildings.list ) if ( b.grounds ) {
+
+		const ring = b.grounds.ring, xs = ring.map( ( p ) => p[ 0 ] ), zs = ring.map( ( p ) => p[ 1 ] );
+		const i0 = Math.max( 0, Math.floor( ( Math.min( ...xs ) - reach - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ...xs ) + reach - origin ) / texel ) );
+		const j0 = Math.max( 0, Math.floor( ( Math.min( ...zs ) - reach - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( ...zs ) + reach - origin ) / texel ) );
+		for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) {
+
+			const w = 1 - smoothstep( PAD_MARGIN, reach, outside( ring, origin + ( i + 0.5 ) * texel, origin + ( j + 0.5 ) * texel ) );
+			if ( w > 0 ) H[ j * res + i ] += ( b.floor - H[ j * res + i ] ) * w;
+
+		}
+
+	}
+
 	return under;
+
+}
+
+// how far a point is outside a ring ( 0 inside it )
+function outside( ring, x, z ) {
+
+	let inside = false, d = Infinity;
+	for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
+
+		const a = ring[ j ], b = ring[ i ], dx = b[ 0 ] - a[ 0 ], dz = b[ 1 ] - a[ 1 ];
+		if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + dx * ( z - a[ 1 ] ) / dz ) inside = ! inside;
+		const t = Math.min( 1, Math.max( 0, ( ( x - a[ 0 ] ) * dx + ( z - a[ 1 ] ) * dz ) / ( dx * dx + dz * dz || 1 ) ) );
+		d = Math.min( d, Math.hypot( x - a[ 0 ] - dx * t, z - a[ 1 ] - dz * t ) );
+
+	}
+
+	return inside ? 0 : d;
 
 }
 

@@ -17,14 +17,15 @@ class Shells:
 	"""Collects shells (vertices and faces with a material) into one mesh."""
 
 	def __init__( self ):
-		self.verts, self.faces, self.mats = [], [], []
+		self.verts, self.faces, self.mats, self.smooth = [], [], [], []
 
-	def shell( self, verts, faces, mat ):
+	def shell( self, verts, faces, mat, smooth=False ):
 		o = len( self.verts )
 		self.verts += verts
 		for f in faces:
 			self.faces.append( [ o + i for i in f ] )
 			self.mats.append( mat )
+			self.smooth.append( smooth )
 
 	def box( self, x0, x1, y0, y1, z0, z1, mat, back=True ):
 		"""A box. back=False leaves out the +y face: the one against the wall the piece hangs on."""
@@ -96,13 +97,41 @@ class Shells:
 		f.append( tuple( range( seg, 2 * seg ) ) )
 		self.shell( v, f, mat )
 
+	def prism( self, poly, a0, a1, mat, plane='xz' ):
+		"""An outline pushed through from a0 to a1, closed at both ends. plane 'xz': the outline is
+		( x, z ) and runs along y; 'yz': ( y, z ) along x; 'xy': ( x, y ) along z (a slab)."""
+		n = len( poly )
+		P = { 'xz': lambda p, a: ( p[ 0 ], a, p[ 1 ] ), 'yz': lambda p, a: ( a, p[ 0 ], p[ 1 ] ), 'xy': lambda p, a: ( p[ 0 ], p[ 1 ], a ) }[ plane ]
+		v = [ P( p, a0 ) for p in poly ] + [ P( p, a1 ) for p in poly ]
+		f = [ tuple( range( n ) ), tuple( range( 2 * n - 1, n - 1, - 1 ) ) ]
+		f += [ ( i, ( i + 1 ) % n, n + ( i + 1 ) % n, n + i ) for i in range( n ) ]
+		self.shell( v, f, mat )
+
+	def lathe( self, profile, cx, cy, mat, seg=32, turn=0.0, soft=False ):
+		"""( radius, z ) pairs turned about the vertical through ( cx, cy ), capped at both ends. With
+		more than 8 sides it is round: shaded smooth round the turn, and each step of the profile
+		keeps its own edge unless `soft` (a bulb, a ball). With few sides (seg 4, 8) it is a tower or
+		a spire: `turn` (radians) sets where its corners point, and it is shaded flat."""
+		ring = lambda r, z: [ ( cx + r * math.cos( turn + 2 * math.pi * k / seg ), cy + r * math.sin( turn + 2 * math.pi * k / seg ), z ) for k in range( seg ) ]
+		band = [ ( k, ( k + 1 ) % seg, seg + ( k + 1 ) % seg, seg + k ) for k in range( seg ) ]
+		if soft:
+			v = [ p for r, z in profile for p in ring( r, z ) ]
+			f = [ tuple( i * seg + j for j in q ) for i in range( len( profile ) - 1 ) for q in band ]
+			self.shell( v, f, mat, smooth=seg > 8 )
+		else:
+			for ( r0, z0 ), ( r1, z1 ) in zip( profile, profile[ 1: ] ): self.shell( ring( r0, z0 ) + ring( r1, z1 ), band, mat, smooth=seg > 8 )
+		self.shell( ring( *profile[ 0 ] ), [ tuple( range( seg - 1, - 1, - 1 ) ) ], mat )
+		self.shell( ring( *profile[ - 1 ] ), [ tuple( range( seg ) ) ], mat )
+
 	def object( self, name, materials, collection, props=None ):
 		"""The collected shells as an object named `name`; props become its custom properties."""
 		used = sorted( set( self.mats ), key=lambda m: list( materials ).index( m ) )
 		me = bpy.data.meshes.new( name )
 		me.from_pydata( self.verts, [], self.faces )
 		for m in used: me.materials.append( materials[ m ] )
-		for poly, m in zip( me.polygons, self.mats ): poly.material_index = used.index( m )
+		for poly, m, smooth in zip( me.polygons, self.mats, self.smooth ):
+			poly.material_index = used.index( m )
+			poly.use_smooth = smooth
 		bm = bmesh.new(); bm.from_mesh( me )
 		bmesh.ops.recalc_face_normals( bm, faces=bm.faces )
 		bm.to_mesh( me ); bm.free()

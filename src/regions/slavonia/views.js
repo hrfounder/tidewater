@@ -33,4 +33,11 @@ export const PROGRESS_VIEWS = {
 	houseFront: { pos: [ 275.4, 1.7, - 203.9 ], ground: true, target: [ 273.5, 2.4, - 217.7 ], fov: 65 },
 	// standing on Most Bosut's approach, looking along the road onto the bridge
 	bridgeRoad: { pos: [ 8, 1.7, 65 ], ground: true, target: [ 0, 2.5, 0 ], fov: 60 },
+	// St Andrew's from the parking across Ulica Matije Gupca, where the street tour of the footage
+	// stood (drone1 f_020): the facade, the tower, the fence
+	andrewStreet: { pos: [ - 54.7, 1.7, 160.7 ], ground: true, target: [ - 42.4, 15, 184.5 ], fov: 62 },
+	// St Andrew's from before and above, as the orbit of the footage saw its front (drone5 f012)
+	andrewAir: { pos: [ - 66.4, 20.8, 165.7 ], ground: true, target: [ - 59.0, 20.5, 172.4 ], fov: 78 },
+	// and from behind and above: the apse between the two annexes (drone5 f006)
+	andrewRear: { pos: [ - 6.1, 18, 211.3 ], ground: true, target: [ - 32.0, 10, 193.8 ], fov: 60 },
 };

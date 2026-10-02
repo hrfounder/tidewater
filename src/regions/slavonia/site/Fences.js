@@ -1,5 +1,5 @@
 import { pointAt } from './Roads.js';
-import { YARD, BUILDING } from './Occupancy.js';
+import { YARD, BUILDING, WALL_STRIP, strip } from './Occupancy.js';
 import { insideBuilding } from './Buildings.js';
 
 // The fences of the Site: along each plot's street line, from the plot's one side to the other,
@@ -14,8 +14,8 @@ import { insideBuilding } from './Buildings.js';
 const PANEL = 2.5;
 // the fence line is looked at this often for what stands in its way (m)
 const LOOK = 0.25;
-// how wide a strip of ground a fence takes, and how far it keeps from a wall it does not join (m)
-const STRIP = 0.6, OFF_WALL = 0.15;
+// how far a fence keeps from a wall it does not join (m)
+const OFF_WALL = 0.15;
 
 // gate: the kit's yard gate { w }
 export function layFences( site, gate ) {
@@ -63,14 +63,9 @@ export function layFences( site, gate ) {
 	}
 
 	// the line is taken
-	const strip = ( a, b ) => {
-
-		const l = Math.hypot( b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ] ) || 1, nx = - ( b[ 1 ] - a[ 1 ] ) / l * STRIP / 2, nz = ( b[ 0 ] - a[ 0 ] ) / l * STRIP / 2;
-		occupancy.claim( [ [ a[ 0 ] - nx, a[ 1 ] - nz ], [ b[ 0 ] - nx, b[ 1 ] - nz ], [ b[ 0 ] + nx, b[ 1 ] + nz ], [ a[ 0 ] + nx, a[ 1 ] + nz ] ], BUILDING );
-
-	};
-	for ( const p of panels ) strip( p.a, p.b );
-	for ( const g of gates ) strip( [ g.x - g.along[ 0 ] * gate.w / 2, g.z - g.along[ 1 ] * gate.w / 2 ], [ g.x + g.along[ 0 ] * gate.w / 2, g.z + g.along[ 1 ] * gate.w / 2 ] );
+	const take = ( a, b ) => occupancy.claim( strip( a, b, WALL_STRIP ), BUILDING );
+	for ( const p of panels ) take( p.a, p.b );
+	for ( const g of gates ) take( [ g.x - g.along[ 0 ] * gate.w / 2, g.z - g.along[ 1 ] * gate.w / 2 ], [ g.x + g.along[ 0 ] * gate.w / 2, g.z + g.along[ 1 ] * gate.w / 2 ] );
 	return { panels, gates };
 
 }

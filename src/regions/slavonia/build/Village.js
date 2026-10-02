@@ -25,6 +25,8 @@ const LEAN = { share: 0.3, depth: 4.5, drop: 0.25, pitch: 20, wall: 1.9 };
 const CHIMNEY = { side: 0.5, above: 0.55, cap: 0.07 };
 // a window keeps this far from the corners of its wall and from the eaves (m)
 const CORNER = 0.6, HEAD = 0.25;
+// half the thickness of the wall round a landmark's grounds, as the player meets it (m)
+const WALL_HALF = 0.15;
 // the steps up to a door: this deep, a tread's width wider than the door on each side (m)
 const STOOP = { out: 0.9, wider: 0.25, under: 0.16 };
 
@@ -73,11 +75,19 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 		else if ( A ) top = raise( B, b, A, models.kit, terrain );
 		else { waiting.push( b ); continue; }
 		built[ b.kind ] = ( built[ b.kind ] || 0 ) + 1;
-		// what the player cannot walk through: each piece of the footprint, from under the ground to its top
+		// what the player cannot walk through: each piece of the footprint, from under the ground to its
+		// top (a landmark's pieces say how high each of them is), and the walls round its grounds
 		if ( colliders ) for ( const p of b.pieces ) {
 
-			const [ x, , z ] = frame( b ).at( p.u, 0, p.v ), bottom = b.floor - FOOTING;
-			colliders.addBox( new Vector3( x, ( bottom + top ) / 2, z ), new Vector3( p.hu, ( top - bottom ) / 2, p.hv ), b.yaw, { tag: 'building' } );
+			const [ x, , z ] = frame( b ).at( p.u, 0, p.v ), bottom = b.floor - FOOTING, upTo = p.top === undefined ? top : b.floor + p.top;
+			colliders.addBox( new Vector3( x, ( bottom + upTo ) / 2, z ), new Vector3( p.hu, ( upTo - bottom ) / 2, p.hv ), b.yaw, { tag: 'building' } );
+
+		}
+
+		if ( colliders && b.grounds ) for ( const w of b.grounds.walls ) {
+
+			const len = Math.hypot( w.b[ 0 ] - w.a[ 0 ], w.b[ 1 ] - w.a[ 1 ] ), bottom = b.floor - FOOTING, upTo = b.floor + w.height;
+			colliders.addBox( new Vector3( ( w.a[ 0 ] + w.b[ 0 ] ) / 2, ( bottom + upTo ) / 2, ( w.a[ 1 ] + w.b[ 1 ] ) / 2 ), new Vector3( WALL_HALF, ( upTo - bottom ) / 2, len / 2 ), Math.atan2( w.b[ 0 ] - w.a[ 0 ], w.b[ 1 ] - w.a[ 1 ] ), { tag: 'fence' } );
 
 		}
 

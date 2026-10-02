@@ -6,6 +6,11 @@
 // A building's frame: `yaw` turns it about y the way the engine turns a mesh, so its local +z points
 // along ( sin yaw, cos yaw ) and its local +x along ( cos yaw, -sin yaw ). Local +z is the front: the
 // side it shows its street. Pieces are rectangles in that frame, around the building's origin.
+//
+// A landmark whose model carries a plan is not what the map drew: the mapped outline gives where it
+// stands and which way its walls run, the plan everything else. Its ring and pieces are the model's,
+// and it has `grounds`: { ring, walls: [ { a, b, height } ], paved: [ ring ], trees: [ { x, z, height } ] },
+// its yard, the fence round it, its paving and the trees in it, all in the patch's metres.
 
 // A wall within this of the footprint's axes is one of its straight walls (radians).
 const SQUARE = 5 * Math.PI / 180;
@@ -26,12 +31,20 @@ const HALL_AREA = 300, OUTBUILDING_AREA = 45;
 
 export class Buildings {
 
-	// places: places.json; center ( east, north ). The footprints only: `settle` does the rest, once
-	// the roads exist (the roads need the walls first, to keep clear of them).
-	constructor( places, { center } ) {
+	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } ).
+	// The footprints only: `settle` does the rest, once the roads exist (the roads need the walls
+	// first, to keep clear of them).
+	constructor( places, { center, landmarks } ) {
 
 		const [ cE, cN ] = center;
 		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN ) );
+		for ( const b of this.list ) {
+
+			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
+			if ( own && own.plan ) plant( b, own, places.roads, cE, cN );
+
+		}
+
 		this.buckets = new Map();
 		// how far a wall can be from its building's centre
 		this.radius = 0;
@@ -40,7 +53,7 @@ export class Buildings {
 			const key = Math.floor( b.x / BUCKET ) + ',' + Math.floor( b.z / BUCKET );
 			if ( ! this.buckets.has( key ) ) this.buckets.set( key, [] );
 			this.buckets.get( key ).push( b );
-			for ( const [ x, z ] of b.ring ) this.radius = Math.max( this.radius, Math.hypot( x - b.x, z - b.z ) );
+			for ( const [ x, z ] of bounds( b ) ) this.radius = Math.max( this.radius, Math.hypot( x - b.x, z - b.z ) );
 
 		}
 
@@ -57,7 +70,8 @@ export class Buildings {
 			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
 			const f = roads.nearest( b.x, b.z, FRONTAGE_REACH, ( r ) => r.street && ( ! own || r.name === own.faces ) );
 			b.frontage = f;
-			if ( f ) face( b, f.x - b.x, f.z - b.z );
+			// ( a planned landmark was faced when its plan was set down )
+			if ( f && ! b.grounds ) face( b, f.x - b.x, f.z - b.z );
 			// the largest piece first: the main body
 			b.pieces.sort( ( p, q ) => q.hu * q.hv - p.hu * p.hv );
 			// the floor stands on the highest ground under the walls, so no wall hangs over a dip
@@ -79,15 +93,15 @@ export class Buildings {
 	}
 
 	// The buildings a line through ( x, z ) along the unit direction ( nx, nz ) crosses within r
-	// metres of the point: [ l0, l1 ] for each, where the line enters and leaves its ring, in metres
-	// along the direction ( negative behind the point ).
+	// metres of the point: [ l0, l1 ] for each, where the line enters and leaves its ring (its
+	// grounds' ring, if it has grounds), in metres along the direction ( negative behind the point ).
 	crossings( x, z, nx, nz, r ) {
 
 		const out = [];
 		for ( const b of this.near( x, z, r + this.radius ) ) {
 
 			let l0 = Infinity, l1 = - Infinity;
-			const ring = b.ring;
+			const ring = bounds( b );
 			for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
 
 				// the wall from a along e, against the line from the point along n
@@ -117,7 +131,7 @@ export class Buildings {
 		let best = Infinity;
 		for ( const b of this.near( ( ax + bx ) / 2, ( az + bz ) / 2, r + this.radius + Math.hypot( bx - ax, bz - az ) / 2 ) ) {
 
-			const ring = b.ring;
+			const ring = bounds( b );
 			for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) {
 
 				const d = crossesSegment( ax, az, bx, bz, ring[ j ], ring[ i ] ) ? 0 : Math.min(
@@ -166,6 +180,9 @@ export class Buildings {
 	}
 
 }
+
+// what a road keeps clear of: a building's walls, or the fence round its grounds
+const bounds = ( b ) => b.grounds ? b.grounds.ring : b.ring;
 
 // is the point inside any of the building's pieces? (margin: metres added around each piece)
 export function insideBuilding( b, x, z, margin = 0 ) {
@@ -230,7 +247,44 @@ function footprint( src, index, cE, cN ) {
 		// 3065 here: apses, chamfered corners) and the one piece is the rectangle around it.
 		exact: rects !== null,
 		pieces: rects || [ { u: 0, v: 0, hu: ( u1 - u0 ) / 2, hv: ( v1 - v0 ) / 2 } ],
-		frontage: null, floor: 0, kind: null,
+		frontage: null, floor: 0, kind: null, grounds: null,
+	};
+
+}
+
+// Set a landmark's plan down on its mapped footprint: the frame turned to face its street (found on
+// the mapped roads: the Site's own are not made yet, and they keep clear of what is set down here),
+// then the ring, the pieces and the grounds from the plan.
+function plant( b, own, roads, cE, cN ) {
+
+	let near = null, d = Infinity;
+	for ( const r of roads ) {
+
+		if ( r.name !== own.faces ) continue;
+		for ( let i = 0; i + 1 < r.pts.length; i ++ ) {
+
+			const p = [ r.pts[ i ][ 0 ] - cE, cN - r.pts[ i ][ 1 ] ], q = [ r.pts[ i + 1 ][ 0 ] - cE, cN - r.pts[ i + 1 ][ 1 ] ];
+			const dx = q[ 0 ] - p[ 0 ], dz = q[ 1 ] - p[ 1 ], t = Math.min( 1, Math.max( 0, ( ( b.x - p[ 0 ] ) * dx + ( b.z - p[ 1 ] ) * dz ) / ( dx * dx + dz * dz || 1 ) ) );
+			const at = [ p[ 0 ] + dx * t, p[ 1 ] + dz * t ], l = Math.hypot( at[ 0 ] - b.x, at[ 1 ] - b.z );
+			if ( l < d ) { d = l; near = at; }
+
+		}
+
+	}
+
+	if ( ! near || d > FRONTAGE_REACH ) throw new Error( `${ b.name } is said to face ${ own.faces }, and the map has no such street within ${ FRONTAGE_REACH } m of it` );
+	face( b, near[ 0 ] - b.x, near[ 1 ] - b.z );
+	const P = own.plan, W = ( [ u, v ] ) => toWorld( b, u, v );
+	b.ring = P.outline.map( W );
+	b.pieces = P.boxes.map( ( [ x0, x1, z0, z1, top ] ) => ( { u: ( x0 + x1 ) / 2, v: ( z0 + z1 ) / 2, hu: ( x1 - x0 ) / 2, hv: ( z1 - z0 ) / 2, top } ) );
+	// ( its pieces are what the model says cannot be walked through, not its footprint cut up )
+	b.exact = false;
+	b.area = Math.abs( b.ring.reduce( ( s, p, i ) => { const q = b.ring[ ( i + 1 ) % b.ring.length ]; return s + p[ 0 ] * q[ 1 ] - q[ 0 ] * p[ 1 ]; }, 0 ) ) / 2;
+	b.grounds = {
+		ring: P.yard.map( W ),
+		walls: P.walls.map( ( [ ax, az, bx, bz, height ] ) => ( { a: W( [ ax, az ] ), b: W( [ bx, bz ] ), height } ) ),
+		paved: P.paved.map( ( ring ) => ring.map( W ) ),
+		trees: P.trees.map( ( [ x, z, height ] ) => ( { x: W( [ x, z ] )[ 0 ], z: W( [ x, z ] )[ 1 ], height } ) ),
 	};
 
 }

@@ -101,6 +101,9 @@ class Spread {
 
 // A tree is as tall as its shape, by its size, by a stretch of its own between these.
 const STRETCH = [ 0.85, 1.15 ];
+// What stands in a landmark's grounds where its survey saw a tree, and the room it keeps (m): the
+// tree of a Slavonian churchyard is a lime.
+const GROUNDS_TREE = { plant: 'lime', clear: 4 };
 
 // Plant the patch: { reed: [ records ], willow: [ ... ], ... } by shape, and a count per habitat. A
 // record is what the vegetation's instances take: x, y, z, s (scale), yaw, seed, qr (how far it is
@@ -114,6 +117,22 @@ export function plant( { site, terrain } ) {
 	// every tree keeps clear of every other, whatever habitat planted it
 	const trees = new Spread( 16 );
 	const forest = ( x, z ) => terrain.forest[ Math.floor( z - terrain.origin ) * terrain.res + Math.floor( x - terrain.origin ) ] / 255;
+	// first the trees that were surveyed: each where it was seen and as tall, and the habitats plant round them
+	{
+
+		const rnd = random( 104729 ), kind = PLANTS[ GROUNDS_TREE.plant ], shape = SHAPES[ kind.shape ];
+		counts.grounds = 0;
+		for ( const b of site.buildings.list ) if ( b.grounds ) for ( const t of b.grounds.trees ) {
+
+			const yaw = rnd() * Math.PI * 2;
+			out[ kind.shape ].push( { x: t.x, y: terrain.heightAt( t.x, t.z ), z: t.z, yaw, s: t.height / shape.spec.H, seed: seedOf( GROUNDS_TREE.plant, rnd ), qr: TREE_REACH + 12, la: yaw, l: 1, H: t.height } );
+			trees.add( t.x, t.z, GROUNDS_TREE.clear );
+			counts.grounds ++;
+
+		}
+
+	}
+
 	Object.entries( HABITATS ).forEach( ( [ name, h ], index ) => {
 
 		const rnd = random( 7919 * ( index + 1 ) ), patch = stands( h.stand[ 0 ], index + 1 ), kind = PLANTS[ h.plant ];

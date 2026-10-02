@@ -7,8 +7,20 @@ import { fillPolygon, gridOf } from './Raster.js';
 // before they stand anywhere: nothing keeps a keep-out list of its own.
 //
 // What a texel can be, in rising priority: a yard gives way to water, water to a road (a culvert, a
-// bridge), a road to a building.
+// bridge), a road to a building. A landmark's grounds are a yard; its paving and the line of its
+// fence are taken as a building is: nothing grows on them.
 export const FREE = 0, YARD = 1, WATER = 2, ROAD = 3, BUILDING = 4;
+
+// how wide a strip of ground a wall or a fence takes (m)
+export const WALL_STRIP = 0.6;
+
+// the ground a line from a to b takes, `width` wide: its four corners
+export function strip( a, b, width ) {
+
+	const l = Math.hypot( b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ] ) || 1, nx = - ( b[ 1 ] - a[ 1 ] ) / l * width / 2, nz = ( b[ 0 ] - a[ 0 ] ) / l * width / 2;
+	return [ [ a[ 0 ] - nx, a[ 1 ] - nz ], [ b[ 0 ] - nx, b[ 1 ] - nz ], [ b[ 0 ] + nx, b[ 1 ] + nz ], [ a[ 0 ] + nx, a[ 1 ] + nz ] ];
+
+}
 
 export class Occupancy {
 
@@ -28,6 +40,14 @@ export class Occupancy {
 
 			const corners = [ [ - 1, - 1 ], [ 1, - 1 ], [ 1, 1 ], [ - 1, 1 ] ].map( ( [ a, c ] ) => toWorld( b, p.u + a * p.hu, p.v + c * p.hv ) );
 			fillPolygon( grid, corners, ( k ) => claim( k, BUILDING ) );
+
+		}
+
+		for ( const b of site.buildings.list ) if ( b.grounds ) {
+
+			fillPolygon( grid, b.grounds.ring, ( k ) => claim( k, YARD ) );
+			for ( const ring of b.grounds.paved ) fillPolygon( grid, ring, ( k ) => claim( k, BUILDING ) );
+			for ( const w of b.grounds.walls ) fillPolygon( grid, strip( w.a, w.b, WALL_STRIP ), ( k ) => claim( k, BUILDING ) );
 
 		}
 

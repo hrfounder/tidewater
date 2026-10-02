@@ -89,7 +89,8 @@ const pct = ( a, b ) => `${ ( a / b * 100 ).toFixed( 1 ) } %`;
 
 	check( out === 0, 'footprints with a corner more than 0.5 m outside their pieces', `${ out } of ${ exact.length }` );
 	check( worstArea < 0.1, 'pieces against the footprint, by area', `worst ${ ( worstArea * 100 ).toFixed( 1 ) } % off` );
-	console.log( `     footprints with a wall off their axes, built as the rectangle around them: ${ B.length - exact.length } (${ pct( B.length - exact.length, B.length ) })` );
+	const boxed = B.filter( ( b ) => ! b.exact && ! b.grounds );
+	console.log( `     footprints with a wall off their axes, built as the rectangle around them: ${ boxed.length } (${ pct( boxed.length, B.length ) })` );
 
 	const fronted = B.filter( ( b ) => b.frontage );
 	const setback = fronted.filter( ( b ) => b.kind === 'house' ).map( ( b ) => Math.min( ...b.ring.map( ( [ x, z ] ) => Math.hypot( x - b.frontage.x, z - b.frontage.z ) ) ) - b.frontage.road.half ).sort( ( a, b ) => a - b );
@@ -114,28 +115,71 @@ const pct = ( a, b ) => `${ ( a / b * 100 ).toFixed( 1 ) } %`;
 
 }
 
-// ---- landmarks: the foot of each model against the footprint it stands on
+// ---- landmarks: the foot of each model against the ground it is given, and what a model says of its
+// own plan against the map and the Site round it
+const mapped = new Map( readJSON( 'places.json' ).buildings.filter( ( m ) => m.name ).map( ( m ) => [ m.name.toLowerCase(), m.ring.map( ( [ e, n ] ) => [ e - site.center[ 0 ], site.center[ 1 ] - n ] ) ] ) );
+const toRing = ( ring, x, z ) => Math.min( ...ring.map( ( p, i ) => {
+
+	const q = ring[ ( i + 1 ) % ring.length ], dx = q[ 0 ] - p[ 0 ], dz = q[ 1 ] - p[ 1 ];
+	const t = Math.min( 1, Math.max( 0, ( ( x - p[ 0 ] ) * dx + ( z - p[ 1 ] ) * dz ) / ( dx * dx + dz * dz ) ) );
+	return Math.hypot( x - p[ 0 ] - dx * t, z - p[ 1 ] - dz * t );
+
+} ) );
+// points every `step` metres along a ring
+const along = ( ring, step ) => ring.flatMap( ( p, i ) => {
+
+	const q = ring[ ( i + 1 ) % ring.length ], n = Math.max( 1, Math.ceil( Math.hypot( q[ 0 ] - p[ 0 ], q[ 1 ] - p[ 1 ] ) / step ) );
+	return Array.from( { length: n }, ( _, k ) => [ p[ 0 ] + ( q[ 0 ] - p[ 0 ] ) * k / n, p[ 1 ] + ( q[ 1 ] - p[ 1 ] ) * k / n ] );
+
+} );
 for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 
-	const model = models.landmarks.get( b.name.toLowerCase() ), ring = new Polygon( [ b.ring ] );
-	const toRing = ( x, z ) => Math.min( ...b.ring.map( ( p, i ) => {
-
-		const q = b.ring[ ( i + 1 ) % b.ring.length ], dx = q[ 0 ] - p[ 0 ], dz = q[ 1 ] - p[ 1 ];
-		const t = Math.min( 1, Math.max( 0, ( ( x - p[ 0 ] ) * dx + ( z - p[ 1 ] ) * dz ) / ( dx * dx + dz * dz ) ) );
-		return Math.hypot( x - p[ 0 ] - dx * t, z - p[ 1 ] - dz * t );
-
-	} ) );
-	// the model's vertices below 0.7 m (its plinth), in the world, as the village's builder stands it
+	// the ground the model is given: its grounds if it has them, the footprint if not
+	const model = models.landmarks.get( b.name.toLowerCase() ), given = b.grounds ? b.grounds.ring : b.ring, ring = new Polygon( [ given ] );
+	// the model's vertices below 0.7 m (its plinth, its fence's foot), in the world, as the village's builder stands it
 	let worst = 0, top = [ 0, - Infinity, 0 ];
 	for ( const part of model.parts ) for ( let i = 0; i < part.positions.length; i += 3 ) {
 
 		const [ x, z ] = toWorld( b, part.positions[ i ], part.positions[ i + 2 ] );
 		if ( part.positions[ i + 1 ] > top[ 1 ] ) top = [ x, part.positions[ i + 1 ], z ];
-		if ( part.positions[ i + 1 ] < 0.7 && ! ring.contains( x, z ) ) worst = Math.max( worst, toRing( x, z ) );
+		if ( part.positions[ i + 1 ] < 0.7 && ! ring.contains( x, z ) ) worst = Math.max( worst, toRing( given, x, z ) );
 
 	}
 
-	check( worst < 0.5, `${ b.name }: its foot outside its footprint`, `at most ${ worst.toFixed( 2 ) } m; fronts ${ b.frontage.road.name }; its top (${ top[ 1 ].toFixed( 1 ) } m) stands ${ Math.hypot( top[ 0 ] - b.frontage.x, top[ 2 ] - b.frontage.z ).toFixed( 1 ) } m from that street, the footprint's middle ${ Math.hypot( b.x - b.frontage.x, b.z - b.frontage.z ).toFixed( 1 ) } m` );
+	check( worst < 0.5, `${ b.name }: its foot outside ${ b.grounds ? 'its grounds' : 'its footprint' }`, `at most ${ worst.toFixed( 2 ) } m; fronts ${ b.frontage.road.name }; its top (${ top[ 1 ].toFixed( 1 ) } m) stands ${ Math.hypot( top[ 0 ] - b.frontage.x, top[ 2 ] - b.frontage.z ).toFixed( 1 ) } m from that street, the footprint's middle ${ Math.hypot( b.x - b.frontage.x, b.z - b.frontage.z ).toFixed( 1 ) } m` );
+	if ( ! b.grounds ) continue;
+
+	// the model's plan against the mapped outline it replaces: how much of the map's is under the model's walls
+	const was = new Polygon( [ mapped.get( b.name.toLowerCase() ) ] ), now = new Polygon( [ b.ring ] );
+	let inWas = 0, inBoth = 0, inNow = 0;
+	for ( let z = Math.min( was.z0, now.z0 ); z <= Math.max( was.z1, now.z1 ); z += 0.25 ) for ( let x = Math.min( was.x0, now.x0 ); x <= Math.max( was.x1, now.x1 ); x += 0.25 ) {
+
+		const w = was.contains( x, z ), n = now.contains( x, z );
+		if ( w ) inWas ++; if ( n ) inNow ++; if ( w && n ) inBoth ++;
+
+	}
+
+	check( inBoth / inWas > 0.9, `${ b.name }: the mapped outline under the model's walls`, `${ pct( inBoth, inWas ) } of its ${ ( inWas / 16 ).toFixed( 0 ) } m2; the model's plan is ${ ( inNow / 16 ).toFixed( 0 ) } m2, ${ ( ( inNow - inBoth ) / 16 ).toFixed( 0 ) } m2 of it where the map has none` );
+
+	// its grounds against what stands round them: no other building in them, no carriageway through their fence
+	const yard = new Polygon( [ b.grounds.ring ] );
+	const inside = buildings.near( b.x, b.z, 2 * buildings.radius ).filter( ( o ) => o !== b && ( o.ring.some( ( [ x, z ] ) => yard.contains( x, z ) ) || b.grounds.ring.some( ( [ x, z ] ) => insideBuilding( o, x, z ) ) ) );
+	let room = Infinity, nearest = null;
+	for ( const [ x, z ] of along( b.grounds.ring, 0.5 ) ) {
+
+		const f = roads.nearest( x, z, 30 );
+		if ( f && f.d - reachOf( f.road ) < room ) { room = f.d - reachOf( f.road ); nearest = f.road; }
+
+	}
+
+	check( inside.length === 0 && room >= 0, `${ b.name }: its grounds clear of other buildings and of the roads`, `${ inside.length } buildings in them; the fence at least ${ room.toFixed( 2 ) } m from the edge of a road (${ nearest.name || nearest.class })` );
+
+	// the ground they stand on, against the level the model was made on: under the paving (a slab
+	// 4 cm thick lies on it) and along the fence
+	let over = - Infinity, off = 0;
+	for ( const paving of b.grounds.paved ) { const P = new Polygon( [ paving ] ); for ( let z = P.z0; z <= P.z1; z += 0.5 ) for ( let x = P.x0; x <= P.x1; x += 0.5 ) if ( P.contains( x, z ) ) over = Math.max( over, T.heightAt( x, z ) - b.floor ); }
+	for ( const w of b.grounds.walls ) for ( const [ x, z ] of along( [ w.a, w.b ], 0.5 ) ) off = Math.max( off, Math.abs( T.heightAt( x, z ) - b.floor ) );
+	check( over < 0.03 && off < 0.25, `${ b.name }: its grounds on the level`, `the ground at most ${ ( over * 100 ).toFixed( 1 ) } cm over the paving's bed and within ${ ( off * 100 ).toFixed( 1 ) } cm of the level along the fence; ${ b.grounds.walls.length } stretches of fence and wall, ${ b.grounds.paved.length } pavings` );
 
 }
 

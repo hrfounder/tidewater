@@ -69,7 +69,8 @@ export async function loadWorld( read = fetchFile() ) {
 	const [ water, places, models ] = await Promise.all( [ json( index.water ), json( 'places.json' ), loadModels( read ) ] );
 	const datum = waterDatum( water, index.center );
 	const terrain = await TileTerrain.load( { index, readFile: tile, size: DOMAIN, datum } );
-	const landmarks = new Map( LANDMARKS.map( ( l ) => [ l.name.toLowerCase(), l ] ) );
+	// each landmark as it is declared, with what its model says of itself on the ground
+	const landmarks = new Map( LANDMARKS.map( ( l ) => [ l.name.toLowerCase(), { ...l, plan: models.landmarks.get( l.name.toLowerCase() ).plan } ] ) );
 	const site = buildSite( { index, water, places, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
 	gradeTerrain( terrain, site );
 	occupy( site, terrain, models.kit );

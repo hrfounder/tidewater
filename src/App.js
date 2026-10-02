@@ -143,6 +143,7 @@ export class App {
 		if ( tiles ) {
 
 			this.terrainData = await tiles.loadTerrain();
+			this.placesData = await tiles.loadPlaces();
 			tiles.applyLayout( WORLD );
 
 		} else this.terrainData = new TerrainData();
@@ -169,7 +170,7 @@ export class App {
 		this.debris = tiles ? null : new Debris( { scene, terrain: this.terrain, village: this.village, vegetation: this.vegetation, rocks: this.rocks, colliders: this.colliders } );
 		// these apply the heightfield sun shadow in their own lighting model (see UnderwaterLighting)
 		this.terrain.mesh.material.appliesHillShadow = true;
-		if ( tiles ) this.places = tiles.buildPlaces( { terrain: this.terrainData, scene } );
+		if ( tiles ) this.places = tiles.buildPlaces( { terrain: this.terrainData, scene, places: this.placesData } );
 		if ( this.rocks ) this.rocks.material.appliesHillShadow = true;
 
 		await progress( 0.23, 'Growing the reef…' );

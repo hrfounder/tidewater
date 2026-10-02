@@ -3,6 +3,8 @@ import { TileTerrain } from './TileTerrain.js';
 import { GROUND_SURFACE } from './GroundSurface.js';
 import { buildPlatforms } from './Platforms.js';
 import { Flora } from './Flora.js';
+import { buildRoads } from './Roads.js';
+import { buildBuildings } from './Buildings.js';
 
 // The Slavonian world as App builds it (?region=slavonia): the real terrain from the world tiles of
 // the core block around Most Bosut (public/world/bosut/), its ground shader, calm river water, and
@@ -61,9 +63,11 @@ export const TERRAIN_EXTENT = 131072;
 export { GROUND_SURFACE };
 
 // hand-built places in the patch (call once the terrain exists)
-export function buildPlaces( { terrain, scene } ) {
+export function buildPlaces( { terrain, scene, places = null } ) {
 
 	return {
+		roads: buildRoads( { terrain, scene, places } ),
+		buildings: buildBuildings( { terrain, scene, places } ),
 		platforms: buildPlatforms( { terrain, scene } ),
 		flora: new Flora( { scene, terrain } ),
 	};
@@ -76,6 +80,22 @@ export async function loadTerrain( base = typeof document !== 'undefined' ? docu
 	const dir = new URL( TILES, base );
 	const index = await ( await fetch( new URL( 'index.json', dir ) ) ).json();
 	return TileTerrain.load( { index, center: index.center, readFile: async ( f ) => ( await fetch( new URL( f, dir ) ) ).arrayBuffer() } );
+
+}
+
+// the roads and building footprints of the block (tools/geodata/places.py)
+export async function loadPlaces( base = typeof document !== 'undefined' ? document.baseURI : '' ) {
+
+	try {
+
+		return await ( await fetch( new URL( TILES + 'places.json', base ) ) ).json();
+
+	} catch ( e ) {
+
+		console.warn( 'places.json missing: no roads or buildings', e );
+		return null;
+
+	}
 
 }
 

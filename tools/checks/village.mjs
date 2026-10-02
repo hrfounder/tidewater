@@ -44,6 +44,18 @@ for ( const br of site.roads.bridges ) {
 
 }
 
+// ---- what floats and what stands over the water
+{
+
+	// a pontoon and its fingers lie in water deep enough to float them; a deck has water under it
+	let shallow = Infinity;
+	for ( const m of site.marinas ) for ( let k = 0; k <= 20; k ++ ) shallow = Math.min( shallow, - T.heightAt( m.from[ 0 ] + ( m.to[ 0 ] - m.from[ 0 ] ) * k / 20, m.from[ 1 ] + ( m.to[ 1 ] - m.from[ 1 ] ) * k / 20 ) );
+	const dry = site.decks.filter( ( d ) => ! d.ring.some( ( [ x, z ] ) => T.heightAt( x, z ) < 0 ) );
+	const walk = boxes.filter( ( b ) => b.opts.tag === 'marina' && b.opts.walkable ).length;
+	check( shallow > 0.4 && ! dry.length && village.marina.gangways === site.marinas.length, 'the marina afloat, its gangway landed, the deck over the water', `${ village.marina.pontoons } pontoon with ${ village.marina.fingers } fingers in at least ${ shallow.toFixed( 2 ) } m of water, ${ village.marina.gangways } gangway, ${ village.marina.decks } deck (${ dry.length } with no corner over water); ${ walk } boxes to walk on` );
+
+}
+
 // ---- the fences
 {
 

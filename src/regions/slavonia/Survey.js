@@ -69,6 +69,8 @@ export const BESIDE = [
 export const OPEN = [
 	// the park on the south bank east of the bridge, the school's grounds and the sports ground
 	{ ring: [ [ 22, 6 ], [ 100, - 2 ], [ 160, 2 ], [ 232, 44 ], [ 268, 150 ], [ 232, 212 ], [ 128, 148 ], [ 62, 84 ], [ 26, 62 ] ], source: 'sheets park, school, sport' },
+	// the bank west of the bridge, behind the marina: lawn under large trees, between the water and the path
+	{ ring: [ [ - 8, 36 ], [ - 150, 46 ], [ - 150, 70 ], [ - 100, 72 ], [ - 60, 66 ], [ - 6, 72 ] ], source: 'sheet marina; drone2 at 12-18 s' },
 ];
 
 // Ground that is made: each a flat surface with straight sides (a ring that bulges nowhere inward).
@@ -94,6 +96,26 @@ export const TREES = [
 	[ 140.4, 18.2, 12 ], [ 144.7, 25, 13 ], [ 159.9, 24.1, 15 ], [ 161.5, 29.6, 12 ], [ 186.9, 20.4, 14 ],
 	// round the school
 	[ 176.5, 66.5, 13 ], [ 152.3, 83.8, 14 ], [ 133.8, 96.5, 13 ], [ 159.2, 96.5, 12 ], [ 110.7, 111.5, 12 ], [ 185.7, 96.5, 12 ],
+	// the bank behind the marina ( sheet marina; the game's water lies some metres further up this bank
+	// than the orthophoto's, and the trees nearest it are set back from it )
+	[ - 71.2, 52, 14 ], [ - 60.8, 54, 15 ], [ - 50.3, 51, 14 ], [ - 39.8, 52.2, 15 ], [ - 29.3, 49, 14 ], [ - 22.8, 56.1, 13 ], [ - 81.7, 58.7, 14 ], [ - 73.8, 66.6, 13 ], [ - 37.2, 61.4, 14 ], [ - 13.6, 58.7, 12 ],
 	// between the track and the river
 	[ 212, 78, 14 ], [ 224, 92, 14 ], [ 236, 106, 13 ], [ 247, 122, 13 ], [ 256, 140, 12 ],
+];
+
+// What floats, and what stands over the water (build/Marina.js). Neither is on the orthophoto, which is
+// of 2022 and 2023: the marina was built since. Their forms are in the drone footage of 2025 (drone2
+// at 0-18 s and at 30 s), which shows them on the south bank west of the bridge; where exactly they
+// lie along it is judged from the bridge and the bank in those frames, not measured.
+//   a marina   from, to: the pontoon's two ends; width; fingers: one every so many metres, their
+//              length and width; river: the way the open water lies ( x, z ); gangway: how far
+//              along the pontoon it comes down from the bank
+export const MARINAS = [
+	{ from: [ - 26, 29 ], to: [ - 80, 35 ], width: 2.4, fingers: { every: 6.5, length: 5.5, width: 0.9 }, river: [ 0, - 1 ], gangway: 5, source: 'drone2 at 0-12 s and 30 s' },
+];
+//   a deck     ring: a rectangle on the axes; level: its height over the water; open: the side of
+//              the ring ( 0 is from its first corner to its second ) that is the bank's, without a railing
+export const DECKS = [
+	// the landing by the bridge, where the excursion boat ties up
+	{ ring: [ [ - 20, 25 ], [ - 8, 25 ], [ - 8, 35.5 ], [ - 20, 35.5 ] ], level: 1.5, open: 2, source: 'drone2 at 15-18 s; sheet marina (the landing of 2022 at the same place)' },
 ];

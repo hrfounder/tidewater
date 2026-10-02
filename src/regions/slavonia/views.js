@@ -51,4 +51,6 @@ export const PROGRESS_VIEWS = {
 	sportAir: { pos: [ 150, 70, 230 ], ground: true, target: [ 215, 0, 130 ], fov: 60 },
 	// the municipality and the shop from across Vinkovačka ulica, St Roch's beyond (drone1 at 30 s)
 	opcinaStreet: { pos: [ - 6, 1.7, - 108 ], ground: true, target: [ 22, 6, - 118 ], fov: 70 },
+	// the marina and the landing by the bridge, from over the river west of it (drone2 at 30 s looks back along here)
+	marinaAir: { pos: [ - 95, 28, 5 ], ground: true, target: [ - 45, 0, 36 ], fov: 60 },
 };

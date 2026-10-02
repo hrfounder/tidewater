@@ -40,4 +40,9 @@ export const PROGRESS_VIEWS = {
 	andrewAir: { pos: [ - 66.4, 20.8, 165.7 ], ground: true, target: [ - 59.0, 20.5, 172.4 ], fov: 78 },
 	// and from behind and above: the apse between the two annexes (drone5 f006)
 	andrewRear: { pos: [ - 6.1, 18, 211.3 ], ground: true, target: [ - 32.0, 10, 193.8 ], fov: 60 },
+	// St Roch's north-west flank from the pavement of Vinkovačka ulica, as the street tour of the
+	// footage passed it (drone1 at 24 s): the three windows, the three-sided end, the iron fence
+	rochFlank: { pos: [ 30.3, 1.7, - 221.7 ], ground: true, target: [ 40.6, 11, - 196.8 ], fov: 62 },
+	// St Roch's and its yard from before and above
+	rochAir: { pos: [ 68.2, 22, - 229.4 ], ground: true, target: [ 43.9, 7, - 199.3 ], fov: 60 },
 };

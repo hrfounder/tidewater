@@ -45,7 +45,9 @@ export class Buildings {
 	constructor( places, { center, landmarks, survey, seen } ) {
 
 		const [ cE, cN ] = center;
-		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN, survey.shifts[ index ], survey.roofs[ index ] ) );
+		// ( a landmark stays where the map has it: its model's script was measured against that place,
+		// on the orthophoto, by eye, which the survey's fit is not a match for )
+		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN, landmarks.has( ( b.name || '' ).toLowerCase() ) ? [ 0, 0 ] : survey.shifts[ index ], survey.roofs[ index ] ) );
 		for ( const b of this.list ) {
 
 			const own = landmarks.get( ( b.name || '' ).toLowerCase() );

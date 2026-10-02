@@ -14,7 +14,7 @@
 export const LANDMARKS = [
 	{
 		name: 'Crkva Svetog Roka', faces: 'Ulica Stjepana Radića', model: 'models/slavonia/st-roch.glb',
-		surfaces: { wall: 'render', trim: 'render', plinth: 'concrete', glass: 'glass', tile: 'tile', dome: 'sheet', door: 'boards', louvre: 'boards' },
+		surfaces: { wall: 'render', trim: 'render', plinth: 'concrete', glass: 'glass', tile: 'tile', dome: 'sheet', door: 'boards', louvre: 'boards', stone: 'concrete', paving: 'concrete' },
 	},
 	{
 		name: 'crkva svetog Andrije', faces: 'Ulica Matije Gupca', model: 'models/slavonia/st-andrew.glb',

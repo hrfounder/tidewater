@@ -70,6 +70,7 @@ import bpy, math, os
 ROOT = globals().get( 'REPO' ) or os.path.dirname( os.path.dirname( os.path.dirname( os.path.abspath( __file__ ) ) ) )
 OUT = os.path.join( ROOT, 'public', 'models', 'slavonia', 'st-andrew.glb' )
 exec( compile( open( os.path.join( ROOT, 'tools', 'blender', 'shells.py' ), encoding='utf-8' ).read(), 'shells.py', 'exec' ) )
+exec( compile( open( os.path.join( ROOT, 'tools', 'blender', 'grounds.py' ), encoding='utf-8' ).read(), 'grounds.py', 'exec' ) )
 
 # ---- plan. The mapped rectangle is RECT_L x RECT_W; x is measured from its middle
 RECT_L, RECT_W = 17.6, 18.85
@@ -118,7 +119,9 @@ PILLAR, PILLAR_H = 0.6, 2.4
 PILLAR_GAP = 6.6                           # the most between two pillars
 BASE_H, BASE_T = 0.5, 0.3                  # the brick wall the iron stands on
 IRON_TOP = 1.75
-PICKET, PICKET_GAP = 0.016, 0.16
+# the fence on the streets (grounds.py): every fourth picket stands taller, as the iron's rhythm does
+# in drone1 f_020
+FENCE = dict( base=( BASE_H, BASE_T, 'brick', 'stone' ), top=IRON_TOP, picket=( 0.016, 0.16 ), tall=( 4, 0.12 ), ends=PILLAR / 2 )
 WALL_H, WALL_T = 1.8, 0.25                 # the brick wall on the other sides
 # the paving: the forecourt from the gate, as wide as the church's front, and a walk along each flank
 APRON = 7.6                                # half the forecourt's width at the facade
@@ -339,66 +342,6 @@ def church( S ):
 			[ ( 0, 1, 2, 3 ), ( 7, 6, 5, 4 ), ( 0, 4, 5, 1 ), ( 3, 2, 6, 7 ) ], 'iron' )
 
 
-def run( S, a, b, make ):
-	"""Lay something along the ground from a to b ( x, y ): make( at, length ) is given a function that
-	turns ( along, across, z ) into a point, and the length of the run."""
-	l = math.hypot( b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ] )
-	tx, ty = ( b[ 0 ] - a[ 0 ] ) / l, ( b[ 1 ] - a[ 1 ] ) / l
-	make( lambda t, o, z: ( a[ 0 ] + tx * t - ty * o, a[ 1 ] + ty * t + tx * o, z ), l )
-
-
-def slab( S, at, t0, t1, o0, o1, z0, z1, mat ):
-	"""A box along a run: from t0 to t1 along it, o0 to o1 across, z0 to z1; no face under it."""
-	v = [ at( t, o, z ) for z in ( z0, z1 ) for o in ( o0, o1 ) for t in ( t0, t1 ) ]
-	S.shell( v, [ ( 4, 5, 7, 6 ), ( 0, 1, 5, 4 ), ( 2, 6, 7, 3 ), ( 0, 4, 6, 2 ), ( 1, 3, 7, 5 ) ], mat )
-
-
-def pillar( S, x, y ):
-	h, c = PILLAR / 2, PILLAR / 2 + 0.07
-	S.post( x - h, x + h, y - h, y + h, - 0.3, PILLAR_H, 'brick' )
-	S.post( x - c, x + c, y - c, y + c, PILLAR_H, PILLAR_H + 0.12, 'stone' )
-	S.lathe( [ ( c * math.sqrt( 2 ) * 0.86, PILLAR_H + 0.12 ), ( 0.16, PILLAR_H + 0.34 ), ( 0.1, PILLAR_H + 0.4 ), ( 0.17, PILLAR_H + 0.52 ), ( 0.03, PILLAR_H + 0.66 ) ], x, y, 'stone', seg=4, turn=math.pi / 4 )
-
-
-def iron_fence( S, a, b ):
-	"""Between two pillars: the brick base under a stone coping, and the iron on it."""
-	def make( at, l ):
-		t0, t1 = PILLAR / 2, l - PILLAR / 2
-		slab( S, at, t0, t1, - BASE_T / 2, BASE_T / 2, - 0.3, BASE_H, 'brick' )
-		slab( S, at, t0, t1, - BASE_T / 2 - 0.03, BASE_T / 2 + 0.03, BASE_H, BASE_H + 0.06, 'stone' )
-		for z in ( BASE_H + 0.2, IRON_TOP - 0.18 ): slab( S, at, t0, t1, - 0.012, 0.012, z, z + 0.035, 'iron' )
-		n = max( 1, round( ( t1 - t0 ) / PICKET_GAP ) )
-		for k in range( n ):
-			t = t0 + ( t1 - t0 ) * ( k + 0.5 ) / n
-			# every fourth picket stands taller, as the iron's rhythm does in drone1 f_020
-			top = IRON_TOP + ( 0.12 if k % 4 == 0 else 0 )
-			v = [ at( t + dt, do, z ) for z in ( BASE_H + 0.06, top ) for dt, do in ( ( - PICKET / 2, - PICKET / 2 ), ( PICKET / 2, - PICKET / 2 ), ( PICKET / 2, PICKET / 2 ), ( - PICKET / 2, PICKET / 2 ) ) ]
-			S.shell( v, [ ( 0, 1, 5, 4 ), ( 1, 2, 6, 5 ), ( 2, 3, 7, 6 ), ( 3, 0, 4, 7 ) ], 'iron' )
-	run( S, a, b, make )
-
-
-def brick_wall( S, a, b ):
-	def make( at, l ):
-		slab( S, at, 0, l, - WALL_T / 2, WALL_T / 2, - 0.3, WALL_H, 'brick' )
-		slab( S, at, 0, l, - WALL_T / 2 - 0.04, WALL_T / 2 + 0.04, WALL_H, WALL_H + 0.07, 'stone' )
-	run( S, a, b, make )
-
-
-def gate_leaf( S, hinge, swing ):
-	"""An iron leaf standing open into the yard from its hinge: swing = +1 or -1, the side of the
-	gateway it is on."""
-	x, y, w = hinge[ 0 ], hinge[ 1 ], GATE_W / 2 - 0.05
-	def make( at, l ):
-		for z in ( 0.12, 1.0, IRON_TOP ): slab( S, at, 0, l, - 0.015, 0.015, z, z + 0.04, 'iron' )
-		for t in ( 0.02, l - 0.02 ): slab( S, at, t - 0.02, t + 0.02, - 0.02, 0.02, 0.08, IRON_TOP + 0.25, 'iron' )
-		n = round( l / PICKET_GAP )
-		for k in range( 1, n ):
-			t = l * k / n
-			v = [ at( t + dt, do, z ) for z in ( 0.12, IRON_TOP + 0.25 * math.sin( math.pi * k / n ) ) for dt, do in ( ( - PICKET / 2, - PICKET / 2 ), ( PICKET / 2, - PICKET / 2 ), ( PICKET / 2, PICKET / 2 ), ( - PICKET / 2, PICKET / 2 ) ) ]
-			S.shell( v, [ ( 0, 1, 5, 4 ), ( 1, 2, 6, 5 ), ( 2, 3, 7, 6 ), ( 3, 0, 4, 7 ) ], 'iron' )
-	run( S, ( x, y + 0.1 ), ( x + swing * 0.25, y + 0.1 + w ), make )
-
-
 def gateway():
 	"""The two pillars of the gate, on the front fence: their middles ( x, y )."""
 	return ( AXIS - GATE_W / 2 - PILLAR / 2, FENCE_Y ), ( AXIS + GATE_W / 2 + PILLAR / 2, FENCE_Y )
@@ -437,13 +380,14 @@ def yard( S ):
 	posts = set()
 	for a, b, kind in runs:
 		if kind == 'iron':
-			iron_fence( S, a, b )
+			iron_fence( S, a, b, FENCE )
 			posts.update( ( ( round( a[ 0 ], 3 ), round( a[ 1 ], 3 ) ), ( round( b[ 0 ], 3 ), round( b[ 1 ], 3 ) ) ) )
-		else: brick_wall( S, a, b )
-	for x, y in posts: pillar( S, x, y )
+		else: masonry_wall( S, a, b, WALL_H, WALL_T, 'brick', 'stone' )
+	for x, y in posts: masonry_pillar( S, x, y, PILLAR, PILLAR_H, 'brick', 'stone' )
+	# the gate's two leaves, standing open into the yard
 	( lx, ly ), ( rx, ry ) = gateway()
-	gate_leaf( S, ( lx + PILLAR / 2, ly ), - 1 )
-	gate_leaf( S, ( rx - PILLAR / 2, ry ), 1 )
+	leaf = GATE_W / 2 - 0.05
+	for x, swing in ( ( lx + PILLAR / 2, - 1 ), ( rx - PILLAR / 2, 1 ) ): gate_leaf( S, ( x, ly + 0.1 ), ( x + swing * 0.25, ly + 0.1 + leaf ), FENCE )
 	# the paving, a slab's thickness above the lawn
 	for outline in paved(): S.prism( outline[ ::- 1 ], 0.0, 0.04, 'paving', 'xy' )
 	# the crucifix by the path: a stone foot and an iron cross
@@ -467,8 +411,8 @@ def yard( S ):
 
 
 # ---- PLAN: what the game needs to know of the model besides its shape, as custom properties of the
-# object. Each is a flat list of numbers in the game's frame for a model: x as here, z = -y (the front
-# toward +z).
+# object. Each is a flat list of numbers in the game's frame for a model (grounds.py): x as here,
+# z = -y (the front toward +z).
 #   outline   the walls' ring on the ground: x, z, x, z, ... (the apse as a half octagon and a half)
 #   boxes     what cannot be walked through, five numbers each: x0, x1, z0, z1, top
 #   walls     the yard's fence and walls, five numbers each: from x, z to x, z, and the height
@@ -476,13 +420,12 @@ def yard( S ):
 #   paved     the paved outlines, each as its count of points and then x, z, ...
 #   trees     the trees of the grounds, three numbers each: x, z, height
 def plan():
-	g = lambda pts: [ c for x, y in pts for c in ( round( x, 3 ), round( - y, 3 ) ) ]
 	# the apse's round between the two annexes' rear walls
 	a0, n = math.asin( ( ANNEX_BACK - NAVE_BACK ) / APSE_R ), 6
 	apse = [ ( AXIS + APSE_R * math.cos( a0 + ( math.pi - 2 * a0 ) * k / n ), NAVE_BACK + APSE_R * math.sin( a0 + ( math.pi - 2 * a0 ) * k / n ) ) for k in range( n + 1 ) ]
 	outline = [ ( NAVE_X0, FRONT ), ( AXIS - HT, FRONT ), ( AXIS - HT, TY0 ), ( AXIS + HT, TY0 ), ( AXIS + HT, FRONT ), ( NAVE_X1, FRONT ), ( NAVE_X1, R_Y0 ), ( R_X1, R_Y0 ), ( R_X1, ANNEX_BACK ) ]
 	outline += apse + [ ( L_X0, ANNEX_BACK ), ( L_X0, L_Y0 ), ( NAVE_X0, L_Y0 ) ]
-	box = lambda x0, x1, y0, y1, top: [ round( x0, 3 ), round( x1, 3 ), round( - y1, 3 ), round( - y0, 3 ), round( top, 3 ) ]
+	box = plan_box
 	# the nave with the annexes' rear walls across its end; the tower; the annexes
 	boxes = box( NAVE_X0, NAVE_X1, FRONT, ANNEX_BACK, RIDGE ) + box( AXIS - HT, AXIS + HT, TY0, TY0 + TOWER_W, CROSS )
 	boxes += box( L_X0, NAVE_X0, L_Y0, ANNEX_BACK, ANNEX_EAVES ) + box( NAVE_X1, R_X1, R_Y0, ANNEX_BACK, ANNEX_EAVES )
@@ -491,12 +434,8 @@ def plan():
 	boxes += box( AXIS - APSE_R * math.cos( ( a0 + math.pi / 2 ) / 2 ), AXIS + APSE_R * math.cos( ( a0 + math.pi / 2 ) / 2 ), ANNEX_BACK, deep, EAVES )
 	boxes += box( CRUCIFIX[ 0 ] - 0.45, CRUCIFIX[ 0 ] + 0.45, CRUCIFIX[ 1 ] - 0.45, CRUCIFIX[ 1 ] + 0.45, 3.3 )
 	boxes += box( STONE_CROSS[ 0 ] - 0.4, STONE_CROSS[ 0 ] + 0.4, STONE_CROSS[ 1 ] - 0.3, STONE_CROSS[ 1 ] + 0.3, 2.1 )
-	walls = []
-	for a, b, kind in fence_runs(): walls += g( [ a, b ] ) + [ IRON_TOP if kind == 'iron' else WALL_H ]
-	pav = []
-	for outline_ in paved(): pav += [ len( outline_ ) ] + g( outline_ )
-	trees = [ c for x, y, h in TREES for c in ( x, - y, h ) ]
-	return dict( outline=g( outline ), boxes=boxes, walls=walls, yard=g( YARD ), paved=pav, trees=trees )
+	walls = plan_walls( [ ( a, b, IRON_TOP if kind == 'iron' else WALL_H ) for a, b, kind in fence_runs() ] )
+	return dict( outline=flat( outline ), boxes=boxes, walls=walls, yard=flat( YARD ), paved=plan_paved( paved() ), trees=plan_trees( TREES ) )
 
 
 def build():

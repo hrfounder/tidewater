@@ -45,6 +45,10 @@ export const BESIDE = [
 	{ along: 'Ulica Matije Gupca', from: [ - 76, 194 ], to: [ - 87, 205 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet andrew-ring1' },
 	// the red pavement along the yellow row
 	{ along: null, from: [ - 81, 127.5 ], to: [ - 55, 155 ], out: [ 0.3, 3.3 ], of: 'paving', source: 'sheet andrew-ring1; drone1 at 63-72 s' },
+	// before St Roch's: the paved ground between Ulica Stjepana Radića and the churchyard's fence, where
+	// cars stand, and the pavement along the fence
+	{ along: 'Ulica Stjepana Radića', from: [ 70, - 197 ], to: [ 62, - 216 ], out: [ 0, 5 ], of: 'asphalt', source: 'orthophoto at 5 cm; ROKOVCI-01.jpg' },
+	{ along: 'Ulica Stjepana Radića', from: [ 70, - 197 ], to: [ 62, - 216 ], out: [ 5, 6.5 ], of: 'paving', source: 'orthophoto at 5 cm; ROKOVCI-01.jpg' },
 	// the walk outside the churchyard's fence along Ulica Vladimira Nazora, a grass verge between it and the road
 	{ along: 'Ulica Vladimira Nazora', from: [ - 60, 191 ], to: [ - 24, 222 ], out: [ 3.5, 4.7 ], of: 'paving', source: 'orthophoto at 5 cm; drone5 f002' },
 ];

@@ -15,18 +15,20 @@ import { SURFACE } from './VillageMaterial.js';
 //   depth    the deck from its top to its underside (m)
 //   span     the most it spans between supports (m)
 //   pier     a pier's thickness along the bridge, and how far in from the deck's edges it stands (m)
-//   lamps    metres between lamps, or 0 for none
+//   lamps    metres between lamps, or 0 for none; `lit`: the side they stand on, as the way it
+//            faces ( x, z ). Most Bosut's stand along its west side.
 //   surface  [ pattern, sRGB ] of the carriageway (or of the whole deck, without one)
 // The forms are from docs/slavonia/photos/bosut-winter-platforms-bridge.jpg (a low beam bridge on
-// blade piers) and the photographs of the deck (kerbed footway, blue railing, lamps); the sizes are
+// blade piers) and from the drone footage of 2025 (drone2 at 21-30 s): three spans on two piers, a
+// kerbed walk and a plain galvanised railing on each side, lamps along the west side. The sizes are
 // the usual ones for such a bridge, not measured.
 const lin = ( c ) => c.map( ( v ) => Math.pow( v / 255, 2.2 ) );
 const KINDS = {
-	road: { footway: 1.5, edge: 0.35, kerb: 0.15, depth: 0.95, span: 18, pier: [ 0.8, 0.6 ], lamps: 26, surface: [ SURFACE.concrete, [ 92, 92, 94 ] ] },
+	road: { footway: 1.5, edge: 0.35, kerb: 0.15, depth: 0.95, span: 24, pier: [ 0.8, 0.6 ], lamps: 26, lit: [ - 1, 0 ], surface: [ SURFACE.concrete, [ 92, 92, 94 ] ] },
 	foot: { footway: 0, edge: 0.12, kerb: 0, depth: 0.3, span: 10, pier: [ 0.3, 0.1 ], lamps: 0, surface: [ SURFACE.boards, [ 122, 102, 80 ] ] },
 };
 const CONCRETE = { color: lin( [ 158, 155, 148 ] ), rough: 0.95, surface: SURFACE.concrete, seed: 0.5 };
-const RAIL_PAINT = { railing: { color: lin( [ 52, 96, 150 ] ), rough: 0.5, metal: 0.3, surface: SURFACE.plain, seed: 0.2 } };
+const RAIL_PAINT = { railing: { color: lin( [ 168, 172, 176 ] ), rough: 0.45, metal: 0.8, surface: SURFACE.plain, seed: 0.2 } };
 const LAMP_PAINT = { zinc: { color: lin( [ 150, 154, 156 ] ), rough: 0.45, metal: 0.9, surface: SURFACE.plain, seed: 0.2 }, lens: { color: lin( [ 230, 226, 210 ] ), rough: 0.2, surface: SURFACE.plain, seed: 0.2 } };
 // a railing stands this far in from the deck's edge; a collider under a deck is this thick (m)
 const RAIL_IN = 0.12, SLAB = 0.25;
@@ -131,10 +133,10 @@ export function buildBridges( B, { site, terrain, models }, colliders ) {
 
 		const lamp = models.kit.get( 'lamp' );
 		let lamps = 0;
-		if ( K.lamps ) for ( let s = K.lamps / 2, k = 0; s < L; s += K.lamps, k ++ ) {
+		if ( K.lamps ) for ( let s = K.lamps / 2; s < L; s += K.lamps ) {
 
-			// along one side and the other in turn, the arm out over the road
-			const side = k % 2 ? 1 : - 1, f = at( s ), dy = side < 0 ? strips[ 0 ][ 2 ] : strips[ strips.length - 1 ][ 2 ];
+			// all along the side that faces the way the kind says, the arm out over the road
+			const f = at( s ), side = f.nx * K.lit[ 0 ] + f.nz * K.lit[ 1 ] > 0 ? 1 : - 1, dy = side < 0 ? strips[ 0 ][ 2 ] : strips[ strips.length - 1 ][ 2 ];
 			const o = point( f, side < 0 ? left + 3 * RAIL_IN : right - 3 * RAIL_IN, dy );
 			for ( const part of lamp.parts ) M.paint( LAMP_PAINT[ part.material ] ).stamp( part, [ f.tx * side, 0, f.tz * side ], [ 0, 1, 0 ], [ f.nx * side, 0, f.nz * side ], o );
 			lamps ++;

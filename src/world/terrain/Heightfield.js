@@ -17,6 +17,9 @@ export class Heightfield {
 
 		this.outside = - 90;
 		this.far = null;
+		// optional surface current, where the region's water moves: { data (2 floats per sample, m/s
+		// east and south), res, texel, ox, oz }. The water surface drifts the swell pattern along it.
+		this.flow = null;
 
 	}
 

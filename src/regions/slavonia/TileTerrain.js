@@ -305,6 +305,8 @@ export class TileTerrain extends Heightfield {
 		}
 		blur( this.scarp, res, 1 );
 
+		this.buildFlow( this.lines );
+
 		// Beyond the patch the plain carries on: the height reported outside the domain is the median
 		// of the dry ground inside it. The world's one water plane sits at the datum, so leaving this
 		// at the datum would flood everything outside the tiles and turn the patch into an island in
@@ -407,6 +409,62 @@ export class TileTerrain extends Heightfield {
 			}
 
 		}
+
+	}
+
+	// The surface current over the patch, on a coarse grid (the flow turns over tens of metres, not
+	// metres). A lowland river like the Bosut runs about a third of a metre a second mid-stream in
+	// summer and a regulated canal less; the flow follows the centreline downstream and falls away
+	// toward the bank, where the water is slack. Everything else — ponds, oxbows, flooded pits — is
+	// still. The water surface drifts its whole wave pattern along this (ocean/WaterSurface.js).
+	buildFlow( lines, texel = 8 ) {
+
+		const res = Math.round( this.size / texel );
+		const data = new Float32Array( res * res * 2 );
+		const best = new Float32Array( res * res ).fill( Infinity );
+		const ox = this.origin, oz = this.origin;
+		const [ cE, cN ] = this.center;
+		for ( const line of lines ) {
+
+			if ( line.dry ) continue;
+			const full = line.class === 'canal' ? 0.12 : 0.34;
+			const half = line.width / 2;
+			const P = line.pts;
+			for ( let k = 0; k + 1 < P.length; k ++ ) {
+
+				const ax = P[ k ][ 0 ] - cE, az = cN - P[ k ][ 1 ];
+				const bx = P[ k + 1 ][ 0 ] - cE, bz = cN - P[ k + 1 ][ 1 ];
+				const dx = bx - ax, dz = bz - az;
+				const len = Math.hypot( dx, dz );
+				if ( len < 1e-3 ) continue;
+				// the points run downstream (the level is a falling fit), so the segment is the flow
+				const ux = dx / len, uz = dz / len;
+				const i0 = Math.max( 0, Math.floor( ( Math.min( ax, bx ) - half - ox ) / texel ) );
+				const i1 = Math.min( res - 1, Math.ceil( ( Math.max( ax, bx ) + half - ox ) / texel ) );
+				const j0 = Math.max( 0, Math.floor( ( Math.min( az, bz ) - half - oz ) / texel ) );
+				const j1 = Math.min( res - 1, Math.ceil( ( Math.max( az, bz ) + half - oz ) / texel ) );
+				for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) {
+
+					const x = ox + ( i + 0.5 ) * texel, z = oz + ( j + 0.5 ) * texel;
+					const t = Math.min( 1, Math.max( 0, ( ( x - ax ) * dx + ( z - az ) * dz ) / ( len * len ) ) );
+					const d = Math.hypot( x - ax - dx * t, z - az - dz * t );
+					if ( d > half ) continue;
+					const q = j * res + i;
+					if ( d >= best[ q ] ) continue;
+					best[ q ] = d;
+					// fastest mid-stream, slack along the bank
+					const across = 1 - d / half;
+					const v = full * ( 0.3 + 0.7 * across * across );
+					data[ q * 2 ] = ux * v;
+					data[ q * 2 + 1 ] = uz * v;
+
+				}
+
+			}
+
+		}
+
+		this.flow = { data, res, texel, ox, oz };
 
 	}
 

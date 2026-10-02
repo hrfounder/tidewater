@@ -127,7 +127,7 @@ fn waterSurfaceCascadeAttenuation( c: i32, depth: f32 ) -> f32 {
 		// band-limit to the mesh spacing to avoid aliasing / swimming
 		let level = max( log2( spacing / ${ f( texel ) } ) + 0.7, 0.0 );
 		let att = waterSurfaceCascadeAttenuation( ${ c }, depth );
-		let uv = worldXZ / ocean.sizes[ ${ c } ].x;
+		let uv = flowXZ / ocean.sizes[ ${ c } ].x;
 		let s = textureSampleLevel( oceanDisplacement, smpLinearRepeat, uv, ${ c }, level );
 		disp += s.xyz * att;
 		// foam coverage is smooth enough to evaluate per vertex (sampled at a fixed detail level,
@@ -165,6 +165,11 @@ fn waterSurfaceVertex( node: vec4f, grid: vec2f ) -> WaterSurfaceVertex {
 	let spacing = lod.spacing;
 	let ground = ${ T ? 'terrainHeightAt( worldXZ )' : '-500.0' };
 	let depth = ${ T ? 'frame.seaLevel - ground' : '500.0' };
+	// A current carries the whole wave pattern with it: the water is sampled at where that patch of
+	// surface was, so on a river the ripples travel downstream even in still air. The sample point
+	// is the lagrangian coordinate from here on, so the derivatives, the wake and the detail all
+	// drift with it ( terrainFlowAt is zero wherever the water does not move ).
+	let flowXZ = worldXZ - ${ T ? 'terrainFlowAt( worldXZ ) * frame.time' : 'vec2f( 0.0 )' };
 
 	var disp = vec3f( 0.0 );
 	var foam = 0.0;
@@ -224,7 +229,7 @@ ${ T ? /* wgsl */`
 
 	var o: WaterSurfaceVertex;
 	o.position = vec3f( worldXZ.x + total.x, y, worldXZ.y + total.z );
-	o.lagXZ = worldXZ;
+	o.lagXZ = flowXZ;
 	o.height = total.y;
 	o.depth = depth;
 	o.foam = foam;

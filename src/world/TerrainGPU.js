@@ -28,6 +28,7 @@ import { detailBinding } from './terrain/TerrainShading.js';
 //   terrainHeightAt( xz: vec2f ) -> f32                 exact bilinear height (terrainParams.outside beyond it)
 //   terrainInside( xz: vec2f ) -> f32                   1 inside the mapped domain, 0 beyond it
 //   terrainFarHeightAt( xz: vec2f ) -> f32              the coarse field beyond the fine one
+//   terrainFlowAt( xz: vec2f ) -> vec2f                 the surface current (m/s east, south)
 //   terrainNormalRock( xz: vec2f ) -> vec4f             macro normal xz (-1..1), rock mask, AO — fragment only
 //                                                       (implicit derivatives); terrainNormalRockLevel( xz, level )
 //   terrainNormalAt( xz: vec2f ) -> vec3f               unit macro normal (mip 0, any stage)
@@ -43,6 +44,36 @@ const SUN_T0 = 24; // m: nearer occluders are left to the shadow map / N.L
 const SUN_DT0 = 6;
 const SUN_GROWTH = 1.22;
 const SUN_STEPS = 24; // reaches ~3 km
+
+// The ground beyond the fine patch and the water's current, interleaved into one rgba32float grid:
+// x = height (the heightfield's `outside` where there is no far field), yz = the current in m/s.
+// A region may have either, both or neither; the grid is whichever of them exists.
+function buildFieldTexture( terrain ) {
+
+	const far = terrain.far, flow = terrain.flow;
+	const g = far || flow;
+	if ( ! g ) return { data: new Float32Array( [ terrain.outside, 0, 0, 0 ] ), res: 1, resZ: 1, texel: 1, ox: 0, oz: 0 };
+	const res = g.res, resZ = g.resZ || g.res, texel = g.texel, ox = g.ox, oz = g.oz;
+	const data = new Float32Array( res * resZ * 4 );
+	for ( let j = 0; j < resZ; j ++ ) for ( let i = 0; i < res; i ++ ) {
+
+		const k = j * res + i, o = k * 4;
+		data[ o ] = far ? far.heights[ k ] : terrain.outside;
+		if ( ! flow ) continue;
+		// the current, sampled on this grid (nearest: it is already smooth over tens of metres)
+		const x = ox + ( i + 0.5 ) * texel, z = oz + ( j + 0.5 ) * texel;
+		const fi = Math.floor( ( x - flow.ox ) / flow.texel ), fj = Math.floor( ( z - flow.oz ) / flow.texel );
+		const fRes = flow.res, fResZ = flow.resZ || flow.res;
+		if ( fi < 0 || fj < 0 || fi >= fRes || fj >= fResZ ) continue;
+		const q = ( fj * fRes + fi ) * 2;
+		data[ o + 1 ] = flow.data[ q ];
+		data[ o + 2 ] = flow.data[ q + 1 ];
+
+	}
+
+	return { data, res, resZ, texel, ox, oz };
+
+}
 
 function dataTexture( data, width, height, format, label, mips = false ) {
 
@@ -65,10 +96,12 @@ export class TerrainGPU {
 		this.heightTexture = dataTexture( terrain.heights, res, res, 'r32float', 'terrainHeights' );
 		// the coarse field beyond the fine one (Heightfield `far`), or a single texel standing for
 		// the plain when a source has none
-		const far = terrain.far;
-		this.farTexture = far
-			? dataTexture( far.heights, far.res, far.resZ || far.res, 'r32float', 'terrainFarHeights' )
-			: dataTexture( new Float32Array( [ terrain.outside ] ), 1, 1, 'r32float', 'terrainFarHeights' );
+		// The field beyond the fine patch, and the surface current, in one texture: the ground height
+		// in x and the current in yz. They share a grid and a binding because the fragment stage is
+		// close to the sampled-texture limit on a 32-texture adapter, and two of them tipped it over.
+		const field = buildFieldTexture( terrain );
+		this.farTexture = dataTexture( field.data, field.res, field.resZ, 'rgba32float', 'terrainFarFieldFlow' );
+		this.fieldGrid = field;
 
 		const maps = bakeTerrainMaps( terrain );
 		// trilinear, clamp to edge (smpLinearClamp), linear data (no colour space)
@@ -93,10 +126,10 @@ export class TerrainGPU {
 			origin: [ 'f32', terrain.origin ],
 			size: [ 'f32', terrain.size ],
 			res: [ 'f32', res ],
-			// the coarse far field: its origin, texel and sample counts (farRes 1 = none)
-			farOrigin: [ 'vec2f', new Vector2( terrain.far ? terrain.far.ox : 0, terrain.far ? terrain.far.oz : 0 ) ],
-			farTexel: [ 'f32', terrain.far ? terrain.far.texel : 1 ],
-			farRes: [ 'vec2f', new Vector2( terrain.far ? terrain.far.res : 1, terrain.far ? ( terrain.far.resZ || terrain.far.res ) : 1 ) ],
+			// the far field / current grid: its origin, texel and sample counts (farRes 1 = neither)
+			farOrigin: [ 'vec2f', new Vector2( field.ox, field.oz ) ],
+			farTexel: [ 'f32', field.texel ],
+			farRes: [ 'vec2f', new Vector2( field.res, field.resZ ) ],
 			// the height reported beyond the domain, the same value the heightfield uses on the CPU:
 			// the island's deep ocean floor, or the level of the plain an inland patch sits in
 			outside: [ 'f32', terrain.outside ],
@@ -254,6 +287,23 @@ fn terrainFarHeightAt( xz: vec2f ) -> f32 {
 	let h = mix( mix( a, b, t.x ), mix( c, d, t.x ), t.y );
 	let out = f.x < 0.0 || f.y < 0.0 || f.x > res.x - 1.0 || f.y > res.y - 1.0;
 	return select( h, terrainParams.outside, out );
+}
+
+// The surface current at world xz, in metres a second (east, south); zero where the water is still
+// or the region has no current. Bilinear, so the flow turns smoothly along a meander.
+fn terrainFlowAt( xz: vec2f ) -> vec2f {
+	let res = terrainParams.farRes;
+	if ( res.x < 2.0 ) { return vec2f( 0.0 ); }
+	let f = ( xz - terrainParams.farOrigin ) / terrainParams.farTexel - 0.5;
+	if ( f.x < 0.0 || f.y < 0.0 || f.x > res.x - 1.0 || f.y > res.y - 1.0 ) { return vec2f( 0.0 ); }
+	let fc = clamp( f, vec2f( 0.0 ), res - 1.001 );
+	let i = vec2i( floor( fc ) );
+	let t = fract( fc );
+	let a = textureLoad( terrainFarTex, i, 0 ).yz;
+	let b = textureLoad( terrainFarTex, i + vec2i( 1, 0 ), 0 ).yz;
+	let c = textureLoad( terrainFarTex, i + vec2i( 0, 1 ), 0 ).yz;
+	let d = textureLoad( terrainFarTex, i + vec2i( 1, 1 ), 0 ).yz;
+	return mix( mix( a, b, t.x ), mix( c, d, t.x ), t.y );
 }
 
 // exact bilinear height at world xz (matches TerrainData.heightAt)

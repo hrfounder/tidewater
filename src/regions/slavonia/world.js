@@ -72,7 +72,7 @@ export async function loadWorld( read = fetchFile() ) {
 	const landmarks = new Map( LANDMARKS.map( ( l ) => [ l.name.toLowerCase(), l ] ) );
 	const site = buildSite( { index, water, places, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
 	gradeTerrain( terrain, site );
-	occupy( site, terrain, models.kit.get( 'platform' ) );
+	occupy( site, terrain, models.kit );
 	return { site, terrain, models };
 
 }

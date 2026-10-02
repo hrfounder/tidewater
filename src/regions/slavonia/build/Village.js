@@ -1,7 +1,7 @@
 import { Vector3 } from '../../../engine/index.js';
 import { MeshBuilder } from './MeshBuilder.js';
 import { createVillageMaterial, SURFACE } from './VillageMaterial.js';
-import { archetypeOf } from './Archetypes.js';
+import { archetypeOf, FENCES } from './Archetypes.js';
 import { gable, leanTo, hip, visible, onSlope, roofHeight } from './Roof.js';
 import { LANDMARKS } from '../Landmarks.js';
 import { buildBridges } from './Bridges.js';
@@ -102,6 +102,58 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
+	// the fences: each plot's in the style its house's archetype gives it, the house's own colours
+	// where the style is a wall of the same render; the kit's gate where the Site put one
+	const styles = new Map();
+	const styleOf = ( plot ) => {
+
+		if ( ! styles.has( plot ) ) {
+
+			const A = archetypeOf( plot.house ), rnd = random( plot.house.index + 77 );
+			let lot = A ? rnd() * A.fence.reduce( ( s, f ) => s + f[ 1 ], 0 ) : 0;
+			const F = A ? FENCES[ ( A.fence.find( ( f ) => ( lot -= f[ 1 ] ) < 0 ) || A.fence[ 0 ] )[ 0 ] ] : null;
+			const colours = F && ( F.colours || A.walls[ 0 ][ 1 ] );
+			styles.set( plot, F && { ...F, paint: { color: lin( colours[ Math.floor( rnd() * colours.length ) ] ), rough: 0.92, surface: F.surface, seed: rnd() } } );
+
+		}
+
+		return styles.get( plot );
+
+	};
+	const fences = { panels: 0, gates: 0, triangles: 0 };
+	for ( const p of site.fences.panels ) {
+
+		const F = styleOf( p.plot );
+		if ( ! F ) continue;
+		const B = builder( p.a[ 0 ], p.a[ 1 ] ), before = B.triangles;
+		const len = Math.hypot( p.b[ 0 ] - p.a[ 0 ], p.b[ 1 ] - p.a[ 1 ] ), tx = ( p.b[ 0 ] - p.a[ 0 ] ) / len, tz = ( p.b[ 1 ] - p.a[ 1 ] ) / len;
+		const ya = terrain.heightAt( ...p.a ), yb = terrain.heightAt( ...p.b ), foot = Math.min( ya, yb ) - FOOTING, h = F.thick / 2;
+		// along the panel, up, and across it: its top follows the ground
+		const at = ( t, y, out ) => [ p.a[ 0 ] + tx * t - tz * out, y, p.a[ 1 ] + tz * t + tx * out ];
+		B.paint( F.paint );
+		for ( const out of [ - h, h ] ) B.polygon( [ at( 0, foot, out ), at( len, foot, out ), at( len, yb + F.height, out ), at( 0, ya + F.height, out ) ], [ [ 0, foot - ya ], [ len, foot - ya ], [ len, F.height ], [ 0, F.height ] ] );
+		B.polygon( [ at( 0, ya + F.height, - h ), at( len, yb + F.height, - h ), at( len, yb + F.height, h ), at( 0, ya + F.height, h ) ], [ [ 0, 0 ], [ len, 0 ], [ len, F.thick ], [ 0, F.thick ] ] );
+		for ( const [ t, y ] of [ [ 0, ya ], [ len, yb ] ] ) B.polygon( [ at( t, foot, - h ), at( t, foot, h ), at( t, y + F.height, h ), at( t, y + F.height, - h ) ], [ [ 0, foot - y ], [ F.thick, foot - y ], [ F.thick, F.height ], [ 0, F.height ] ] );
+		fences.panels ++; fences.triangles += B.triangles - before;
+		if ( colliders ) colliders.addBox( new Vector3( ( p.a[ 0 ] + p.b[ 0 ] ) / 2, ( foot + Math.max( ya, yb ) + F.height ) / 2, ( p.a[ 1 ] + p.b[ 1 ] ) / 2 ), new Vector3( h, ( Math.max( ya, yb ) + F.height - foot ) / 2, len / 2 ), Math.atan2( tx, tz ), { tag: 'fence' } );
+
+	}
+
+	const gate = models.kit.get( 'gate_yard' );
+	for ( const g of site.fences.gates ) {
+
+		const F = styleOf( g.plot );
+		if ( ! F ) continue;
+		const B = builder( g.x, g.z ), before = B.triangles, y = terrain.heightAt( g.x, g.z );
+		// the piece's +z is the street's side
+		const Z = [ g.out[ 0 ], 0, g.out[ 1 ] ], X = [ Z[ 2 ], 0, - Z[ 0 ] ];
+		const paints = { ...KIT_PAINT, surround: F.surface === SURFACE.render ? F.paint : { color: lin( [ 198, 190, 172 ] ), rough: 0.92, surface: SURFACE.render, seed: F.paint.seed } };
+		for ( const part of gate.parts ) B.paint( paints[ part.material ] ).stamp( part, X, [ 0, 1, 0 ], Z, [ g.x, y, g.z ] );
+		fences.gates ++; fences.triangles += B.triangles - before;
+		if ( colliders ) colliders.addBox( new Vector3( g.x, y + gate.h / 2, g.z ), new Vector3( 0.1, gate.h / 2, gate.w / 2 ), Math.atan2( g.along[ 0 ], g.along[ 1 ] ), { tag: 'fence' } );
+
+	}
+
 	const meshes = [];
 	let triangles = 0;
 	for ( const [ key, B ] of cells ) {
@@ -114,7 +166,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, triangles };
+	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, triangles };
 
 }
 

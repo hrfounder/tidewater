@@ -38,6 +38,30 @@ const trees = [ ...records.willow, ...records.poplar, ...records.oak ];
 
 }
 
+// ---- where each plant is drawn, not only where it is planted: the foot of what the materials put on
+// screen. A clump (the plant material, vegetation/VegNodes.js vegPlantDeform) is drawn about a
+// point H above its record; a tree (the canopy material) from its record, stretched by l.
+{
+
+	const { buildReedClump, REED_HEIGHT } = await import( '../../src/regions/slavonia/flora/Species.js' );
+	const P = buildReedClump( 7 ).geometry.attributes.position;
+	let lowest = Infinity;
+	for ( let i = 0; i < P.count; i ++ ) lowest = Math.min( lowest, P.getY( i ) );
+	let high = 0, deep = 0;
+	for ( const r of records.reed ) {
+
+		const foot = r.y + r.H + lowest * r.s - T.heightAt( r.x, r.z );
+		if ( foot > high ) high = foot;
+		if ( - foot > deep ) deep = - foot;
+
+	}
+
+	check( high <= 0, 'reed clumps drawn with their foot above the ground', `the worst stands ${ high.toFixed( 2 ) } m over it; blades start ${ ( - lowest ).toFixed( 2 ) } m under a clump's origin, the deepest foot ${ deep.toFixed( 2 ) } m under the ground; a clump is ${ REED_HEIGHT } m tall` );
+	const squat = trees.filter( ( r ) => ! ( r.l > 0.5 && r.H > 1 ) );
+	check( squat.length === 0, 'trees whose record draws them flat (no stretch or no height)', `${ squat.length }` );
+
+}
+
 // ---- trees are spread, not piled: the nearest neighbour of each
 {
 

@@ -55,6 +55,16 @@ class Shells:
 		v = [ ( x, y, z ) for z in ( z0, z1 ) for y in ( y0, y1 ) for x in ( x0, x1 ) ]
 		self.shell( v, [ ( 4, 5, 7, 6 ), ( 0, 1, 5, 4 ), ( 0, 4, 6, 2 ), ( 1, 3, 7, 5 ) ], mat )
 
+	def post( self, x0, x1, y0, y1, z0, z1, mat ):
+		"""A post or a pillar standing on the ground: its four sides and its top."""
+		v = [ ( x, y, z ) for z in ( z0, z1 ) for y in ( y0, y1 ) for x in ( x0, x1 ) ]
+		self.shell( v, [ ( 4, 5, 7, 6 ), ( 0, 1, 5, 4 ), ( 2, 6, 7, 3 ), ( 0, 4, 6, 2 ), ( 1, 3, 7, 5 ) ], mat )
+
+	def leaf( self, x0, x1, y0, y1, z0, z1, mat ):
+		"""A hung leaf of boards, seen from its two faces and from above."""
+		v = [ ( x, y, z ) for z in ( z0, z1 ) for y in ( y0, y1 ) for x in ( x0, x1 ) ]
+		self.shell( v, [ ( 4, 5, 7, 6 ), ( 0, 1, 5, 4 ), ( 2, 6, 7, 3 ) ], mat )
+
 	def panel( self, x0, x1, y, z0, z1, mat ):
 		"""A flat panel facing -y."""
 		self.shell( [ ( x0, y, z0 ), ( x1, y, z0 ), ( x1, y, z1 ), ( x0, y, z1 ) ], [ ( 0, 1, 2, 3 ) ], mat )

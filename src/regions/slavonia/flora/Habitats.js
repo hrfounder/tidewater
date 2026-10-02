@@ -1,4 +1,4 @@
-import { PLANTS, SHAPES, REED_HEIGHT, seedOf } from './Species.js';
+import { PLANTS, SHAPES, seedOf } from './Species.js';
 import { FREE, YARD, WATER } from '../site/Occupancy.js';
 import { reachOf, pointAt } from '../site/Roads.js';
 import { plotCorners } from '../site/Plots.js';
@@ -104,8 +104,9 @@ const STRETCH = [ 0.85, 1.15 ];
 
 // Plant the patch: { reed: [ records ], willow: [ ... ], ... } by shape, and a count per habitat. A
 // record is what the vegetation's instances take: x, y, z, s (scale), yaw, seed, qr (how far it is
-// drawn), H (its height in metres, for the wind), and la, l, which the two materials read their own
-// way: a tree's are its yaw and its vertical stretch, a reed's the way it leans and how far.
+// drawn), and la, l, H, which the two materials read their own way (vegetation/VegNodes.js,
+// VegMaterials.js): a tree's are its yaw, its vertical stretch and its height in metres (for the
+// wind); a reed clump's are the lean and the height of the stem its crown stands on, and it has none.
 export function plant( { site, terrain } ) {
 
 	const { occupancy } = site, half = terrain.size / 2 - SEARCH;
@@ -145,10 +146,9 @@ export function plant( { site, terrain } ) {
 				rec.s = 0.8 + rnd() * 0.5;
 				rec.seed = rnd();
 				rec.qr = REED_REACH + 8;
-				// a clump leans a little, any way
-				rec.la = rnd() * Math.PI * 2;
-				rec.l = 0.04 + rnd() * 0.08;
-				rec.H = REED_HEIGHT * rec.s;
+				// A clump has no stem: the plant material stands a plant's crown on top of a stem H tall
+				// (a palm's), and a reed bed's blades grow from the ground itself.
+				rec.la = 0; rec.l = 0; rec.H = 0;
 				out.reed.push( rec );
 
 			}

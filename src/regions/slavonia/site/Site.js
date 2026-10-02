@@ -4,6 +4,7 @@ import { Buildings } from './Buildings.js';
 import { buildPlots } from './Plots.js';
 import { Occupancy } from './Occupancy.js';
 import { layPark } from './Park.js';
+import { layFences } from './Fences.js';
 
 // The Site: one plain-data model of the place, made once from the map data of the block. Every
 // system reads the Site. None reads the map files, and none asks another system what it did
@@ -17,6 +18,7 @@ import { layPark } from './Park.js';
 //   plots           the strip of land each street-front building stands on (Plots.js)
 //   occupancy       who owns each square metre, once the ground is cut (Occupancy.js)
 //   park            where the game's fixed things and the anglers' platforms stand (Park.js)
+//   fences          the fence along each plot's street line, and its gate (Fences.js)
 
 // the datum of a block, from its water: the terrain needs it before the Site can be made
 export { waterDatum };
@@ -35,15 +37,16 @@ export function buildSite( { index, water, places, ground, datum, landmarks } ) 
 		water: new Water( water, { center, datum } ),
 		roads, buildings,
 		plots: buildPlots( buildings, roads ),
-		occupancy: null, park: null,
+		occupancy: null, park: null, fences: null,
 	};
 
 }
 
-// once the terrain has been graded; deck: the kit's platform (Park.js)
-export function occupy( site, terrain, deck ) {
+// once the terrain has been graded; kit: the kit's pieces that take ground ( platform, gate_yard )
+export function occupy( site, terrain, kit ) {
 
 	site.occupancy = new Occupancy( terrain, site );
-	site.park = layPark( site, deck );
+	site.park = layPark( site, kit.get( 'platform' ) );
+	site.fences = layFences( site, kit.get( 'gate_yard' ) );
 
 }

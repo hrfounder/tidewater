@@ -3,6 +3,7 @@
 import { load, check, finish } from './load.mjs';
 import { buildVillage } from '../../src/regions/slavonia/build/Village.js';
 import { Colliders } from '../../src/world/Colliders.js';
+import { insideBuilding } from '../../src/regions/slavonia/site/Buildings.js';
 import { archetypeOf, ARCHETYPES } from '../../src/regions/slavonia/build/Archetypes.js';
 
 const world = await load(), { site, terrain: T } = world;
@@ -39,6 +40,18 @@ for ( const br of site.roads.bridges ) {
 	check( P.length > 20 && ! off.length && ! dry.length && ! afloat.length, 'anglers\' platforms on the waterline', `${ P.length }; ${ off.length } off the waterline, ${ dry.length } with their front on dry land, ${ afloat.length } with their back in the water` );
 	const park = site.park;
 	console.log( `     the player starts at ${ park.start.x.toFixed( 0 ) },${ park.start.z.toFixed( 0 ) } on ground ${ T.heightAt( park.start.x, park.start.z ).toFixed( 2 ) } m over the water; the boat lies in ${ ( - T.heightAt( park.boat.x, park.boat.z ) ).toFixed( 2 ) } m of water; stalls at ${ park.stand.x.toFixed( 0 ) },${ park.stand.z.toFixed( 0 ) } and ${ park.chandlery.x.toFixed( 0 ) },${ park.chandlery.z.toFixed( 0 ) }` );
+
+}
+
+// ---- the fences
+{
+
+	const F = village.fences, FB = 150000;
+	check( F.triangles < FB, 'triangles in the fences and gates of the block', `${ F.triangles } (budget ${ FB }): ${ F.panels } panels, ${ F.gates } gates on ${ site.plots.length } plots` );
+	// no panel runs through a building or over a carriageway
+	const through = site.fences.panels.filter( ( p ) => site.buildings.near( p.a[ 0 ], p.a[ 1 ], 30 ).some( ( b ) => insideBuilding( b, ( p.a[ 0 ] + p.b[ 0 ] ) / 2, ( p.a[ 1 ] + p.b[ 1 ] ) / 2, - 0.3 ) ) );
+	const onRoad = site.fences.panels.filter( ( p ) => { const r = site.roads.nearest( ( p.a[ 0 ] + p.b[ 0 ] ) / 2, ( p.a[ 1 ] + p.b[ 1 ] ) / 2, 8 ); return r && r.d < r.road.half; } );
+	check( ! through.length && ! onRoad.length, 'fence panels through a building or on a carriageway', `${ through.length } and ${ onRoad.length }` );
 
 }
 

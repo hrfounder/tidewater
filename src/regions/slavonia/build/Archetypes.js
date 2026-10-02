@@ -15,6 +15,7 @@ import { SURFACE } from './VillageMaterial.js';
 //   windows   by the way a wall faces (street / side / back): the kit piece, the least room it is
 //             given along the wall (m), the height of its sill above the floor (m)
 //   door      the kit piece, and the wall it is in: 'street', 'side' or 'back'
+//   fence     what its plot is fenced with on the street: [ style of FENCES, weight ]
 //   vent      a round vent in each gable
 //   chimneys  [ fewest, most ]
 //
@@ -42,6 +43,7 @@ export const ARCHETYPES = {
 		trim: WHITE_TRIM, joinery: JOINERY, doors: DOORS,
 		windows: { street: [ 'window_street', 2.3, 0.95 ], side: [ 'window_street', 3.4, 0.95 ], back: [ 'window_small', 4.0, 1.5 ] },
 		door: [ 'door_house', 'side' ],
+		fence: [ [ 'wall', 2 ], [ 'boards', 3 ] ],
 		vent: true, chimneys: [ 1, 2 ],
 	},
 	// a house of the last fifty years: squarer, one or two storeys, a lower roof, plain windows; one
@@ -54,6 +56,7 @@ export const ARCHETYPES = {
 		trim: WHITE_TRIM, joinery: JOINERY, doors: DOORS,
 		windows: { street: [ 'window_plain', 2.8, 0.9 ], side: [ 'window_plain', 3.4, 0.9 ], back: [ 'window_plain', 3.6, 0.9 ] },
 		door: [ 'door_house', 'street' ],
+		fence: [ [ 'low', 3 ], [ 'boards', 1 ] ],
 		vent: false, chimneys: [ 1, 1 ],
 	},
 	// a shed, a summer kitchen, a sty, a garage: low and plain
@@ -65,6 +68,7 @@ export const ARCHETYPES = {
 		trim: ROUGH_RENDER, joinery: JOINERY, doors: DOORS,
 		windows: { street: [ 'window_small', 3.0, 1.2 ], side: [ 'window_small', 5.0, 1.2 ], back: null },
 		door: [ 'door_plank', 'street' ],
+		fence: [ [ 'boards', 1 ] ],
 		vent: false, chimneys: [ 0, 0 ],
 	},
 	// a barn at the back of the yard: taller, a pair of wide doors
@@ -76,6 +80,7 @@ export const ARCHETYPES = {
 		trim: ROUGH_RENDER, joinery: JOINERY, doors: DOORS,
 		windows: { street: null, side: [ 'window_small', 5.0, 1.8 ], back: null },
 		door: [ 'door_barn', 'street' ],
+		fence: [ [ 'boards', 1 ] ],
 		vent: false, chimneys: [ 0, 0 ],
 	},
 	// a hall: a shed of the co-operative, a workshop, a shop, a school: tall walls under a low sheet roof
@@ -87,8 +92,20 @@ export const ARCHETYPES = {
 		trim: ROUGH_RENDER, joinery: JOINERY, doors: DOORS,
 		windows: { street: [ 'window_plain', 4.0, 2.2 ], side: [ 'window_plain', 5.0, 2.2 ], back: null },
 		door: [ 'door_barn', 'street' ],
+		fence: [ [ 'low', 1 ] ],
 		vent: false, chimneys: [ 0, 0 ],
 	},
+};
+
+// The fences of the street: how high and how thick (m), what of, and whether the house's own wall
+// colour or the style's colours paint it.
+export const FENCES = {
+	// the old way: a rendered wall as high as a man, the gate in it
+	wall: { height: 1.9, thick: 0.25, surface: SURFACE.render, colours: null },
+	// upright boards, close set
+	boards: { height: 1.6, thick: 0.05, surface: SURFACE.boards, colours: WEATHERED_BOARDS },
+	// a low wall in front of a newer house
+	low: { height: 0.9, thick: 0.2, surface: SURFACE.render, colours: ROUGH_RENDER },
 };
 
 // A long house is narrow and long: its main piece no wider than this (m) and at least this many

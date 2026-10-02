@@ -185,7 +185,20 @@ def platform():
 	return S, dict( w=w, h=top, depth=0, out=out, back=back )
 
 
-PIECES = dict( railing=railing, lamp=lamp, platform=platform, window_street=window_street, window_plain=window_plain, window_small=window_small,
+def gate_yard():
+	"""The gate of a yard on the street: two boarded leaves between two rendered pillars. It stands
+	on its origin, runs along x about it, and faces the street toward -y."""
+	w, h, pillar = 3.4, 2.0, 0.38
+	S = Shells()
+	for sx in ( - 1, 1 ):
+		x = sx * ( w - pillar ) / 2
+		S.post( x - pillar / 2, x + pillar / 2, - pillar / 2, pillar / 2, - 0.3, h + 0.15, 'surround' )
+		# a leaf of boards hung on its pillar (the game's boards are drawn on it)
+		S.leaf( min( sx * 0.01, sx * ( w / 2 - pillar ) ), max( sx * 0.01, sx * ( w / 2 - pillar ) ), - 0.02, 0.02, 0.08, h - 0.1, 'plank' )
+	return S, dict( w=w, h=h, depth=0 )
+
+
+PIECES = dict( railing=railing, lamp=lamp, platform=platform, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

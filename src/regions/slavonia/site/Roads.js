@@ -1,3 +1,5 @@
+import { onBridge } from './Rails.js';
+
 // The roads of the Site: a graph. Nodes are where roads meet, end, or turn into a bridge; a road is
 // one stretch between two nodes, either all bridge or none (tools/geodata/places.py cuts the map's
 // segments that way). Coordinates are the patch's metres: x = east, z = south, y above the datum.
@@ -51,6 +53,10 @@ const BESIDE = 2;
 // that lies within this of the line through its neighbours is taken out (m); they are then rounded
 // like mapped ones.
 const STRAIGHT = 0.3;
+// A road crosses a track on the level. Where its line meets the track's it takes the level of the
+// rails, which stand RAIL_PROUD out of the road, and the nodes within RAMP of the crossing rise
+// with it, the less the further off: the junction beside a crossing lies on the ramp up to it (m).
+const RAMP = 40, RAIL_PROUD = 0.02;
 // side of the buckets the segments are sorted into for `nearest` (m)
 const BUCKET = 32;
 
@@ -61,8 +67,9 @@ export class Roads {
 
 	// places: places.json; survey: survey.json, { nodes, roads } in the order of the map's;
 	// center ( east, north ); ground( x, z ): the dry ground's height;
-	// walls: the Site's buildings, for `crossings` and `gap` (Buildings.js)
-	constructor( places, { center, ground, walls, survey } ) {
+	// walls: the Site's buildings, for `crossings` and `gap` (Buildings.js); rails: the Site's
+	// railway, for the level crossings (Rails.js)
+	constructor( places, { center, ground, walls, survey, rails } ) {
 
 		const [ cE, cN ] = center;
 		this.nodes = survey.nodes.map( ( [ e, n ] ) => ( { x: e - cE, z: cN - n, y: 0, roads: [] } ) );
@@ -93,12 +100,33 @@ export class Roads {
 
 			} );
 			road.length = along;
-			level( road, this.nodes, ground );
 			this.nodes[ r.a ].roads.push( road.index );
 			this.nodes[ r.b ].roads.push( road.index );
 			this.roads.push( road );
 
 		} );
+
+		// The level crossings: { road, at ( along the road ), x, z, y ( the road's level there ), track,
+		// s ( along the track ) }, one for every place a road's line meets a track's off a bridge.
+		this.crossings = [];
+		for ( const road of this.roads ) if ( ! road.bridge ) for ( let i = 0; i + 1 < road.pts.length; i ++ ) for ( const c of rails.crossings( road.pts[ i ], road.pts[ i + 1 ] ) ) {
+
+			if ( onBridge( c.track, c.s ) ) continue;
+			const a = road.pts[ i ], b = road.pts[ i + 1 ];
+			this.crossings.push( { road, at: a[ 3 ] + ( b[ 3 ] - a[ 3 ] ) * c.t, x: a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * c.t, z: a[ 1 ] + ( b[ 1 ] - a[ 1 ] ) * c.t, y: c.y - RAIL_PROUD, track: c.track, s: c.s } );
+
+		}
+
+		for ( const n of this.nodes ) {
+
+			// ( the nearest crossing has the say: by as much as it stands over the ground it lies on )
+			let near = null, far = RAMP;
+			for ( const c of this.crossings ) { const d = Math.hypot( c.x - n.x, c.z - n.z ); if ( d < far ) { far = d; near = c; } }
+			if ( near ) { const t = far / RAMP; n.y += ( near.y - ground( near.x, near.z ) ) * ( 1 - t * t * ( 3 - 2 * t ) ); }
+
+		}
+
+		for ( const road of this.roads ) level( road, this.nodes, ground, this.crossings.filter( ( c ) => c.road === road ) );
 
 		// The bridges, each with what runs beside it on the same deck:
 		//   { main, members: [ { road, offset } ], left, right }  offsets and the deck's two sides in
@@ -366,9 +394,9 @@ function clear( road, walls ) {
 }
 
 // The level of a road along its length: the ground under it, averaged over LEVEL_WINDOW, then
-// shifted so that it meets its two nodes at their own level (every road at a junction agrees there).
-// A bridge runs from one node to the other over a crown.
-function level( road, nodes, ground ) {
+// shifted so that it meets its two nodes at their own level (every road at a junction agrees there)
+// and every track it crosses at the rails'. A bridge runs from one node to the other over a crown.
+function level( road, nodes, ground, crossings ) {
 
 	const P = road.pts, ya = nodes[ road.a ].y, yb = nodes[ road.b ].y;
 	if ( road.bridge ) {
@@ -395,14 +423,25 @@ function level( road, nodes, ground ) {
 		return ( sum[ hi + 1 ] - sum[ lo ] ) / ( hi + 1 - lo );
 
 	} );
-	const da = ya - smooth[ 0 ], db = yb - smooth[ smooth.length - 1 ];
-	// the correction at each end dies away over the window (or over the road, if it is shorter)
-	// instead of tilting the whole road
-	const fade = Math.min( LEVEL_WINDOW, road.length ) || 1;
+	// What the level is held to: its two ends and its crossings, each by how far it lies off the
+	// smoothed ground there. Between two of them next to each other, the correction at each dies
+	// away over the window (or over the way to the other, if that is shorter) instead of tilting
+	// the whole road.
+	const at = ( s ) => {
+
+		let i = 0;
+		while ( i + 2 < P.length && P[ i + 1 ][ 3 ] < s ) i ++;
+		return smooth[ i ] + ( smooth[ i + 1 ] - smooth[ i ] ) * Math.min( 1, Math.max( 0, ( s - P[ i ][ 3 ] ) / ( P[ i + 1 ][ 3 ] - P[ i ][ 3 ] ) ) );
+
+	};
+	const held = [ { s: 0, d: ya - smooth[ 0 ] }, ...crossings.map( ( c ) => ( { s: c.at, d: c.y - at( c.at ) } ) ).sort( ( a, b ) => a.s - b.s ), { s: road.length, d: yb - smooth[ smooth.length - 1 ] } ];
+	const ease = ( t ) => { const w = Math.max( 0, 1 - t ); return w * w * ( 3 - 2 * w ); };
+	let k = 0;
 	P.forEach( ( p, i ) => {
 
-		const wa = Math.max( 0, 1 - p[ 3 ] / fade ), wb = Math.max( 0, 1 - ( road.length - p[ 3 ] ) / fade );
-		p[ 2 ] = smooth[ i ] + da * wa * wa * ( 3 - 2 * wa ) + db * wb * wb * ( 3 - 2 * wb );
+		while ( k + 2 < held.length && held[ k + 1 ].s <= p[ 3 ] ) k ++;
+		const a = held[ k ], b = held[ k + 1 ], fade = Math.min( LEVEL_WINDOW, b.s - a.s ) || 1;
+		p[ 2 ] = smooth[ i ] + a.d * ease( ( p[ 3 ] - a.s ) / fade ) + b.d * ease( ( b.s - p[ 3 ] ) / fade );
 
 	} );
 

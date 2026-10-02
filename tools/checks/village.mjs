@@ -4,6 +4,8 @@ import { load, check, finish } from './load.mjs';
 import { buildVillage } from '../../src/regions/slavonia/build/Village.js';
 import { Colliders } from '../../src/world/Colliders.js';
 import { insideBuilding } from '../../src/regions/slavonia/site/Buildings.js';
+import { RAIL, frameAt } from '../../src/regions/slavonia/site/Rails.js';
+import { BRIDGE } from '../../src/regions/slavonia/build/Railway.js';
 import { archetypeOf, ARCHETYPES } from '../../src/regions/slavonia/build/Archetypes.js';
 
 const world = await load(), { site, terrain: T } = world;
@@ -57,6 +59,27 @@ for ( const br of site.roads.bridges ) {
 	const hulls = boxes.filter( ( b ) => b.opts.tag === 'boat' );
 	const aground = hulls.filter( ( b ) => T.heightAt( b.center.x, b.center.z ) > - 0.3 );
 	check( hulls.length === village.marina.boats && ! aground.length, 'moored boats afloat', `${ hulls.length } hulls, ${ aground.length } in less than 0.3 m of water` );
+
+}
+
+// ---- the railway as built
+{
+
+	const R = village.railway, laid = site.rails.tracks.reduce( ( s, t ) => s + t.length, 0 );
+	const girders = boxes.filter( ( b ) => b.opts.tag === 'railway' && ! b.opts.walkable ).length, decks = boxes.filter( ( b ) => b.opts.tag === 'railway' && b.opts.walkable ).length;
+	check( R.tracks === site.rails.tracks.length && R.crossings > 0 && R.crossings <= site.roads.crossings.length && R.bridges.length === site.rails.tracks.reduce( ( s, t ) => s + t.bridges.length, 0 ) && decks === R.bridges.length,
+		'the railway built', `${ R.tracks } tracks, ${ R.metres.toFixed( 0 ) } m, ${ R.sleepers } sleepers (${ ( laid / R.sleepers ).toFixed( 2 ) } m apart); the bed opens ${ R.crossings } times for ${ site.roads.crossings.length } crossings; ${ R.bridges.map( ( b ) => `a bridge ${ b.length.toFixed( 1 ) } m long, ${ b.width.toFixed( 1 ) } m wide, ${ b.spans } spans, its girders ${ b.clear.toFixed( 2 ) } m clear of the water` ).join( '; ' ) }; ${ decks } deck and ${ girders } other boxes` );
+	// on a bridge the track stays between the girders: they are straight, it need not be
+	const bows = site.rails.tracks.flatMap( ( t ) => t.bridges.map( ( b ) => {
+
+		const f = frameAt( t, b.from ), g = frameAt( t, b.to ), len = Math.hypot( g.x - f.x, g.z - f.z );
+		let bow = 0;
+		for ( let s = b.from; s <= b.to; s += 1 ) { const e = frameAt( t, s ); bow = Math.max( bow, Math.abs( ( e.x - f.x ) * ( g.z - f.z ) - ( e.z - f.z ) * ( g.x - f.x ) ) / len ); }
+		return bow;
+
+	} ) );
+	const room = BRIDGE.between / 2 - RAIL.sleeper.length / 2;
+	check( R.bridges.every( ( b ) => b.clear > 0.5 ) && bows.every( ( b ) => b < room ), 'a railway bridge clear of the water, the track between its girders', `${ R.bridges.map( ( b ) => b.clear.toFixed( 2 ) ).join( ', ' ) } m over the water; the track bows ${ bows.map( ( b ) => b.toFixed( 2 ) ).join( ', ' ) } m off straight, with ${ room.toFixed( 2 ) } m between a sleeper's end and a girder` );
 
 }
 

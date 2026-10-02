@@ -6,6 +6,7 @@ import { gable, leanTo, hip, visible, onSlope, roofHeight } from './Roof.js';
 import { LANDMARKS } from '../Landmarks.js';
 import { buildBridges, LAMP_PAINT } from './Bridges.js';
 import { buildMarina } from './Marina.js';
+import { buildRailway } from './Railway.js';
 
 // Everything built on the Site's footprints: each building raised by its archetype (Archetypes.js)
 // on the rectangles its footprint is made of, fitted with the kit's windows and doors in openings
@@ -124,6 +125,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	const bridges = buildBridges( builder, { site, terrain, models }, colliders );
 	const marina = buildMarina( builder, { site, terrain, models }, colliders );
+	const railway = buildRailway( builder, { site, terrain }, colliders );
 
 	// the anglers' platforms along the bank: the kit's piece at each of the Site's places for one
 	const platform = models.kit.get( 'platform' );
@@ -270,7 +272,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, pavements, marina, triangles };
+	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, pavements, marina, railway, triangles };
 
 }
 

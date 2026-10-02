@@ -1,4 +1,5 @@
 import { overRoads, reachOf } from './Roads.js';
+import { BED_HALF } from './Rails.js';
 import { toWorld } from './Buildings.js';
 import { plotCorners } from './Plots.js';
 import { fillPolygon, gridOf } from './Raster.js';
@@ -7,7 +8,7 @@ import { fillPolygon, gridOf } from './Raster.js';
 // before they stand anywhere: nothing keeps a keep-out list of its own.
 //
 // What a texel can be, in rising priority: a yard gives way to water, water to a road (a culvert, a
-// bridge), a road to a building. A landmark's grounds are a yard; its paving and the line of its
+// bridge), a road to a building. A track's bed is taken as a road is. A landmark's grounds are a yard; its paving and the line of its
 // fence are taken as a building is: nothing grows on them.
 export const FREE = 0, YARD = 1, WATER = 2, ROAD = 3, BUILDING = 4;
 
@@ -36,6 +37,8 @@ export class Occupancy {
 		// every texel a road touches, not only those whose centre is on it (a footpath is narrower
 		// than a texel): the road's reach and half a texel's diagonal
 		overRoads( site.roads.roads, grid, ( r ) => reachOf( r ) + grid.texel * Math.SQRT1_2, () => true, ( k ) => claim( k, ROAD ) );
+		// ( a track's bed, and half a texel's diagonal as for a road )
+		for ( const track of site.rails.tracks ) for ( let i = 0; i + 1 < track.pts.length; i ++ ) fillPolygon( grid, strip( track.pts[ i ], track.pts[ i + 1 ], 2 * BED_HALF + grid.texel * Math.SQRT2 ), ( k ) => claim( k, ROAD ) );
 		for ( const b of site.buildings.list ) for ( const p of b.pieces ) {
 
 			const corners = [ [ - 1, - 1 ], [ 1, - 1 ], [ 1, 1 ], [ - 1, 1 ] ].map( ( [ a, c ] ) => toWorld( b, p.u + a * p.hu, p.v + c * p.hv ) );

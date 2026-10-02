@@ -7,7 +7,7 @@ what really stands there building by building.
 mapped footprints are outlined (thin, blue) and numbered with their index in places.json, each again
 where the survey moved it to (survey.json, if there is one: thick, yellow-green), the mapped roads
 drawn as their centrelines (thin, yellow) and the surveyed ones as their middle and their two edges
-(orange), and a grid of 10 m ticks runs along the edges with the game's coordinates.
+(orange), the mapped tracks (thin, magenta) and the surveyed ones (thick, a ring at each end of a bridge), and a grid of 10 m ticks runs along the edges with the game's coordinates.
 
 The orthophoto is the State Geodetic Administration's (see survey.py). The service stamps its mark
 across the middle of every picture, so the square is asked for as one quarter of a picture four
@@ -49,6 +49,11 @@ def main():
     for r in places[ 'roads' ]:
         pts = [ px( e, n ) for e, n in r[ 'pts' ] ]
         if any( 0 <= p[ 0 ] < side and 0 <= p[ 1 ] < side for p in pts ): d.line( pts, fill=( 255, 235, 60 ), width=1 if survey else 2 )
+    for r in places.get( 'rails', [] ): d.line( [ px( e, n ) for e, n in r[ 'pts' ] ], fill=( 255, 60, 255 ), width=1 )
+    for r in survey.get( 'rails', [] ):
+        d.line( [ px( e, n ) for e, n in r[ 'pts' ] ], fill=( 255, 60, 255 ), width=3 )
+        for pair in r[ 'bridges' ]:
+            for e, n in pair: d.ellipse( [ px( e, n )[ 0 ] - 5, px( e, n )[ 1 ] - 5, px( e, n )[ 0 ] + 5, px( e, n )[ 1 ] + 5 ], outline=( 255, 60, 255 ), width=2 )
     for r in survey.get( 'roads', [] ):
         P = r[ 'pts' ]
         if not any( 0 <= px( e, n )[ 0 ] < side and 0 <= px( e, n )[ 1 ] < side for e, n in P ): continue

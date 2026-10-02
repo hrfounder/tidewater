@@ -53,4 +53,12 @@ export const PROGRESS_VIEWS = {
 	opcinaStreet: { pos: [ - 6, 1.7, - 108 ], ground: true, target: [ 22, 6, - 118 ], fov: 70 },
 	// the marina and the landing by the bridge, from over the river west of it (drone2 at 30 s looks back along here)
 	marinaAir: { pos: [ - 95, 28, 5 ], ground: true, target: [ - 45, 0, 36 ], fov: 60 },
+	// the railway's bridge over the Bosut, from over the line north of it, looking along it
+	railBridge: { pos: [ - 884, 5, - 1385 ], ground: true, target: [ - 894, 3, - 1320 ], fov: 60 },
+	// Kolodvorska ulica where it crosses the line on the level, from the road east of the crossing
+	railCrossing: { pos: [ - 864, 1.7, - 409 ], ground: true, target: [ - 884, 5, - 417 ], fov: 65 },
+	// the station: the line and its siding past the station house, from above the yard
+	stationAir: { pos: [ - 836, 28, - 190 ], ground: true, target: [ - 873, 4, - 268 ], fov: 60 },
+	// beside the line south of the station, looking down it, Poljska ulica beside it (drone3 has this road and this bed)
+	railLine: { pos: [ - 872, 2.2, 262 ], ground: true, target: [ - 878, 5, 275 ], fov: 60 },
 };

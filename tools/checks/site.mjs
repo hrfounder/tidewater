@@ -6,6 +6,7 @@ import { load, readJSON, check, finish } from './load.mjs';
 import { insideBuilding, toWorld } from '../../src/regions/slavonia/site/Buildings.js';
 import { reachOf, project, ROAD_CLASSES } from '../../src/regions/slavonia/site/Roads.js';
 import { plotCorners } from '../../src/regions/slavonia/site/Plots.js';
+import { RAIL, BED_HALF, onBridge, frameAt } from '../../src/regions/slavonia/site/Rails.js';
 import { FREE, YARD, WATER, ROAD, BUILDING } from '../../src/regions/slavonia/site/Occupancy.js';
 
 const { terrain: T, site, models } = await load();
@@ -221,6 +222,98 @@ for ( const b of buildings.list.filter( ( b ) => b.kind === 'landmark' ) ) {
 	// a plot's own house stands in it
 	const outside = plots.filter( ( p ) => ! new Polygon( [ plotCorners( p ) ] ).contains( p.house.x, p.house.z ) );
 	check( outside.length / plots.length < 0.02, 'plots whose house centre lies outside them', `${ outside.length } of ${ plots.length }` );
+
+}
+
+// ---- the railway
+{
+
+	const { rails } = site, inPatch = ( p ) => Math.abs( p[ 0 ] ) < T.size / 2 - 4 && Math.abs( p[ 1 ] ) < T.size / 2 - 4;
+	// its line and its level: the tightest curve and the steepest gradient
+	let grade = 0;
+	const radii = new Map( rails.tracks.map( ( t ) => [ t, Infinity ] ) );
+	for ( const t of rails.tracks ) for ( let i = 1; i + 1 < t.pts.length; i ++ ) {
+
+		const a = t.pts[ i - 1 ], p = t.pts[ i ], b = t.pts[ i + 1 ];
+		const turn = Math.abs( Math.atan2( ( p[ 0 ] - a[ 0 ] ) * ( b[ 1 ] - p[ 1 ] ) - ( p[ 1 ] - a[ 1 ] ) * ( b[ 0 ] - p[ 0 ] ), ( p[ 0 ] - a[ 0 ] ) * ( b[ 0 ] - p[ 0 ] ) + ( p[ 1 ] - a[ 1 ] ) * ( b[ 1 ] - p[ 1 ] ) ) );
+		if ( turn > 1e-9 ) radii.set( t, Math.min( radii.get( t ), ( b[ 3 ] - a[ 3 ] ) / 2 / turn ) );
+		grade = Math.max( grade, Math.abs( b[ 2 ] - p[ 2 ] ) / ( b[ 3 ] - p[ 3 ] ) );
+
+	}
+
+	// ( the line itself turns over 250 m and more; a turnout into a siding over 100 m )
+	const line = rails.tracks.reduce( ( a, b ) => a.length > b.length ? a : b );
+	check( rails.tracks.length > 0 && rails.tracks.every( ( t ) => radii.get( t ) > ( t === line ? 250 : 100 ) ) && grade < 0.01, 'the railway: a line a train can run', `${ rails.tracks.length } tracks, ${ rails.tracks.map( ( t ) => `${ t.length.toFixed( 0 ) } m (tightest curve ${ radii.get( t ).toFixed( 0 ) } m)` ).join( ' + ' ) }; the steepest gradient ${ ( grade * 1000 ).toFixed( 1 ) } per mille` );
+	// the bed is the ground: under the track's middle the ground lies where the ballast's top is, away
+	// from the roads that cross it and from its bridges
+	const under = RAIL.rail.height + RAIL.sleeper.proud;
+	let worst = 0, at = null, wet = 0, points = 0;
+	for ( const t of rails.tracks ) for ( const p of t.pts ) {
+
+		if ( ! inPatch( p ) || t.bridges.some( ( b ) => p[ 3 ] > b.from - 4 && p[ 3 ] < b.to + 4 ) ) continue;
+		const g = T.heightAt( p[ 0 ], p[ 1 ] );
+		if ( g < 0 ) wet ++;
+		const road = roads.nearest( p[ 0 ], p[ 1 ], 12 );
+		if ( road && road.d < reachOf( road.road ) + 4 ) continue;
+		points ++;
+		const off = p[ 2 ] - under - g;
+		if ( Math.abs( off - 0.05 ) > worst ) { worst = Math.abs( off - 0.05 ); at = p; }
+
+	}
+
+	check( worst < 0.06 && wet === 0, 'the ground under a track is its bed', `at ${ points } points the ground lies within ${ worst.toFixed( 3 ) } m of 0.05 m under the ballast's top (worst at ${ at[ 0 ].toFixed( 0 ) },${ at[ 1 ].toFixed( 0 ) }); ${ wet } points of track in water off a bridge` );
+	// the level crossings: where a road's line crosses a track, the road and the ground are at the rails' level
+	let off = 0, ground = 0;
+	for ( const c of roads.crossings ) {
+
+		const f = project( c.road, c.x, c.z ), rail = rails.nearest( c.x, c.z, 1 );
+		off = Math.max( off, Math.abs( rail.y - f.y ) );
+		ground = Math.max( ground, Math.abs( T.heightAt( c.x, c.z ) - f.y ) );
+
+	}
+
+	check( roads.crossings.length > 0 && off < 0.04 && ground < 0.05, 'level crossings: the road at the level of the rails', `${ roads.crossings.length } crossings (${ roads.crossings.map( ( c ) => `${ c.road.class } ${ c.road.name || '' } at ${ c.x.toFixed( 0 ) },${ c.z.toFixed( 0 ) }` ).join( '; ' ) }); the rails at most ${ off.toFixed( 3 ) } m over the road where it crosses, the ground ${ ground.toFixed( 3 ) } m off the road` );
+	// the roads near a crossing: how steep they come up to it
+	let ramp = 0;
+	for ( const r of roads.roads ) if ( ! r.bridge && roads.crossings.some( ( c ) => project( r, c.x, c.z ).d < 40 ) ) for ( let i = 1; i < r.pts.length; i ++ ) ramp = Math.max( ramp, Math.abs( r.pts[ i ][ 2 ] - r.pts[ i - 1 ][ 2 ] ) / ( r.pts[ i ][ 3 ] - r.pts[ i - 1 ][ 3 ] ) );
+	check( ramp < 0.08, 'the ramps up to the crossings', `at most ${ ( ramp * 100 ).toFixed( 1 ) } %` );
+	// nothing stands in the bed
+	const inBed = buildings.list.filter( ( b ) => b.ring.some( ( [ x, z ] ) => rails.nearest( x, z, BED_HALF ) ) );
+	check( inBed.length === 0, 'buildings with a corner in a track\'s bed', `${ inBed.length }${ inBed.length ? ': ' + inBed.map( ( b ) => `${ b.kind } at ${ b.x.toFixed( 0 ) },${ b.z.toFixed( 0 ) }` ).join( '; ' ) : '' }` );
+	// the bridges: straight, from dry ground to dry ground, water under them
+	for ( const t of rails.tracks ) for ( const b of t.bridges ) {
+
+		const f = frameAt( t, b.from ), g = frameAt( t, b.to ), len = Math.hypot( g.x - f.x, g.z - f.z );
+		let bow = 0, deep = 0;
+		for ( let s = b.from; s <= b.to; s += 1 ) {
+
+			const e = frameAt( t, s );
+			bow = Math.max( bow, Math.abs( ( e.x - f.x ) * ( g.z - f.z ) - ( e.z - f.z ) * ( g.x - f.x ) ) / len );
+			deep = Math.min( deep, T.heightAt( e.x, e.z ) );
+
+		}
+
+		const ends = [ f, g ].map( ( e ) => T.heightAt( e.x, e.z ) );
+		check( deep < - 0.5 && Math.min( ...ends ) > 0.3, 'a railway bridge from bank to bank', `${ ( b.to - b.from ).toFixed( 1 ) } m at ${ f.x.toFixed( 0 ) },${ f.z.toFixed( 0 ) }: the track bows ${ bow.toFixed( 3 ) } m off straight on it, its ends stand on ground ${ ends.map( ( v ) => v.toFixed( 2 ) ).join( ' and ' ) } m over the water, the rails ${ f.y.toFixed( 2 ) } m over it, ${ ( - deep ).toFixed( 2 ) } m of water under it` );
+
+	}
+
+	// roads that run along a track: how near the nearest comes to the bed
+	let near = Infinity, nearRoad = null;
+	// ( but for the roads that cross it, within the ramp of their crossing )
+	for ( const r of roads.roads ) for ( const p of r.pts ) {
+
+		if ( roads.crossings.some( ( c ) => Math.hypot( c.x - p[ 0 ], c.z - p[ 1 ] ) < 40 ) ) continue;
+		const n = rails.nearest( p[ 0 ], p[ 1 ], 20 );
+		if ( n && ! onBridge( n.track, n.s ) && n.d - r.half - BED_HALF < near ) { near = n.d - r.half - BED_HALF; nearRoad = r; }
+
+	}
+
+	// ( a carriageway: its gravel shoulder may run into the foot of the ballast )
+	check( near > 0, 'carriageways beside a track keep off its bed', `the nearest (${ nearRoad.class } ${ nearRoad.name || '' }) leaves ${ near.toFixed( 2 ) } m between its edge and the bed` );
+	const rail = rails.tracks.flatMap( ( t ) => t.pts.filter( ( p, i ) => i % 5 === 0 && inPatch( p ) ) );
+	const notRoad = rail.filter( ( p ) => occupancy.at( p[ 0 ], p[ 1 ] ) < ROAD && T.heightAt( p[ 0 ], p[ 1 ] ) >= 0 );
+	check( notRoad.length === 0, 'track points on dry ground the occupancy does not keep clear', `${ notRoad.length } of ${ rail.length }` );
 
 }
 

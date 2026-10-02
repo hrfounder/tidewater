@@ -1,5 +1,6 @@
 import { Water, waterDatum } from './Water.js';
 import { Roads } from './Roads.js';
+import { Rails } from './Rails.js';
 import { Buildings } from './Buildings.js';
 import { buildPlots } from './Plots.js';
 import { Occupancy } from './Occupancy.js';
@@ -14,6 +15,7 @@ import { layBeside } from './Beside.js';
 //   center, datum   where the patch sits on the map grid, and the level of its water above the sea
 //   water           every body of water, the current, and what a fishing float lies in (Water.js)
 //   roads           the road graph: nodes, and roads between them with their class and level (Roads.js)
+//   rails           the railway: each track's line and level, and its bridges (Rails.js)
 //   buildings       the footprints: true ring, the rectangles it is made of, the street it faces,
 //                   what kind of building it is, and a landmark's grounds (Buildings.js)
 //   beside          the parking and the pavements along the roads, where they were surveyed (Beside.js)
@@ -40,12 +42,13 @@ export function buildSite( { index, water, places, survey, seen, beside, open, a
 
 	const center = index.center;
 	const buildings = new Buildings( places, { center, landmarks, survey, seen } );
-	const roads = new Roads( places, { center, ground, walls: buildings, survey } );
+	const rails = new Rails( places, { center, ground, survey } );
+	const roads = new Roads( places, { center, ground, walls: buildings, survey, rails } );
 	buildings.settle( { roads, ground, landmarks } );
 	return {
 		center, datum,
 		water: new Water( water, { center, datum } ),
-		roads, buildings,
+		roads, rails, buildings,
 		beside: layBeside( roads, beside ),
 		open, areas, trees: trees.map( ( [ x, z, height ] ) => ( { x, z, height } ) ),
 		marinas, decks, props,

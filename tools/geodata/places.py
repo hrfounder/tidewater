@@ -15,6 +15,9 @@ east / north:
             class is the map's (secondary, residential, track ...), surface 'paved' / 'unpaved' /
             null where the map does not say; the game decides what each class is on the ground.
   buildings [ { class, name, height, levels, roof, ring: [ [ e, n ], ... ] } ]  (outer ring, closed)
+  rails     [ { name, pts: [ [ e, n ], ... ], bridges: [ [ [ e, n ], [ e, n ] ], ... ] } ]: each run
+            of a railway track inside the block, with one point past the edge where it leaves, and
+            the two ends of each bridge it crosses
 
 The game places them relative to its patch centre, so nothing here depends on the patch size.
 """
@@ -50,12 +53,13 @@ def main():
 
     nodes, roads = read_roads( cache, to_grid, box )
     buildings = read_buildings( cache, to_grid, box )
+    rails = read_rails( cache, to_grid, box )
 
     os.makedirs( out_dir, exist_ok=True )
     path = os.path.join( out_dir, 'places.json' )
     with open( path, 'w', encoding='utf-8' ) as f:
-        json.dump( { 'center': [ cx, cy ], 'nodes': nodes, 'roads': roads, 'buildings': buildings }, f, separators=( ',', ':' ), ensure_ascii=False )
-    print( f'{len( roads )} roads between {len( nodes )} nodes ({sum( r[ "bridge" ] for r in roads )} bridges), {len( buildings )} buildings -> {os.path.relpath( path, ROOT )}'
+        json.dump( { 'center': [ cx, cy ], 'nodes': nodes, 'roads': roads, 'buildings': buildings, 'rails': rails }, f, separators=( ',', ':' ), ensure_ascii=False )
+    print( f'{len( roads )} roads between {len( nodes )} nodes ({sum( r[ "bridge" ] for r in roads )} bridges), {len( buildings )} buildings, {len( rails )} runs of railway -> {os.path.relpath( path, ROOT )}'
            f' ({os.path.getsize( path ) >> 10} kB)' )
 
 
@@ -135,6 +139,24 @@ def read_roads( cache, to_grid, box ):
                     'surface': None if surface is None else 'paved' if surface in PAVED else 'unpaved',
                     'pts': [ [ round( x, 1 ), round( y, 1 ) ] for x, y in pts ] } )
     return nodes, roads
+
+
+def read_rails( cache, to_grid, box ):
+
+    out = []
+    for r in rows( os.path.join( cache, 'overture_segment.parquet' ), [ 'geometry', 'subtype', 'class', 'names', 'rail_flags' ] ):
+        if r[ 'subtype' ] != 'rail': continue
+        g = wkb.loads( bytes( r[ 'geometry' ] ) )
+        if g.geom_type != 'LineString': continue
+        line = [ to_grid.transform( x, y ) for x, y in g.coords ]
+        # its bridges, each by its two ends on the line
+        whole = LineString( line )
+        ends = [ [ whole.interpolate( t, normalized=True ) for t in ( f.get( 'between' ) or [ 0.0, 1.0 ] ) ] for f in r.get( 'rail_flags' ) or [] if 'is_bridge' in ( f.get( 'values' ) or [] ) ]
+        for pts, _, _ in inside_runs( line, box ):
+            run = LineString( pts )
+            out.append( { 'name': ( r.get( 'names' ) or {} ).get( 'primary' ), 'pts': [ [ round( x, 1 ), round( y, 1 ) ] for x, y in pts ],
+                'bridges': [ [ [ round( p.x, 1 ), round( p.y, 1 ) ] for p in pair ] for pair in ends if all( run.distance( p ) < 0.5 for p in pair ) ] } )
+    return out
 
 
 def read_buildings( cache, to_grid, box ):

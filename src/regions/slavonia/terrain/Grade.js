@@ -1,4 +1,5 @@
 import { overRoads, project, SHOULDER } from '../site/Roads.js';
+import { RAIL, FORMATION_UNDER, BED_HALF, onBridge } from '../site/Rails.js';
 import { toWorld } from '../site/Buildings.js';
 import { gridOf, fillPolygon } from '../site/Raster.js';
 
@@ -15,6 +16,10 @@ import { gridOf, fillPolygon } from '../site/Raster.js';
 //   roads   the bed is levelled across at the road's own level, with its camber, and meets the
 //           ground beside it over the verge. The terrain mesh is the road. Bridges are left out:
 //           their decks are built, not graded.
+//   rails   the ground under a track is its formation, level across, with the core of the bed heaped
+//           on it just under the ballast that is built (build/Railway.js), so that who walks the
+//           track walks on the bed; it meets the ground beside it over the verge. A bridge's
+//           stretch is left out. Roads are graded after: a level crossing is the road's.
 //   beside  the parking and the pavements along a road lie at the level of its edge; parking is
 //           drawn as the road is, by the same outline.
 //   open    ground the survey found open is neither wood nor field in the ground's masks.
@@ -184,6 +189,48 @@ export function gradeRoads( terrain, roads, water ) {
 
 }
 
+// The graded bed lies this far under the built ballast's top (m), and its heap is full only this far
+// inside the ballast's edge: the ground is a grid of a metre, and must stay inside what is built.
+const BED_SUNK = 0.05, BED_INSIDE = 0.5;
+
+// Grade the railway's formation into the patch.
+export function gradeRails( terrain, rails, water ) {
+
+	const { res, texel, origin, heights: H } = terrain;
+	const reach = BED_HALF + VERGE, core = RAIL.ballast.top / 2 - BED_INSIDE, heap = RAIL.ballast.thick - BED_SUNK;
+	// the nearest track to each texel within reach: how far, and the rails' level there
+	const near = new Map();
+	for ( const track of rails.tracks ) for ( let i = 0; i + 1 < track.pts.length; i ++ ) {
+
+		const a = track.pts[ i ], b = track.pts[ i + 1 ], dx = b[ 0 ] - a[ 0 ], dz = b[ 1 ] - a[ 1 ], len2 = dx * dx + dz * dz;
+		const i0 = Math.max( 0, Math.floor( ( Math.min( a[ 0 ], b[ 0 ] ) - reach - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( a[ 0 ], b[ 0 ] ) + reach - origin ) / texel ) );
+		const j0 = Math.max( 0, Math.floor( ( Math.min( a[ 1 ], b[ 1 ] ) - reach - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( a[ 1 ], b[ 1 ] ) + reach - origin ) / texel ) );
+		for ( let j = j0; j <= j1; j ++ ) for ( let ii = i0; ii <= i1; ii ++ ) {
+
+			const x = origin + ( ii + 0.5 ) * texel, z = origin + ( j + 0.5 ) * texel, k = j * res + ii;
+			const t = Math.min( 1, Math.max( 0, ( ( x - a[ 0 ] ) * dx + ( z - a[ 1 ] ) * dz ) / len2 ) ), d = Math.hypot( x - a[ 0 ] - dx * t, z - a[ 1 ] - dz * t );
+			if ( d > reach || ( near.has( k ) && near.get( k ).d <= d ) ) continue;
+			near.set( k, { d, y: a[ 2 ] + ( b[ 2 ] - a[ 2 ] ) * t, bridge: onBridge( track, a[ 3 ] + ( b[ 3 ] - a[ 3 ] ) * t ) } );
+
+		}
+
+	}
+
+	for ( const [ k, { d, y, bridge } ] of near ) {
+
+		if ( bridge ) continue;
+		// ( a formation fills a ditch it crosses, never a mapped body of water: as a road does )
+		const body = H[ k ] < 0 && water.owner[ k ] >= 0 ? water.bodies[ water.owner[ k ] ] : null;
+		if ( body && body.kind === 'area' ) continue;
+		const w = 1 - smoothstep( BED_HALF, BED_HALF + VERGE, d );
+		H[ k ] += ( y - FORMATION_UNDER + heap * ( 1 - smoothstep( core, BED_HALF, d ) ) - H[ k ] ) * w;
+		terrain.cropland[ k ] *= 1 - w; terrain.built[ k ] *= 1 - w; terrain.forest[ k ] *= 1 - w;
+		if ( H[ k ] >= 0 ) water.owner[ k ] = - 1;
+
+	}
+
+}
+
 // Level the strips beside the roads (site/Beside.js) and add the asphalt ones to the roads' outline.
 export function gradeBeside( terrain, strips ) {
 
@@ -271,6 +318,7 @@ export function gradeTerrain( terrain, site ) {
 	// ( what lies beside the roads before the roads themselves: a foot way that runs through a row of
 	// parking keeps its own level )
 	gradeBeside( terrain, site.beside );
+	gradeRails( terrain, site.rails, water );
 	gradeRoads( terrain, site.roads, water );
 	terrain.flow = flowGrid( terrain, water );
 	terrain.finish();

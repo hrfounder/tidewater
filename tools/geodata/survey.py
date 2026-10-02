@@ -2,6 +2,7 @@
 its roof, and where each paved road really runs and how wide it is.
 
     python3 tools/geodata/survey.py bosut 45.22730,18.74159,4
+    python3 tools/geodata/survey.py bosut 45.22730,18.74159,4 rails     (the tracks only, into the survey there is)
 
 The map's footprints were traced by hand from other pictures, and here they lie up to five metres
 from the buildings (and each its own way: neighbours are not moved alike). What a building looks
@@ -15,6 +16,9 @@ roof and reads the roof's colour, and writes public/world/<area>/survey.json
            to the brightness of the game's surfaces), or null where the roof could not be read
            (a tree over it)
   nodes    one entry per node of places.json: [ east, north ], where the roads really meet
+  rails    one entry per run of track of places.json: { pts, bridges } as there, on its ballast,
+           and `bed`, the ballast's colour ( brought to the game's brightness as the roofs are )
+  gain     what the pictures' colours were multiplied by: for a colour read off them by hand
   roads    one entry per road of places.json: { pts: [ [ east, north ], ... ], width }, the line the
            road really runs along between its two nodes, a point every ROAD_STEP metres, and the
            width of its asphalt (null where it was not measured: the game keeps its class's)
@@ -48,6 +52,14 @@ How a footprint is set on its roof:
   - What is found is where the roof's edge is on the picture, and a roof's edge stands EAVES_UP
     metres above the ground: the footprint goes LEAN * EAVES_UP metres back north of it.
 
+How a track is set on its ballast:
+  - A track's bed is a band of ballast BED wide: grey as asphalt is, and brighter than the green
+    beside it (BALLAST). Across the mapped line, out to RAIL_REACH, each station is read for it as a
+    road's is; the track is where the band is ballast and the strips FLANK wide on its two sides
+    are not. What the stations say is the median within RAIL_SMOOTH metres along the track, and
+    then the mean over the same (a median steps, a track does not).
+  - A run whose stations say too little goes as the nearest station of a run that was read went.
+
 How a road is set on its asphalt (the paved classes only: PAVED):
   - Asphalt on these pictures is grey (its three colours within GREY of each other) and neither as
     dark as a shadow on grass nor as bright as concrete (DARK to BRIGHT). Across the road, every
@@ -65,6 +77,10 @@ How a road is set on its asphalt (the paved classes only: PAVED):
     says how far the node lies to the side of that road, and nothing about along it), held a
     little to its mapped place (DAMP) so that roads in line cannot send it along themselves; every
     road is then bent over EASE metres at each end to meet its nodes where they went.
+  - A railway's ballast reads as asphalt does, and so does the dry verge between it and a road
+    beside it: such a road is set up to a metre toward the track (Poljska ulica). Leaving the bed
+    out of the reading was tried and is worse: the verge then counts as the road's whole width, and
+    the roads at the crossing by the cemetery went three to six metres off their asphalt.
   - What is not asphalt (tracks, yard roads, foot ways) cannot be found this way. It was traced from
     the same picture as the houses beside it, so it goes where they went: each of its stations by
     the median move of the footprints within NEAR metres, a node that no surveyed road reaches
@@ -112,6 +128,10 @@ GREY, DARK, BRIGHT = 20, 55, 185   # asphalt: its colours this close together, i
 ROAD_ALONG, SMOOTH, EASE = 12.0, 20.0, 15.0   # metres along the road: readings averaged, offsets' median, the bend to a node
 WIDE, HALF, ROAD_PULL = 9.0, 0.5, 0.02   # a run wider than this is not one carriageway; the share that counts as asphalt
 DAMP = 0.05                        # how hard a node is held to its mapped place, against each road's say of 1
+RAIL_SMOOTH = 200.0                # metres along a track over which its offsets' median is taken: a track is drawn off by the same all along
+BALLAST = ( 105, BRIGHT )          # a track's bed: its brightness between these (130 on the bed north of the Bosut; the green beside it under 100)
+BED, FLANK, RAIL_REACH = 4.5, 1.5, 4.0   # the bed's width; the strip each side of it that is not bed; how far a track may be moved (m)
+SHOULDERS = 1.5                    # beyond this from a track's middle its bed is ballast alone: a sleeper is 2.5 m long (m)
 LIT = ( 55, 90 )             # the percentiles of brightness between which a roof's colour is taken
 FEW = 12                     # a roof with fewer pixels than this to read is not read
 # the middle of a paved road in the game's ground: GroundSurface.js draws its asphalt between 0.30 and
@@ -286,6 +306,101 @@ def survey_roads( ortho, places ):
     return lines
 
 
+def rail_offsets( ortho, Q, at, N ):
+    """How far to the right of the mapped line a track's bed lies at each station (NaN where a
+    station says nothing). The bed is a band of ballast BED wide, brighter than what lies beside it:
+    the place is taken where the band is ballast and the strips on its two sides are not."""
+    across = np.arange( - RAIL_REACH - BED / 2 - FLANK, RAIL_REACH + BED / 2 + FLANK + ACROSS / 2, ACROSS )
+    def ballast( e, n ):
+        px, left, top = ortho.around( e, n )
+        row, col = int( ( top - n ) / METRE ), int( ( e - left ) / METRE )
+        if not ( 0 <= row < px.shape[ 0 ] and 0 <= col < px.shape[ 1 ] ): return False
+        r, g, b = ( int( v ) for v in px[ row, col ] )
+        return max( r, g, b ) - min( r, g, b ) <= GREY and BALLAST[ 0 ] <= ( r + g + b ) / 3 <= BALLAST[ 1 ]
+    A = np.asarray( [ [ ballast( q[ 0 ] + n[ 0 ] * o, q[ 1 ] + n[ 1 ] * o ) for o in across ] for q, n in zip( Q, N ) ], dtype=np.float64 )
+    w = max( 1, int( round( ROAD_ALONG / ROAD_STEP ) ) )
+    c = np.concatenate( [ np.zeros( ( 1, A.shape[ 1 ] ) ), np.cumsum( A, axis=0 ) ] )
+    lo, hi = np.maximum( 0, np.arange( len( Q ) ) - w ), np.minimum( len( Q ), np.arange( len( Q ) ) + w + 1 )
+    A = ( c[ hi ] - c[ lo ] ) / ( hi - lo )[ :, None ]
+    c = np.concatenate( [ np.zeros( ( len( Q ), 1 ) ), np.cumsum( A, axis=1 ) ], axis=1 )
+    half, flank = int( round( BED / 2 / ACROSS ) ), int( round( FLANK / ACROSS ) )
+    mids = np.arange( half + flank, len( across ) - half - flank )
+    bed = ( c[ :, mids + half + 1 ] - c[ :, mids - half ] ) / ( 2 * half + 1 )
+    beside = ( c[ :, mids - half ] - c[ :, mids - half - flank ] + c[ :, mids + half + flank + 1 ] - c[ :, mids + half + 1 ] ) / ( 2 * flank )
+    score = bed - beside
+    best = np.argmax( score - ROAD_PULL * np.abs( across[ mids ] )[ None, : ], axis=1 )
+    return np.where( score[ np.arange( len( Q ) ), best ] >= HALF, across[ mids ][ best ], np.nan )
+
+
+def survey_rails( ortho, places ):
+    """The tracks of the map on their ballast: one record per run of places.json, { pts, bridges } as
+    the map has them, moved to where the track runs. A run that says too little (a siding against a
+    platform's concrete, a track under trees) goes as the nearest station of a run that was read
+    went, and has its bed's colour. `bed` is the colour of the ballast on the bed's shoulders, as the
+    pictures have it. Also returns how
+    far each run went (median, m) and whether it was read."""
+    runs = []
+    # ( the bed's two shoulders: nearer the middle lie the sleepers and the rails )
+    inside = np.concatenate( [ - np.arange( SHOULDERS, BED / 2, ACROSS ), np.arange( SHOULDERS, BED / 2, ACROSS ) ] )
+    for r in places.get( 'rails', [] ):
+        Q, at, N = stations( r[ 'pts' ] )
+        raw = rail_offsets( ortho, Q, at, N )
+        bed = []
+        for q, n, o in zip( Q, N, raw ):
+            if not np.isfinite( o ): continue
+            for d in inside:
+                e, nn = q[ 0 ] + n[ 0 ] * ( o + d ), q[ 1 ] + n[ 1 ] * ( o + d )
+                px, left, top = ortho.around( e, nn )
+                row, col = int( ( top - nn ) / METRE ), int( ( e - left ) / METRE )
+                if 0 <= row < px.shape[ 0 ] and 0 <= col < px.shape[ 1 ]: bed.append( px[ row, col ] )
+        print( f'    {len( Q )} stations, {np.isfinite( raw ).mean():.2f} of them read; offsets (10 % / median / 90 %) {np.round( np.nanpercentile( raw, [ 10, 50, 90 ] ), 2 ).tolist() if np.isfinite( raw ).any() else None}' )
+        read = bool( np.isfinite( raw ).mean() >= HALF )
+        off = np.zeros( len( Q ) )
+        if read:
+            k = max( 1, int( round( RAIL_SMOOTH / 2 / ROAD_STEP ) ) )
+            off = np.asarray( [ np.nanmedian( raw[ max( 0, i - k ):i + k + 1 ] ) if np.isfinite( raw[ max( 0, i - k ):i + k + 1 ] ).any() else np.nan for i in range( len( Q ) ) ] )
+            off = np.where( np.isfinite( off ), off, np.nanmedian( raw ) )
+            # ( a median steps where the stations change their mind: a track does not, so the step is spread over the same length )
+            c = np.concatenate( [ [ 0 ], np.cumsum( off ) ] )
+            lo, hi = np.maximum( 0, np.arange( len( Q ) ) - k ), np.minimum( len( Q ), np.arange( len( Q ) ) + k + 1 )
+            off = ( c[ hi ] - c[ lo ] ) / ( hi - lo )
+        runs.append( dict( Q=Q, at=at, moved=N * off[ :, None ], read=read, bed=np.median( np.asarray( bed, dtype=np.float64 ), axis=0 ) if read else None ) )
+    known = [ L for L in runs if L[ 'read' ] ]
+    if known:
+        for L in runs:
+            if not L[ 'read' ]: L[ 'bed' ] = known[ 0 ][ 'bed' ]
+        KQ, KM = np.concatenate( [ L[ 'Q' ] for L in known ] ), np.concatenate( [ L[ 'moved' ] for L in known ] )
+        for L in runs:
+            if not L[ 'read' ]: L[ 'moved' ] = np.stack( [ KM[ np.argmin( np.hypot( KQ[ :, 0 ] - q[ 0 ], KQ[ :, 1 ] - q[ 1 ] ) ) ] for q in L[ 'Q' ] ] )
+    out, went = [], []
+    for r, L in zip( places.get( 'rails', [] ), runs ):
+        # each mapped point, and each end of a bridge, goes as the station nearest to it went
+        def to( p ):
+            m = L[ 'moved' ][ np.argmin( np.hypot( L[ 'Q' ][ :, 0 ] - p[ 0 ], L[ 'Q' ][ :, 1 ] - p[ 1 ] ) ) ]
+            return [ round( float( p[ 0 ] + m[ 0 ] ), 2 ), round( float( p[ 1 ] + m[ 1 ] ), 2 ) ]
+        out.append( { 'pts': [ to( p ) for p in r[ 'pts' ] ], 'bridges': [ [ to( p ) for p in pair ] for pair in r[ 'bridges' ] ], 'bed': L[ 'bed' ] } )
+        went.append( ( float( np.median( np.hypot( L[ 'moved' ][ :, 0 ], L[ 'moved' ][ :, 1 ] ) ) ), [ round( float( v ), 2 ) for v in np.median( L[ 'moved' ], axis=0 ) ], L[ 'read' ] ) )
+    return out, went
+
+
+def asphalt_gain( ortho, roads, cx, cy, km ):
+    """The measure of the pictures' brightness: the colour along the middle of the surveyed roads'
+    asphalt inside the block, and what brings it to ASPHALT."""
+    grey = []
+    for r in roads:
+        if not r[ 'width' ]: continue
+        for e, n in r[ 'pts' ][ 2:- 2:5 ]:
+            if abs( e - cx ) > km * 500 or abs( n - cy ) > km * 500 or not ortho.asphalt( e, n ): continue
+            px, left, top = ortho.around( e, n )
+            grey.append( px[ int( ( top - n ) / METRE ), int( ( e - left ) / METRE ) ] )
+    grey = np.median( np.asarray( grey, dtype=np.float64 ), axis=0 )
+    return grey, ASPHALT / grey.mean()
+
+
+def to_game( colour, gain ):
+    return None if colour is None else [ int( min( 255, round( v * gain ) ) ) for v in colour ]
+
+
 def finish_roads( places, lines, went ):
     """Every road of the map where it runs: ( nodes, roads ) as survey.json has them, and how far the
     surveyed ones moved. went( east, north ): where the buildings round a point went, ( east, north )."""
@@ -330,6 +445,20 @@ def main():
     km = float( sys.argv[ 2 ].split( ',' )[ 2 ] ) if len( sys.argv ) > 2 else 4
     cx, cy = places[ 'center' ]
     ortho = Ortho( os.path.join( HERE, 'cache', area, 'ortho' ), ( cx - km * 500, cy - km * 500 ) )
+    path = os.path.join( out_dir, 'survey.json' )
+
+    # ---- the tracks onto their ballast
+    rails, rails_went = survey_rails( ortho, places )
+    print( '  tracks: ' + '; '.join( f'{d:.1f} m by {v} ({"read" if read else "with the nearest read"})' for d, v, read in rails_went ), flush=True )
+    if sys.argv[ 3: ] == [ 'rails' ]:
+        survey = json.load( open( path, encoding='utf-8' ) )
+        _, gain = asphalt_gain( ortho, survey[ 'roads' ], cx, cy, km )
+        for r in rails: r[ 'bed' ] = to_game( r[ 'bed' ], gain )
+        survey[ 'rails' ], survey[ 'gain' ] = rails, round( float( gain ), 3 )
+        print( f'  gain {gain:.3f}; beds {[ r[ "bed" ] for r in rails ]}' )
+        with open( path, 'w', encoding='utf-8' ) as f: json.dump( survey, f, separators=( ',', ':' ), ensure_ascii=False )
+        print( f'{len( rails )} tracks -> {os.path.relpath( path, ROOT )} ({os.path.getsize( path ) >> 10} kB); the rest of the survey as it was' )
+        return
 
     # ---- the paved roads onto their asphalt
     t = time.time()
@@ -411,21 +540,12 @@ def main():
     widths = sorted( r[ 'width' ] for r in roads if r[ 'width' ] )
 
     # ---- the measure: the middle of the surveyed roads' asphalt
-    grey = []
-    for r in roads:
-        if not r[ 'width' ]: continue
-        for e, n in r[ 'pts' ][ 2:- 2:5 ]:
-            if abs( e - cx ) > km * 500 or abs( n - cy ) > km * 500 or not ortho.asphalt( e, n ): continue
-            px, left, top = ortho.around( e, n )
-            grey.append( px[ int( ( top - n ) / METRE ), int( ( e - left ) / METRE ) ] )
-    grey = np.median( np.asarray( grey, dtype=np.float64 ), axis=0 )
-    gain = ASPHALT / grey.mean()
-
-    out = [ None if c is None else [ int( min( 255, round( v * gain ) ) ) for v in c ] for c in roofs ]
-    path = os.path.join( out_dir, 'survey.json' )
+    grey, gain = asphalt_gain( ortho, roads, cx, cy, km )
+    out = [ to_game( c, gain ) for c in roofs ]
+    for r in rails: r[ 'bed' ] = to_game( r[ 'bed' ], gain )
     source = f'Državna geodetska uprava, orthophoto {LAYER} (geoportal.dgu.hr WMS) at {METRE} m a pixel, read {time.strftime( "%Y-%m-%d" )}'
     with open( path, 'w', encoding='utf-8' ) as f:
-        json.dump( { 'source': source, 'shifts': shifts, 'roofs': out, 'nodes': nodes, 'roads': roads }, f, separators=( ',', ':' ), ensure_ascii=False )
+        json.dump( { 'source': source, 'shifts': shifts, 'roofs': out, 'nodes': nodes, 'roads': roads, 'rails': rails, 'gain': round( float( gain ), 3 ) }, f, separators=( ',', ':' ), ensure_ascii=False )
     far = sorted( math.hypot( *v ) for v in shifts )
     gone = np.hypot( found[ :, 0 ], found[ :, 1 ] ) > 0
     print( f'footprints: {int( sure.sum() )} of {len( B )} moved on their own evidence, {with_street} with their street, {off_asphalt} kept off the asphalt they were moved onto, {len( B ) - int( gone.sum() )} left where the map has them;'

@@ -204,8 +204,8 @@ overriding the one before, and the Site is still the only thing anything reads:
 
 | Source | What it gives | Where |
 |---|---|---|
-| the map | which buildings and roads exist, their outlines, names, how roads join | `places.json` (`tools/geodata/places.py`) |
-| the orthophoto, measured | where each footprint really stands, each roof's colour, each paved road's line and width | `survey.json` (`tools/geodata/survey.py`) |
+| the map | which buildings, roads and railway tracks exist, their outlines, names, how roads join, where a track is on a bridge | `places.json` (`tools/geodata/places.py`) |
+| the orthophoto, measured | where each footprint really stands, each roof's colour, each paved road's line and width, each track's line and its ballast's colour | `survey.json` (`tools/geodata/survey.py`) |
 | what was seen by eye | per building: its kind, storeys, walls, roof form; beside the roads: parking and pavements | `src/regions/slavonia/Survey.js` |
 | a landmark's model | its true plan, what cannot be walked through, its grounds: fence, paving, trees | the model's custom properties (`tools/blender/*.py` PLAN) |
 
@@ -222,6 +222,16 @@ never toward the shadow and never onto surveyed asphalt; 630 of 3065 stay where 
 This is good to a metre or so, not to a decimetre. The land registry's own outlines and parcels
 (`tools/geodata/cadastre.py`, DGU's INSPIRE services) would replace both the fit and the invented
 plots; the service gave no answer on the day and nothing reads it yet.
+
+The railway (the Vinkovci - Županja line and the station's siding) is the map's, set on its
+ballast by the survey: the map drew it 1.3 m east of the bed. A track is `site/Rails.js` (its line
+evened through the surveyed points, its level the plain's averaged over 300 m, its bridges),
+graded as a formation with the bed's core heaped on it (`terrain/Grade.js`), built as ballast,
+sleepers and rails (`build/Railway.js`). Where a road's line meets a track's the road takes the
+rails' level and the nodes within 40 m rise with it: four level crossings. Over the Bosut it is
+carried by a bridge read off the orthophoto: 52.7 m between the map's two ends, green plate girders
+on a pier at the middle. What is not built yet: the station's platform, the crossings' signs and
+barriers, the turnouts' blades (the siding's rails simply run into the line's).
 
 A ring is worked with a survey sheet: `python tools/geodata/sheet.py bosut <x>,<z> <half side>
 <out.jpg>` draws the orthophoto of a square with every footprint numbered (mapped and surveyed),
@@ -264,6 +274,15 @@ So that they are not tried again the same way:
   wide-angle and reframed, and points in one plane do not fix a camera's depth. A frame with marked
   points at several depths, from an undistorted picture, would do.
 - **A footprint's place by contrast alone**, without the guards: see above, the hall on its shadow.
+- **Leaving a track's bed out of a road's reading.** Ballast reads as asphalt, and Poljska ulica,
+  which runs beside the line, is set a metre toward it. With the bed left out, the dry verge between
+  the two counted as the road's width (8 m for a lane of 4.5) and the roads at the crossing by the
+  cemetery went three to six metres off their asphalt. The road stays a metre out; its carriageway
+  clears the bed by 0.27 m (`site.mjs`).
+- **A curve through every surveyed point of a track** (a centripetal Catmull-Rom spline): it turns
+  as sharply as two mapped points happen to lie close, 94 m on the siding and 178 m on a line that
+  turns over 300 m. The points are evened instead (`Rails.js` `curved`): 286 m, and the surveyed
+  points lie 0.4 m from the line on average, a metre at most.
 
 ## 12. State (2026-10-02, night)
 
@@ -281,6 +300,7 @@ Built, each with its check and a timelapse frame (`docs/slavonia/progress/`):
 | T1 | the survey of the orthophoto: footprints, roofs, roads | `tools/geodata/survey.py`, `survey.json` | `site.mjs` |
 | T2 (begun) | ring 1 round St Andrew's: the street's parking and pavements, the yellow row, the hall, two long houses | `Survey.js`, `site/Beside.js` | `site.mjs` |
 | T3 | the named places: the municipality and post office, the school, the parish house, the restaurant; the park, the sports ground; the marina and the landing with their boats | `Survey.js`, `build/Marina.js`, `tools/blender/kit.py` | `site.mjs`, `village.mjs`, `flora.mjs` |
+| T4 | the railway: the line and the siding on their ballast, four level crossings, the bridge over the Bosut | `site/Rails.js`, `build/Railway.js`, `terrain/Grade.js` | `site.mjs`, `village.mjs` |
 
 Still to do, in this order:
 
@@ -292,11 +312,13 @@ Still to do, in this order:
 3. **The park's newer things**, which are in the footage of 2025 and not on the orthophoto: the
    outdoor gym on its red ground, the fire pit, the benches and lamps, the bank's paved edge at the
    marina. Their places have to be judged from the frames.
-4. **The cadastre**, when the service answers (it failed on three tries on 2026-10-02): parcels for
+4. **The station**: its platform and yard (the concrete east of the siding), the house's walls and
+   roof as they are, the crossings' signs and barriers.
+5. **The cadastre**, when the service answers (it failed on three tries on 2026-10-02): parcels for
    yards and fences, the registry's outlines, and with them storeys from shadows.
-5. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
+6. **Walls.** Nothing measures a wall's colour: the orthophoto sees roofs, the footage a few streets.
    Street-level pictures of the other streets are what every further ring needs.
-6. **M7** colour by numbers; what floats on the water to show the current.
+7. **M7** colour by numbers; what floats on the water to show the current.
 
 Known and left: one house at 754,-1083, near the block's edge, stands a metre onto a lane that was not surveyed
 (`site.mjs` reports it).
@@ -311,7 +333,8 @@ How things are run:
 - Published build: `npm run deploy` after every push (the `deploy` branch, served as it is).
 - Blender through the `mcp__Blender__*` tools: `tools/blender/kit.py`, `st_roch.py`, `st_andrew.py`, `look.py`.
 - Geodata: `terrain.py bosut`, `tiles.py bosut core 45.22730,18.74159,12`, `places.py bosut 45.22730,18.74159,4`,
-  `survey.py bosut 45.22730,18.74159,4`, `sheet.py`, `cadastre.py` (the cache is on F:).
+  `survey.py bosut 45.22730,18.74159,4` (with `rails` after it: the tracks only, into the survey
+  there is), `sheet.py`, `cadastre.py` (the cache is on F:).
 - A ring: `python tools/geodata/sheet.py bosut <x>,<z> <half side> <out.jpg>` for the sheet,
   `node tools/checks/ring.mjs <x> <z> <metres>` for its buildings, `node tools/checks/around.mjs
   "<name>"` for a landmark's neighbours in its model's frame.

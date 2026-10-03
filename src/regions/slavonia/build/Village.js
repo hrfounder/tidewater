@@ -454,7 +454,9 @@ function raise( B, b, A, kit, terrain ) {
 
 			// the openings: windows along the clear stretches of each storey, and the door
 			const holes = [];
-			const rule = A.windows[ w.facing ], door = w === doorWall ? kit.get( A.door[ 0 ] ) : null;
+			// ( a wall seen blank, a yard building's back to the street, has none: SEEN blank )
+			const blank = b.seen.blank && b.seen.blank.includes( w.facing );
+			const rule = blank ? null : A.windows[ w.facing ], door = w === doorWall && ! blank ? kit.get( A.door[ 0 ] ) : null;
 			for ( const [ a, c ] of clearOf( w, p, pieces ) ) {
 
 				const room = c - a - 2 * CORNER;

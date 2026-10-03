@@ -14,7 +14,7 @@
 //   surfaces  what each material of the model is made of: a pattern of the village material
 //             (build/VillageMaterial.js SURFACE); a material that is not listed is plain paint
 // what the materials of a house built by tools/blender/house.py are made of
-const HOUSE = { wall: 'render', plinth: 'concrete', glass: 'glass', tile: 'tile', sheet: 'sheet', fascia: 'boards', soffit: 'render', post: 'boards', brick: 'brick', boards: 'boards', paving: 'concrete', stone: 'concrete', strip: 'render', steel: 'plain' };
+const HOUSE = { wall: 'render', plinth: 'concrete', glass: 'glass', tile: 'tile', sheet: 'sheet', fascia: 'boards', soffit: 'render', post: 'boards', brick: 'brick', boards: 'boards', paving: 'concrete', stone: 'concrete', strip: 'render', steel: 'plain', iron: 'plain' };
 
 // how a landmark is known: by its name, or by its model
 export const keyOf = ( l ) => l.name ? l.name.toLowerCase() : l.model;

@@ -26,6 +26,8 @@ A SPEC is plain data:
                       at: its middle, in metres from the wall's left end as one looks at the wall from
                       outside, sill: its foot over the floor, w, h, kind: 'window' | 'door',
                       panes: [ across, up ] (a window), transom: the height of a fixed top light (m),
+                      lights: instead of panes, one entry a light, 'top' | 'bottom' | None: where
+                      that light has its small pane of `transom` height,
                       box: a roller shutter's box over the opening (its height, m, inside the opening's
                       h), shutter: how much of the glass the shutter covers (0..1), leaf: 'glass' or a
                       material for a door's leaves, leaves: how many }
@@ -39,6 +41,10 @@ A SPEC is plain data:
   parts               the materials of the house's joinery by what they are for: frame, glass, box
                       (a roller shutter's), shutter, slat, sill
   door_parts          the same for the doors, where their frames are not the windows' (default: parts)
+  paved               paving on the ground round the house: outlines [ [ x, y ], ... ], laid a slab's
+                      thickness over the ground as the churches' are; material 'paving'
+  fences              fences round its yard: { points: [ [ x, y ], ... ], style } in grounds.py's
+                      fence style (its iron is the material 'iron')
   outline             the plan the game takes for the house, [ [ x, y ], ... ] (default: the rectangle round the blocks)
   yard                the ground the house and its things stand on (default: the outline)
 """
@@ -113,7 +119,18 @@ def window( T, o, mats ):
 	# the members: across between the panes, and the transom
 	cols, rows = o.get( 'panes', [ 1, 1 ] )
 	glass_top = top - BAR
-	if o.get( 'transom' ):
+	if o.get( 'lights' ):
+		# each light its own: its small pane at the top, at the bottom or none, the transom's height
+		# from that end; the mullions between the lights the full height
+		w = ( c - a - 2 * BAR ) / len( o[ 'lights' ] )
+		for k, end in enumerate( o[ 'lights' ] ):
+			l0, l1 = a + BAR + w * k, a + BAR + w * ( k + 1 )
+			if k: T.bar( l0 - MULLION / 2, l0 + MULLION / 2, z0 + BAR, top - BAR, y + 0.005, y + 0.05, mats[ 'frame' ] )
+			if end:
+				zt = top - BAR - o[ 'transom' ] if end == 'top' else z0 + BAR + o[ 'transom' ]
+				T.bar( l0 + MULLION / 2, l1 - MULLION / 2, zt - MULLION / 2, zt + MULLION / 2, y + 0.005, y + 0.05, mats[ 'frame' ] )
+		cols, rows = 1, 1
+	elif o.get( 'transom' ):
 		zt = top - BAR - o[ 'transom' ]
 		T.bar( a + BAR, c - BAR, zt - MULLION / 2, zt + MULLION / 2, y + 0.005, y + 0.05, mats[ 'frame' ] )
 		glass_top = zt
@@ -248,6 +265,13 @@ def build_house( S, spec ):
 		b = blocks[ st[ 'block' ] ]
 		W, L = wall_frame( b, st[ 'side' ] )
 		on_wall( S, W, lambda T, st=st, b=b: T.box( st[ 'at' ] - st[ 'w' ] / 2, st[ 'at' ] + st[ 'w' ] / 2, - st.get( 'out', 0.03 ), 0, b.get( 'plinth', ( 0.3, None ) )[ 0 ], b[ 'eave' ], st[ 'mat' ], back=False ) )
+	for outline in spec.get( 'paved', [] ): S.prism( outline[ ::- 1 ], 0.0, 0.04, 'paving', 'xy' )
+	runs = []
+	for f in spec.get( 'fences', [] ):
+		for a, b in zip( f[ 'points' ], f[ 'points' ][ 1: ] ):
+			iron_fence( S, a, b, f[ 'style' ] )
+			runs.append( ( a, b, f[ 'style' ][ 'top' ] ) )
+		for x, y in f[ 'points' ]: S.post( x - 0.025, x + 0.025, y - 0.025, y + 0.025, - FOUNDED, f[ 'style' ][ 'top' ], 'iron' )
 	for c in spec.get( 'chimneys', [] ):
 		h = c[ 'side' ] / 2
 		S.post( c[ 'x' ] - h, c[ 'x' ] + h, c[ 'y' ] - h, c[ 'y' ] + h, blocks[ 0 ][ 'eave' ], c[ 'top' ], c[ 'mat' ] )
@@ -258,7 +282,7 @@ def build_house( S, spec ):
 	outline = spec.get( 'outline' ) or [ ( lo[ 0 ], lo[ 1 ] ), ( hi[ 0 ], lo[ 1 ] ), ( hi[ 0 ], hi[ 1 ] ), ( lo[ 0 ], hi[ 1 ] ) ]
 	boxes = []
 	for b, top in zip( blocks, tops ): boxes += plan_box( b[ 'x' ][ 0 ], b[ 'x' ][ 1 ], b[ 'y' ][ 0 ], b[ 'y' ][ 1 ], top )
-	return dict( outline=flat( outline ), boxes=boxes, walls=plan_walls( [] ), yard=flat( spec.get( 'yard' ) or outline ), paved=plan_paved( spec.get( 'paved', [] ) ), trees=plan_trees( [] ) )
+	return dict( outline=flat( outline ), boxes=boxes, walls=plan_walls( runs ), yard=flat( spec.get( 'yard' ) or outline ), paved=plan_paved( spec.get( 'paved', [] ) ), trees=plan_trees( [] ) )
 
 
 def build( spec, out ):

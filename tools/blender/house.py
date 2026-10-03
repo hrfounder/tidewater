@@ -34,6 +34,7 @@ A SPEC is plain data:
                       mats, one for each post), mat, fascia: material }
   pipes               downpipes: { block, side, at }
   units               boxes on a wall (an air conditioner's outdoor unit): { block, side, at, z, size: [ w, h, d ], mat }
+  strips              bands up a wall from the plinth to the eaves (a school's bays): { block, side, at, w, mat, out }
   chimneys            { x, y, top: over the floor, side, mat }
   parts               the materials of the house's joinery by what they are for: frame, glass, box
                       (a roller shutter's), shutter, slat, sill
@@ -243,6 +244,10 @@ def build_house( S, spec ):
 		W, L = wall_frame( b, u[ 'side' ] )
 		w, h, d = u[ 'size' ]
 		on_wall( S, W, lambda T, u=u, w=w, h=h, d=d: T.box( u[ 'at' ] - w / 2, u[ 'at' ] + w / 2, - d, 0, u[ 'z' ], u[ 'z' ] + h, u[ 'mat' ], back=False ) )
+	for st in spec.get( 'strips', [] ):
+		b = blocks[ st[ 'block' ] ]
+		W, L = wall_frame( b, st[ 'side' ] )
+		on_wall( S, W, lambda T, st=st, b=b: T.box( st[ 'at' ] - st[ 'w' ] / 2, st[ 'at' ] + st[ 'w' ] / 2, - st.get( 'out', 0.03 ), 0, b.get( 'plinth', ( 0.3, None ) )[ 0 ], b[ 'eave' ], st[ 'mat' ], back=False ) )
 	for c in spec.get( 'chimneys', [] ):
 		h = c[ 'side' ] / 2
 		S.post( c[ 'x' ] - h, c[ 'x' ] + h, c[ 'y' ] - h, c[ 'y' ] + h, blocks[ 0 ][ 'eave' ], c[ 'top' ], c[ 'mat' ] )

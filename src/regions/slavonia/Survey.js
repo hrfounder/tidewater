@@ -120,8 +120,6 @@ export const SEEN = [
 	{ at: [ 35, 49 ], is: 'house', storeys: 1, walls: [ 'boards', [ 150, 112, 82 ] ], form: 'gable', roof: [ 150, 52, 44 ], source: 'drone2 at 18-21 s' },
 	// the park's pavilion on the bank: one storey of brown boards under a dark red roof
 	{ at: [ 93, 13 ], is: 'house', storeys: 1, walls: [ 'boards', [ 132, 100, 74 ] ], form: 'gable', source: 'drone4 at 3 s; sheet park' },
-	// the primary school by the park: two storeys, pale yellow, windows in rows under a dark red roof
-	{ at: [ 138, 61 ], is: 'public', storeys: 2, walls: [ 'render', [ 236, 222, 168 ] ], form: 'gable', source: 'drone2 at 42 and 60-72 s; drone4; sheet school' },
 	// the long yellow row on the street north-west of St Andrew's, brick at its corners and round its
 	// door, under a dark red hipped roof
 	{ at: [ - 62, 139 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 228, 186, 96 ] ], form: 'hip', source: 'drone1 at 63-72 s; sheet andrew-ring1' },

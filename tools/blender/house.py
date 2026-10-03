@@ -30,13 +30,15 @@ A SPEC is plain data:
                       h), shutter: how much of the glass the shutter covers (0..1), leaf: 'glass' or a
                       material for a door's leaves, leaves: how many }
   canopies            flat roofs over an entrance, each { x, y: [ from, to ], z: its underside, thick,
-                      posts: [ [ x, y ], ... ], post: its side (m), mat, fascia: material }
+                      posts: [ [ x, y ], ... ], post: their side (m), post_mat (or sizes and
+                      mats, one for each post), mat, fascia: material }
   pipes               downpipes: { block, side, at }
   units               boxes on a wall (an air conditioner's outdoor unit): { block, side, at, z, size: [ w, h, d ], mat }
   chimneys            { x, y, top: over the floor, side, mat }
   parts               the materials of the house's joinery by what they are for: frame, glass, box
                       (a roller shutter's), shutter, slat, sill
-  outline             the plan the game takes for the house, [ [ x, y ], ... ] (default: block 0)
+  door_parts          the same for the doors, where their frames are not the windows' (default: parts)
+  outline             the plan the game takes for the house, [ [ x, y ], ... ] (default: the rectangle round the blocks)
   yard                the ground the house and its things stand on (default: the outline)
 """
 import math, os
@@ -218,7 +220,7 @@ def build_house( S, spec ):
 					for q in ( [ ( ta, 0, za ), ( ta, 0, zb ), ( ta, SET_BACK, zb ), ( ta, SET_BACK, za ) ], [ ( tb, 0, zb ), ( tb, 0, za ), ( tb, SET_BACK, za ), ( tb, SET_BACK, zb ) ],
 							[ ( ta, 0, zb ), ( tb, 0, zb ), ( tb, SET_BACK, zb ), ( ta, SET_BACK, zb ) ], [ ( tb, 0, za ), ( ta, 0, za ), ( ta, SET_BACK, za ), ( tb, SET_BACK, za ) ] ):
 						T.shell( q, [ ( 0, 1, 2, 3 ) ], b[ 'wall' ] )
-				for o in ours: ( door if o[ 'kind' ] == 'door' else window )( T, o, mats )
+				for o in ours: door( T, o, spec.get( 'door_parts', mats ) ) if o[ 'kind' ] == 'door' else window( T, o, mats )
 			on_wall( S, W, make )
 		r = b[ 'roof' ]
 		tops.append( ( hip if r[ 'form' ] == 'hip' else gable )( S, b, r ) )
@@ -228,9 +230,9 @@ def build_house( S, spec ):
 		if c.get( 'fascia' ):
 			for f in ( ( x0, x1, y0 - 0.02, y0 ), ( x0 - 0.02, x0, y0, y1 ), ( x1, x1 + 0.02, y0, y1 ) ):
 				S.box( f[ 0 ], f[ 1 ], f[ 2 ], f[ 3 ], c[ 'z' ] - 0.02, c[ 'z' ] + c[ 'thick' ] + 0.02, c[ 'fascia' ] )
-		for px, py in c.get( 'posts', [] ):
-			h = c[ 'post' ] / 2
-			S.post( px - h, px + h, py - h, py + h, - FOOT, c[ 'z' ], c[ 'post_mat' ] )
+		for k, ( px, py ) in enumerate( c.get( 'posts', [] ) ):
+			h = c.get( 'sizes', [ c[ 'post' ] ] * len( c[ 'posts' ] ) )[ k ] / 2
+			S.post( px - h, px + h, py - h, py + h, - FOOT, c[ 'z' ], c.get( 'mats', [ c[ 'post_mat' ] ] * len( c[ 'posts' ] ) )[ k ] )
 	for p in spec.get( 'pipes', [] ):
 		b = blocks[ p[ 'block' ] ]
 		W, L = wall_frame( b, p[ 'side' ] )
@@ -246,8 +248,9 @@ def build_house( S, spec ):
 		S.post( c[ 'x' ] - h, c[ 'x' ] + h, c[ 'y' ] - h, c[ 'y' ] + h, blocks[ 0 ][ 'eave' ], c[ 'top' ], c[ 'mat' ] )
 		S.box( c[ 'x' ] - h - 0.05, c[ 'x' ] + h + 0.05, c[ 'y' ] - h - 0.05, c[ 'y' ] + h + 0.05, c[ 'top' ], c[ 'top' ] + 0.07, c.get( 'cap', c[ 'mat' ] ) )
 	# the plan: the outline, a box per block up to its roof's top, the yard
-	b0 = blocks[ 0 ]
-	outline = spec.get( 'outline' ) or [ ( b0[ 'x' ][ 0 ], b0[ 'y' ][ 0 ] ), ( b0[ 'x' ][ 1 ], b0[ 'y' ][ 0 ] ), ( b0[ 'x' ][ 1 ], b0[ 'y' ][ 1 ] ), ( b0[ 'x' ][ 0 ], b0[ 'y' ][ 1 ] ) ]
+	# ( by default the rectangle round all the blocks: give `outline` for a house that is not one )
+	lo = ( min( b[ 'x' ][ 0 ] for b in blocks ), min( b[ 'y' ][ 0 ] for b in blocks ) ); hi = ( max( b[ 'x' ][ 1 ] for b in blocks ), max( b[ 'y' ][ 1 ] for b in blocks ) )
+	outline = spec.get( 'outline' ) or [ ( lo[ 0 ], lo[ 1 ] ), ( hi[ 0 ], lo[ 1 ] ), ( hi[ 0 ], hi[ 1 ] ), ( lo[ 0 ], hi[ 1 ] ) ]
 	boxes = []
 	for b, top in zip( blocks, tops ): boxes += plan_box( b[ 'x' ][ 0 ], b[ 'x' ][ 1 ], b[ 'y' ][ 0 ], b[ 'y' ][ 1 ], top )
 	return dict( outline=flat( outline ), boxes=boxes, walls=plan_walls( [] ), yard=flat( spec.get( 'yard' ) or outline ), paved=plan_paved( spec.get( 'paved', [] ) ), trees=plan_trees( [] ) )

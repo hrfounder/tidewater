@@ -47,6 +47,7 @@ SPEC = dict(
 		'post': ( ( 84, 62, 46 ), 0.70, 0.0 ),
 		'pipe': ( ( 200, 200, 196 ), 0.50, 0.3 ),
 		'unit': ( ( 226, 226, 222 ), 0.60, 0.1 ),
+		'stone': ( ( 150, 150, 146 ), 0.90, 0.0 ),      # the north pillar's cladding
 	},
 	parts=dict( frame='frame', glass='glass', box='box', shutter='shutter', slat='slat', sill='sill' ),
 	blocks=[ dict( x=[ X0, X1 ], y=[ Y0, Y1 ], eave=EAVE, plinth=( 0.25, 'plinth' ), wall='wall',
@@ -64,7 +65,9 @@ SPEC = dict(
 		dict( block=0, side='front', at=14.0, kind='window', **TWO ),
 	],
 	canopies=[ dict( x=[ X0, X0 + 3.9 ], y=[ Y0 - 2.6, Y0 ], z=2.8, thick=0.28, mat='soffit', fascia='fascia',
-		posts=[ [ X0 + 3.7, Y0 - 2.4 ], [ X0 + 0.2, Y0 - 2.4 ] ], post=0.24, post_mat='post' ) ],
+		# ( a dark wooden post at its south corner, a pillar clad in grey stone at its north one, by the
+		# post office's front: the post office's door is in the recess under it, posta.py )
+		posts=[ [ X0 + 3.7, Y0 - 2.4 ], [ X0 + 0.3, Y0 - 2.35 ] ], sizes=[ 0.24, 0.5 ], mats=[ 'post', 'stone' ], post=0.24, post_mat='post' ) ],
 	pipes=[ dict( block=0, side='front', at=8.1, mat='pipe' ) ],
 	units=[ dict( block=0, side='front', at=6.9, z=UP + 1.25, size=[ 0.8, 0.55, 0.3 ], mat='unit' ) ],
 	# the ground it stands on: the footprint and the paved strip before it, under the canopy

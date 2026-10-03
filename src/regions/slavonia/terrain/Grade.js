@@ -269,7 +269,10 @@ export function gradeOpen( terrain, open, areas ) {
 	for ( const area of areas ) {
 
 		const ring = area.ring, xs = ring.map( ( p ) => p[ 0 ] ), zs = ring.map( ( p ) => p[ 1 ] );
-		area.level = ring.reduce( ( s, [ x, z ] ) => s + terrain.heightAt( x, z ), 0 ) / ring.length;
+		// ( areas of one group, the segments of a path, take the mean over all their corners )
+		const own = area.group ? areas.filter( ( a ) => a.group === area.group ).flatMap( ( a ) => a.ring ) : ring;
+		area.level = area.group && area.group.level !== undefined ? area.group.level : own.reduce( ( s, [ x, z ] ) => s + terrain.heightAt( x, z ), 0 ) / own.length;
+		if ( area.group ) area.group.level = area.level;
 		const i0 = Math.max( 0, Math.floor( ( Math.min( ...xs ) - reach - origin ) / texel ) ), i1 = Math.min( res - 1, Math.ceil( ( Math.max( ...xs ) + reach - origin ) / texel ) );
 		const j0 = Math.max( 0, Math.floor( ( Math.min( ...zs ) - reach - origin ) / texel ) ), j1 = Math.min( res - 1, Math.ceil( ( Math.max( ...zs ) + reach - origin ) / texel ) );
 		for ( let j = j0; j <= j1; j ++ ) for ( let i = i0; i <= i1; i ++ ) {

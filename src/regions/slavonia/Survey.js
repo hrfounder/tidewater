@@ -257,17 +257,23 @@ export const AREAS = [
 
 // The courts: each by its four corners in order round it (its long sides are its length), its kind,
 // its colours as the orthophoto has them at the survey's gain (site/Courts.js draws the markings),
-// and the ball-stop fence round it if it has one: how far out, how high, and where its gate is.
+// and the fence round it if it has one: how far out, how high, and where its gate is.
 const COURT = { line: [ 214, 216, 216 ] };
 export const COURTS = [
 	// the basketball court: a pale field in a darker blue surround, the keys in that blue
 	{ kind: 'basketball', corners: [ [ 191.8, 121 ], [ 204.2, 107.8 ], [ 226.4, 129.2 ], [ 213.2, 142.4 ] ],
 		colours: { surround: [ 76, 92, 100 ], field: [ 106, 114, 122 ], key: [ 76, 92, 100 ], ...COURT }, source: 'sheet schoolgrounds; orthophoto read at 1 m' },
-	// the handball court: a blue field in a pale grey surround, the goal areas pale; a tall fence of
-	// mesh round it, its gate at the north-west corner where the path from the school comes
+	// the handball court: a blue field in a pale grey surround, the goal areas pale; a simple low fence
+	// round it, 0.9 m (Ivan), its gate at the north-west corner where the path from the school comes
 	{ kind: 'handball', corners: [ [ 165.7, 147.2 ], [ 181.4, 131.7 ], [ 211.4, 162.2 ], [ 195.9, 177.7 ] ],
 		colours: { surround: [ 97, 103, 105 ], field: [ 72, 92, 104 ], key: [ 105, 114, 120 ], ...COURT },
-		fence: { out: 1.0, height: 4.0, gap: 2.5, at: [ 166, 141 ] }, source: 'sheet schoolgrounds; orthophoto read at 1 m' },
+		fence: { out: 1.0, height: 0.9, gap: 2.5, at: [ 166, 141 ] }, source: 'sheet schoolgrounds; orthophoto read at 1 m' },
+];
+
+// Footpaths no map has: each its points along its middle, its width (m) and what it is made of.
+export const PATHS = [
+	// from the schoolyard's south corner across the lawn to the handball court's gate (sheet path)
+	{ points: [ [ 114, 117 ], [ 118, 118 ], [ 129.5, 122 ], [ 137, 127 ], [ 141.5, 131 ], [ 148, 135 ], [ 155.5, 140 ], [ 164.5, 146 ] ], width: 2.6, of: 'concrete', source: 'sheet path' },
 ];
 
 // Roads whose surface or width the map has wrong, each by a point on it.

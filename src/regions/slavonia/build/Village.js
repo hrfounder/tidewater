@@ -40,7 +40,7 @@ const MADE = {
 	brick: { kerb: 0.3, colour: [ 156, 86, 60 ], surface: SURFACE.brick },
 };
 const PAVING = MADE.paving;
-// a court's ball-stop fence (m): its posts this far apart, its mesh's uprights this far apart and this thick
+// a court's fence (m): its posts this far apart, its mesh's uprights this far apart and this thick
 const COURT_FENCE = { post: 2.5, wire: 0.15, thread: 0.012 };
 // by eye: galvanised posts, the mesh darker (the orthophoto has it as a dark line)
 const FENCE_STEEL = [ 150, 154, 156 ], FENCE_MESH = [ 70, 76, 74 ];
@@ -250,8 +250,8 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	// the courts' ball-stop fences: posts, a rail along the top and the foot, and the mesh drawn as its
-	// uprights (from a few metres off a mesh is its wires' shimmer and its frame)
+	// the courts' fences: posts, a rail along the top and the foot, and the mesh drawn as its uprights
+	// (from a few metres off a mesh is its wires' shimmer and its frame)
 	const courtFences = { runs: 0, triangles: 0 };
 	for ( const f of site.courtFences ) for ( const [ a, b ] of f.runs ) {
 

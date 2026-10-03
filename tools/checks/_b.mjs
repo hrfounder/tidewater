@@ -1,4 +1,0 @@
-import { load } from './load.mjs';
-const { site } = await load();
-const inRing = ( r, x, z ) => { let c = false; for ( let i = 0, j = r.length - 1; i < r.length; j = i ++ ) { const a = r[ j ], q = r[ i ]; if ( ( a[ 1 ] <= z ) !== ( q[ 1 ] <= z ) && x < a[ 0 ] + ( q[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( q[ 1 ] - a[ 1 ] ) ) c = ! c; } return c; };
-for ( const [ x, z ] of process.argv.slice( 2 ).map( ( a ) => a.split( ',' ).map( Number ) ) ) { const b = site.buildings.list.find( ( b ) => inRing( b.ring, x, z ) ); console.log( b.index, b.name, b.kind, 'at', b.x.toFixed( 2 ), b.z.toFixed( 2 ), 'yaw', ( b.yaw * 180 / Math.PI ).toFixed( 1 ), 'faces', b.frontage && b.frontage.road.name, b.frontage && b.frontage.road.class, 'pieces', JSON.stringify( b.pieces.map( ( p ) => [ p.u, p.v, p.hu, p.hv ].map( ( v ) => +v.toFixed( 2 ) ) ) ), 'ring', b.ring.map( ( p ) => p.map( ( v ) => v.toFixed( 1 ) ).join( ',' ) ).join( ' | ' ) ); }

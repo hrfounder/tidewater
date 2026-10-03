@@ -11,6 +11,13 @@ current: a lesson learned on a house goes in here, not only in the chat.
 - **Passes, speed first.** Pass 1 is rough: size, colours, position, pavements. Then a **critic**
   looks at pictures only (the game against the photos, never the code). Then the detail pass, then a
   final visual critic. Big deviations are fixed in a later pass, not by measuring harder now.
+- **The photos are the ground truth.** The orthophoto's imagery is fine for what no photo shows (a
+  house's depth, a back yard), but the outlines drawn over it (the map's footprints, the yellow-green
+  lines on the sheets) are legal register entries, often years out of date or wrong (Ivan): never
+  trust a line over a photo or the imagery.
+- **Houses stand on the pavement.** In Andrijaševci the street-front houses stand in a line on the
+  pavement's back edge (Kolodvorska both sides, most streets): after laying a street's pavements, run
+  `unroll.py ... at ... flush` to bring the footprints up to them (and set a modelled house's front there).
 - **Plan from above, faces from photos.** A house's width, depth and place come from the state
   orthophoto's roof (and the street front's width in one photo); the photos give storeys, openings,
   materials, colours, as *proportions* of that width. No camera-height solving, no vanishing points,
@@ -65,6 +72,8 @@ current: a lesson learned on a house goes in here, not only in the chat.
   well-exposed square-on face, and bring sunlit samples down about a quarter.
 
 ## Lessons from 642
+- **A house's front goes on the pavement's back edge** (see above), not by a photo's GPS distance (that
+  put 642 2 m too far back, behind a grass strip the photos lack).
 - **Yard walls and gates** on the street line: house.py `walls` (gates are leaves in the wall's line).
   Keep a house's grounds (its `yard`) off the neighbours' footprints: the site check fails otherwise.
 - The village builds a **hipped roof only over a one-rectangle footprint**; an L-shaped building

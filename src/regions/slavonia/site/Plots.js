@@ -112,7 +112,10 @@ function inRing( ring, x, z ) {
 function stopAt( plot, ring ) {
 
 	const inside = ( [ x, z ] ) => inRing( ring, x, z );
-	const taken = ( s ) => [ plot.front, ( plot.front + plot.back ) / 2, plot.back ].some( ( d ) => inside( pointAt( plot.road, s, d, plot.side ) ) );
+	// ( every LOOK from the street line back: a landmark that stands on the line itself, the house's
+	// front and the plot's both on the pavement, lies between any few fixed depths )
+	const depths = []; for ( let d = plot.front + LOOK / 2; d < plot.back; d += LOOK ) depths.push( d );
+	const taken = ( s ) => depths.some( ( d ) => inside( pointAt( plot.road, s, d, plot.side ) ) );
 	const home = Math.min( plot.s1, Math.max( plot.s0, plot.house.frontage.s ) );
 	if ( taken( home ) ) return;
 	for ( let s = home; s >= plot.s0; s -= LOOK ) if ( taken( s ) ) { plot.s0 = s + LOOK; break; }

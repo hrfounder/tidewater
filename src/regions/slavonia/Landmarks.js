@@ -34,6 +34,8 @@ export const LANDMARKS = [
 	{ at: [ 129.3, 76.7 ], faces: 'Školska ulica', model: 'models/slavonia/houses/school.glb', surfaces: HOUSE },
 	// Kolodvorska 642, Ivan's house: from his TerraFrame photos of 2026-10-03 (first, rough pass)
 	{ at: [ - 203.5, 235.75 ], faces: 'Kolodvorska ulica', model: 'models/slavonia/houses/kolodvorska642.glb', surfaces: HOUSE },
+	// the corner shop at the end of Kolodvorska ulica, its door to the junction
+	{ at: [ - 181.8, 255.2 ], faces: 'Kolodvorska ulica', model: 'models/slavonia/houses/shop-kolodvorska.glb', surfaces: HOUSE },
 	// the wayside shrine by the junction at the end of Kolodvorska ulica (first, rough pass)
 	{ at: [ - 186.5, 269.0 ], faces: 'Ulica Matije Gupca', model: 'models/slavonia/houses/shrine-kolodvorska.glb', surfaces: HOUSE },
 ];

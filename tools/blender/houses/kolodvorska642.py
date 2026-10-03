@@ -35,8 +35,11 @@ the state orthophoto for the depth. The map's outline is not the house (Ivan): t
             the beige plinth, the brown garage door; the gutters galvanised.
 
 Where it stands: the model's origin is the middle of the map's footprint rectangle (Landmarks.js); the
-house's own middle lies 1.3 m along the front and 1.6 m toward the street from it (shot 4's GPS and
-its distance to the wall). Sizes the photos cannot give (the windows' frames, the sills) are the
+house's own middle lies 1.3 m along the front (shot 4's GPS) and 3.6 m toward the street from it: its
+wall on the pavement's back edge, 10.7 m from the road's middle, as all the houses of the street stand
+(Ivan; the orthophoto's eaves at 11 m) (the critic: a strip
+of grass between them in the game that the photos do not have; placing it by the GPS distance alone
+had it 1.3 m too far back). Sizes the photos cannot give (the windows' frames, the sills) are the
 usual ones; ten centimetres either way are within what was asked (Ivan: plan from the orthophoto,
 photos for the detail, big deviations fixed later).
 """
@@ -46,7 +49,7 @@ for f in ( 'shells.py', 'grounds.py', 'house.py' ): exec( compile( open( os.path
 OUT = os.path.join( ROOT, 'public', 'models', 'slavonia', 'houses', 'kolodvorska642.glb' )
 
 W, D = 7.9, 9.6                        # along the street, and deep
-CX, CY = 1.3, - 1.6                    # the house's middle in the footprint's frame
+CX, CY = 1.3, - 3.6                    # the house's middle in the footprint's frame
 X0, X1, Y0, Y1 = CX - W / 2, CX + W / 2, CY - D / 2, CY + D / 2
 EAVE = 6.3                             # the walls to the eaves (shots 1 and 4)
 SLAB = 3.2                             # the upper floor's slab: the concrete band across the front

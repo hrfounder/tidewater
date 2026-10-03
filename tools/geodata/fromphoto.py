@@ -34,9 +34,10 @@ def main():
 	heights = ground( [ [ s[ 'x' ], s[ 'z' ] ] for s in chosen ] )
 	looks = []
 	for s, h in zip( chosen, heights ):
-		a = math.radians( s[ 'heading' ] - math.degrees( s[ 'gridYaw' ] ) ); y = h + EYE
-		t = ( s[ 'x' ] + AHEAD * math.sin( a ), y + AHEAD * math.tan( math.radians( s[ 'pitch' ] ) ), s[ 'z' ] - AHEAD * math.cos( a ) )
-		looks.append( f"--look=critic{name}{s[ 'n' ]}:{s[ 'x' ]},{y:.2f},{s[ 'z' ]}:{t[ 0 ]:.2f},{t[ 1 ]:.2f},{t[ 2 ]:.2f}:{FOV}" )
+		# ( --look takes the camera's height over the ground there, and the point it looks at in the world )
+		a = math.radians( s[ 'heading' ] - math.degrees( s[ 'gridYaw' ] ) )
+		t = ( s[ 'x' ] + AHEAD * math.sin( a ), h + EYE + AHEAD * math.tan( math.radians( s[ 'pitch' ] ) ), s[ 'z' ] - AHEAD * math.cos( a ) )
+		looks.append( f"--look=critic{name}{s[ 'n' ]}:{s[ 'x' ]},{EYE},{s[ 'z' ]}:{t[ 0 ]:.2f},{t[ 1 ]:.2f},{t[ 2 ]:.2f}:{FOV}" )
 	subprocess.run( [ 'node', os.path.join( ROOT, 'test', 'world-slavonia.mjs' ), os.path.join( SHOTS, 'head' ), *looks ], check=True, capture_output=True, cwd=ROOT )
 	out = Image.new( 'RGB', ( ROW[ 0 ], ROW[ 1 ] * len( chosen ) ), ( 20, 20, 20 ) )
 	for k, s in enumerate( chosen ):

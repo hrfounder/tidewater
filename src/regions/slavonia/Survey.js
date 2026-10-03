@@ -41,11 +41,19 @@ export const MOVED = [
 	// north-west of Ivan's house: the white house (646) stands 2.7 m from it, the passage between them
 	// closed by a grey metal gate (house shot 4); the map had it 1.6 m closer
 	{ at: [ - 200.7, 218.2 ], by: [ - 1.28, - 1.12 ], source: 'TerraFrame kolodvorsk-boso: house 4' },
-	// along Kolodvorska ulica (s 1378-1505): footprints that reached over the pavement, set back behind it
+	// along Kolodvorska ulica (s 1378-1505): the houses stand in a line on the pavement, both sides
+	// (Ivan): footprints over it set back, those a little behind it brought up to it
+	{ at: [ - 237.2, 196.9 ], by: [ - 2.40, 2.45 ], source: 'unrolled Kolodvorska ulica at 1427: up to its pavement' },
+	{ at: [ - 202.0, 217.1 ], by: [ - 1.42, 1.45 ], source: 'unrolled Kolodvorska ulica at 1467: up to its pavement' },
+	{ at: [ - 229.3, 202.9 ], by: [ - 2.19, 2.23 ], source: 'unrolled Kolodvorska ulica at 1431: up to its pavement' },
 	{ at: [ - 277.4, 162.6 ], by: [ 0.17, - 0.17 ], source: 'unrolled Kolodvorska ulica at 1381: behind its pavement' },
+	{ at: [ - 304.3, 191.7 ], by: [ 0.93, - 0.93 ], source: 'unrolled Kolodvorska ulica at 1379: up to its pavement' },
 	{ at: [ - 280.4, 202.9 ], by: [ - 1.85, 1.85 ], source: 'unrolled Kolodvorska ulica at 1395: behind its pavement' },
+	{ at: [ - 267.4, 220.1 ], by: [ 0.04, - 0.04 ], source: 'unrolled Kolodvorska ulica at 1417: up to its pavement' },
 	{ at: [ - 231.5, 269.4 ], by: [ - 0.28, 0.29 ], source: 'unrolled Kolodvorska ulica at 1461: behind its pavement' },
 	{ at: [ - 218.6, 266.5 ], by: [ - 1.89, 1.94 ], source: 'unrolled Kolodvorska ulica at 1484: behind its pavement' },
+	{ at: [ - 212.7, 282.4 ], by: [ 1.71, - 1.74 ], source: 'unrolled Kolodvorska ulica at 1497: up to its pavement' },
+	{ at: [ - 194.0, 246.5 ], by: [ - 0.05, 0.05 ], source: 'unrolled Kolodvorska ulica at 1492: up to its pavement' },
 	// the station house of Andrijaševci: the survey took the edge of the concrete before it for its
 	// south wall. Its roof (the shaded north slope and the lit south one) lies 6.2 m further north.
 	{ at: [ - 862, - 273 ], by: [ 0, - 6.2 ], source: 'sheet station' },
@@ -144,9 +152,6 @@ export const SEEN = [
 	// south-east of 642, past its yard's wall and gates: the long white building along the pavement, a
 	// band of bare brick at its foot, brown tiles (vicinity 6, 7)
 	{ at: [ - 194, 246.5 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 232, 230, 222 ] ], form: 'gable', source: 'TerraFrame kolodvorsk-boso: vicinity 6, 7' },
-	// the corner shop (its door 'ČOP' on the cut corner to the junction): white render over a plinth of
-	// grey granite tiles, a brown hipped roof (vicinity 8-12, 16)
-	{ at: [ - 181.8, 255.2 ], is: 'house', storeys: 1, walls: [ 'render', [ 234, 232, 226 ] ], form: 'hip', source: 'TerraFrame kolodvorsk-boso: vicinity 8-12, 16' },
 	// the yard buildings behind 642: old, whitewashed, one storey, roofs of corrugated sheet (house shot 2)
 	{ at: [ - 198.4, 231.1 ], is: 'shed', storeys: 1, walls: [ 'render', [ 226, 224, 218 ] ], source: 'TerraFrame kolodvorsk-boso: house 2' },
 	{ at: [ - 195.7, 227.6 ], is: 'shed', storeys: 1, walls: [ 'render', [ 226, 224, 218 ] ], source: 'TerraFrame kolodvorsk-boso: house 2' },
@@ -240,8 +245,8 @@ export const BESIDE = [
 	// marked bays across the verge and the pavement behind them, on the other a pale band at the kerb
 	{ along: 'Ulica Matije Gupca', from: [ - 180.6, 274.6 ], to: [ - 152.1, 249.5 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'unrolled Ulica Matije Gupca 1224-1262' },
 	{ along: 'Ulica Matije Gupca', from: [ - 152.1, 249.5 ], to: [ - 123.6, 224.4 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'unrolled Ulica Matije Gupca 1262-1300' },
-	{ along: 'Ulica Matije Gupca', from: [ - 182.9, 271.9 ], to: [ - 154.4, 246.8 ], out: [ 5.5, 7 ], of: 'paving', colour: [ 103, 102, 98 ], source: 'unrolled Ulica Matije Gupca 1224-1262' },
-	{ along: 'Ulica Matije Gupca', from: [ - 154.4, 246.8 ], to: [ - 125.9, 221.7 ], out: [ 5.5, 7 ], of: 'paving', colour: [ 103, 102, 98 ], source: 'unrolled Ulica Matije Gupca 1262-1300' },
+	{ along: 'Ulica Matije Gupca', from: [ - 179.2, 268.6 ], to: [ - 152.5, 245.2 ], out: [ 5.5, 7 ], of: 'paving', colour: [ 106, 105, 100 ], source: 'unrolled Ulica Matije Gupca 1229-1264' },
+	{ along: 'Ulica Matije Gupca', from: [ - 152.5, 245.2 ], to: [ - 125.9, 221.7 ], out: [ 5.5, 7 ], of: 'paving', colour: [ 106, 105, 100 ], source: 'unrolled Ulica Matije Gupca 1264-1300' },
 	{ along: 'Ulica Matije Gupca', from: [ - 175.2, 283.8 ], to: [ - 145.9, 258.1 ], out: [ 0.1, 1.5 ], of: 'paving', colour: [ 91, 90, 88 ], source: 'unrolled Ulica Matije Gupca 1222-1261' },
 	{ along: 'Ulica Matije Gupca', from: [ - 145.9, 258.1 ], to: [ - 116.6, 232.3 ], out: [ 0.1, 1.5 ], of: 'paving', colour: [ 91, 90, 88 ], source: 'unrolled Ulica Matije Gupca 1261-1300' },
 	// before St Andrew's: bays on the church's side of Ulica Matije Gupca, and the pavement along its fence

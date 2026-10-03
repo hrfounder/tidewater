@@ -18,6 +18,10 @@ A SPEC is plain data:
       eave            the walls' height to the eaves, over the floor (m)
       plinth          how far the plinth runs up the walls from the ground (m), and its material
       wall            the walls' material
+      chamfer         the front-right corner cut at 45 degrees (a corner shop's door to the junction):
+                      { size: how far the cut runs along each of the two walls (m), indent: how far
+                      its door stands back into the cut (m) }; its openings have side 'corner' and
+                      `at` along the cut from its left end seen from outside. Hipped roofs only.
       recesses        stretches of a wall set back into the house, the full height (a garage bay one
                       brick deep, a loggia): [ { side, from, to: metres along the wall as its
                       openings' `at` are, depth (m) } ]; the openings within one stand in it
@@ -70,6 +74,10 @@ def wall_frame( b, side ):
 	"""The way a wall runs: a function ( t, z, d ) -> ( x, y, z ) from metres along the wall (from its
 	left end seen from outside), up, and out of it; and the wall's length."""
 	( x0, x1 ), ( y0, y1 ) = b[ 'x' ], b[ 'y' ]
+	if side == 'corner':
+		# the front-right chamfer: along the cut from the front's end, outward away from the corner
+		c = b[ 'chamfer' ][ 'size' ]; k = math.sqrt( 0.5 )
+		return ( lambda t, z, d: ( x1 - c + t * k + d * k, y0 + t * k - d * k, z ) ), c * math.sqrt( 2 )
 	if side == 'front': return ( lambda t, z, d: ( x0 + t, y0 - d, z ) ), x1 - x0
 	if side == 'right': return ( lambda t, z, d: ( x1 + d, y0 + t, z ) ), y1 - y0
 	if side == 'back': return ( lambda t, z, d: ( x1 - t, y1 + d, z ) ), x1 - x0
@@ -193,8 +201,24 @@ def hip( S, b, r ):
 	E = [ ( X0, Y0, ze ), ( X1, Y0, ze ), ( X1, Y1, ze ), ( X0, Y1, ze ) ]
 	if X1 - X0 >= Y1 - Y0: slopes = [ [ E[ 0 ], E[ 1 ], C, A ], [ E[ 1 ], E[ 2 ], C ], [ E[ 2 ], E[ 3 ], A, C ], [ E[ 3 ], E[ 0 ], A ] ]
 	else: slopes = [ [ E[ 0 ], E[ 1 ], A ], [ E[ 1 ], E[ 2 ], C, A ], [ E[ 2 ], E[ 3 ], C ], [ E[ 3 ], E[ 0 ], A, C ] ]
+	ce = None
+	if b.get( 'chamfer' ):
+		# The front-right corner cut: the eaves' corner E1 gives way to P1 on the front eave and P2 on
+		# the right one (the cut moved out by the overhang), and a small slope at the pitch over the cut
+		# that meets the hip line from E1 at T.
+		ce = b[ 'chamfer' ][ 'size' ] + o * ( 2 - math.sqrt( 2 ) )
+		P1, P2 = ( X1 - ce, Y0, ze ), ( X1, Y0 + ce, ze )
+		Q = C if X1 - X0 >= Y1 - Y0 else A
+		inward = lambda p: ( ( X1 - ce - Y0 ) - ( p[ 0 ] - p[ 1 ] ) ) / math.sqrt( 2 )
+		d0, dq = inward( E[ 1 ] ), inward( Q )
+		t = tan * d0 / ( ( zr - ze ) - tan * ( dq - d0 ) )
+		T = tuple( E[ 1 ][ k ] + t * ( Q[ k ] - E[ 1 ][ k ] ) for k in range( 3 ) )
+		front, right = slopes[ 0 ], slopes[ 1 ]
+		slopes[ 0 ] = [ front[ 0 ], P1, T ] + front[ 2: ]
+		slopes[ 1 ] = [ T, P2 ] + right[ 1: ]
+		slopes.append( [ P1, P2, T ] )
 	for q in slopes: roof_face( S, q, r[ 'cover' ] )
-	eaves( S, b, r, ( X0, X1, Y0, Y1 ), ze )
+	eaves( S, b, r, ( X0, X1, Y0, Y1 ), ze, cut=ce )
 	return zr
 
 
@@ -234,17 +258,46 @@ def gable( S, b, r ):
 	return zr
 
 
-def eaves( S, b, r, E, ze, sides=( 'front', 'right', 'back', 'left' ) ):
-	"""The fascia board along the eaves on the given sides, and the soffit from the wall out to it."""
+def eaves( S, b, r, E, ze, sides=( 'front', 'right', 'back', 'left' ), cut=None ):
+	"""The fascia board along the eaves on the given sides, and the soffit from the wall out to it;
+	with `cut` (the eaves' share of a front-right chamfer, m), along the cut too."""
 	X0, X1, Y0, Y1 = E
 	( x0, x1 ), ( y0, y1 ) = b[ 'x' ], b[ 'y' ]
 	mat, depth = r.get( 'fascia', ( r[ 'cover' ], 0.18 ) )
 	edge = { 'front': ( ( X0, Y0 ), ( X1, Y0 ), ( x0, y0 ), ( x1, y0 ) ), 'right': ( ( X1, Y0 ), ( X1, Y1 ), ( x1, y0 ), ( x1, y1 ) ),
 		'back': ( ( X1, Y1 ), ( X0, Y1 ), ( x1, y1 ), ( x0, y1 ) ), 'left': ( ( X0, Y1 ), ( X0, Y0 ), ( x0, y1 ), ( x0, y0 ) ) }
+	if cut is not None:
+		c = b[ 'chamfer' ][ 'size' ]
+		edge[ 'front' ] = ( ( X0, Y0 ), ( X1 - cut, Y0 ), ( x0, y0 ), ( x1 - c, y0 ) )
+		edge[ 'right' ] = ( ( X1, Y0 + cut ), ( X1, Y1 ), ( x1, y0 + c ), ( x1, y1 ) )
+		edge[ 'corner' ] = ( ( X1 - cut, Y0 ), ( X1, Y0 + cut ), ( x1 - c, y0 ), ( x1, y0 + c ) )
+		sides = tuple( sides ) + ( 'corner', )
 	for s in sides:
 		( pa, pb, wa, wb ) = edge[ s ]
 		S.shell( [ ( *pa, ze - depth ), ( *pb, ze - depth ), ( *pb, ze ), ( *pa, ze ) ], [ ( 0, 1, 2, 3 ) ], mat )
 		S.shell( [ ( *wa, b[ 'eave' ] ), ( *wb, b[ 'eave' ] ), ( *pb, ze - depth ), ( *pa, ze - depth ) ], [ ( 0, 1, 2, 3 ) ], r.get( 'soffit', mat ) )
+
+
+def chamfer_wall( S, b, ours, door_mats, mats ):
+	"""The wall across a block's front-right chamfer, from the front's end to the right side's start,
+	its openings set `indent` back into it with reveals that deep."""
+	( x0, x1 ), ( y0, y1 ) = b[ 'x' ], b[ 'y' ]
+	c, indent = b[ 'chamfer' ][ 'size' ], b[ 'chamfer' ].get( 'indent', 0.0 )
+	W, L = wall_frame( b, 'corner' )
+	plinth, pmat = b.get( 'plinth', ( 0.3, b[ 'wall' ] ) )
+	holes = [ ( o[ 'at' ] - o[ 'w' ] / 2, o[ 'at' ] + o[ 'w' ] / 2, o[ 'sill' ], o[ 'sill' ] + o[ 'h' ] ) for o in ours ]
+	deep = max( indent, SET_BACK )
+	def make( T ):
+		holed( T, 0, L, - FOOT, plinth, holes, pmat, reveals=False )
+		holed( T, 0, L, plinth, b[ 'eave' ], [ ( ta, tb, max( za, plinth ), zb ) for ta, tb, za, zb in holes if zb > plinth ], b[ 'wall' ], reveals=False )
+		for ta, tb, za, zb in holes:
+			for q in ( [ ( ta, 0, za ), ( ta, 0, zb ), ( ta, deep, zb ), ( ta, deep, za ) ], [ ( tb, 0, zb ), ( tb, 0, za ), ( tb, deep, za ), ( tb, deep, zb ) ],
+					[ ( ta, 0, zb ), ( tb, 0, zb ), ( tb, deep, zb ), ( ta, deep, zb ) ], [ ( tb, 0, za ), ( ta, 0, za ), ( ta, deep, za ), ( tb, deep, za ) ] ):
+				T.shell( q, [ ( 0, 1, 2, 3 ) ], pmat if zb <= plinth else b[ 'wall' ] )
+	on_wall( S, W, make )
+	# the openings themselves, the indent further in than a wall's usual set-back
+	Wi = lambda t, z, d: W( t, z, d - ( deep - SET_BACK ) )
+	on_wall( S, Wi, lambda T: [ door( T, o, door_mats ) if o[ 'kind' ] == 'door' else window( T, o, mats ) for o in ours ] )
 
 
 def build_house( S, spec ):
@@ -272,7 +325,10 @@ def build_house( S, spec ):
 			holes = [ ( o[ 'at' ] - o[ 'w' ] / 2, o[ 'at' ] + o[ 'w' ] / 2, o[ 'sill' ], o[ 'sill' ] + o[ 'h' ] ) for o in ours ]
 			# ( the outer wall is open the full height where a recess is )
 			holes += [ ( r[ 'from' ], r[ 'to' ], - FOOT, b[ 'eave' ] ) for r in recesses ]
-			on_wall( S, W, lambda T, ours=ours, holes=holes: make( T, ours, holes, 0, L ) )
+			# ( a front-right chamfer takes its size off the front's right end and the right side's left end )
+			c = b[ 'chamfer' ][ 'size' ] if b.get( 'chamfer' ) else 0
+			t0, t1 = ( c, L ) if side == 'right' else ( 0, L - c ) if side == 'front' else ( 0, L )
+			on_wall( S, W, lambda T, ours=ours, holes=holes, t0=t0, t1=t1: make( T, ours, holes, t0, t1 ) )
 			for r in recesses:
 				d = r[ 'depth' ]
 				Wr = lambda t, z, out, W=W, d=d: W( t, z, out - d )
@@ -285,6 +341,9 @@ def build_house( S, spec ):
 						T.shell( [ ( r[ 'to' ], 0, z1 ), ( r[ 'to' ], 0, z0 ), ( r[ 'to' ], d, z0 ), ( r[ 'to' ], d, z1 ) ], [ ( 0, 1, 2, 3 ) ], m )
 					T.shell( [ ( r[ 'from' ], 0, b[ 'eave' ] ), ( r[ 'to' ], 0, b[ 'eave' ] ), ( r[ 'to' ], d, b[ 'eave' ] ), ( r[ 'from' ], d, b[ 'eave' ] ) ], [ ( 0, 1, 2, 3 ) ], b[ 'wall' ] )
 				on_wall( S, W, returns )
+		if b.get( 'chamfer' ):
+			if b[ 'roof' ][ 'form' ] != 'hip': raise ValueError( 'a chamfered corner is built under a hipped roof only' )
+			chamfer_wall( S, b, [ o for o in mine if o[ 'side' ] == 'corner' ], spec.get( 'door_parts', mats ), mats )
 		r = b[ 'roof' ]
 		tops.append( ( hip if r[ 'form' ] == 'hip' else gable )( S, b, r ) )
 	for c in spec.get( 'canopies', [] ):

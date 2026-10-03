@@ -1,5 +1,5 @@
 import { parseGLB } from '../../../engine/loaders/GLTF.js';
-import { LANDMARKS } from '../Landmarks.js';
+import { LANDMARKS, keyOf } from '../Landmarks.js';
 
 // The models the village is built with: the kit of pieces every house is fitted with
 // (tools/blender/kit.py) and the landmarks that are modelled whole (tools/blender/*.py, one script
@@ -9,7 +9,7 @@ import { LANDMARKS } from '../Landmarks.js';
 // A model's frame, as the Blender scripts export it: metres, y up, its front toward +z.
 //
 //   kit        Map( name -> { w, h, depth, parts } ): the opening a piece needs in its wall
-//   landmarks  Map( name, lower case -> { parts, plan } )
+//   landmarks  Map( key ( Landmarks.js keyOf ) -> { parts, plan } )
 //   plan       what a landmark's model says of itself on the ground (its script's PLAN), or null for
 //              a model that stands on the mapped outline as it is. In the model's frame, [ x, z ]:
 //                outline  the ring of its walls
@@ -39,7 +39,7 @@ export async function loadModels( read ) {
 
 		const file = parseGLB( await read( l.model ) );
 		const extras = file.json.nodes.map( ( n ) => n.extras ).find( ( e ) => e && e.outline );
-		landmarks.set( l.name.toLowerCase(), { parts: file.meshes.flatMap( ( _, m ) => partsOf( file, m ) ), plan: extras ? planOf( extras ) : null } );
+		landmarks.set( keyOf( l ), { parts: file.meshes.flatMap( ( _, m ) => partsOf( file, m ) ), plan: extras ? planOf( extras ) : null } );
 
 	} ) );
 	return { kit, landmarks };

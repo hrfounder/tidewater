@@ -41,7 +41,7 @@ const HALL_AREA = 300, HALL_SPAN = 11, OUTBUILDING_AREA = 45;
 
 export class Buildings {
 
-	// places: places.json; center ( east, north ); landmarks: Map( name, lower case -> { faces, plan } );
+	// places: places.json; center ( east, north ); landmarks: Map( key -> { name or at, faces, plan } );
 	// survey: survey.json, { shifts, roofs, gain } in the order of the map's buildings; seen: the
 	// records of Survey.js SEEN, each with a point on its building; parted: the records of Survey.js
 	// PARTED, the footprints that are several buildings; added: those of ADDED, the buildings the
@@ -54,11 +54,12 @@ export class Buildings {
 		const [ cE, cN ] = center;
 		// ( a landmark stays where the map has it: its model's script was measured against that place,
 		// on the orthophoto, by eye, which the survey's fit is not a match for )
-		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN, landmarks.has( ( b.name || '' ).toLowerCase() ) ? [ 0, 0 ] : survey.shifts[ index ], survey.roofs[ index ] ) );
+		const named = ( b ) => { const own = b.name && landmarks.get( b.name.toLowerCase() ); return own && own.name ? b.name.toLowerCase() : null; };
+		this.list = places.buildings.map( ( b, index ) => footprint( b, index, cE, cN, named( b ) ? [ 0, 0 ] : survey.shifts[ index ], survey.roofs[ index ] ) );
 		for ( const b of this.list ) {
 
-			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
-			if ( own && own.plan ) plant( b, own, places.roads, cE, cN );
+			b.landmark = named( b );
+			if ( b.landmark && landmarks.get( b.landmark ).plan ) plant( b, landmarks.get( b.landmark ), places.roads, cE, cN );
 
 		}
 
@@ -110,6 +111,17 @@ export class Buildings {
 
 		}
 
+		// a house modelled whole: found by a point in its footprint, now that the footprints are what
+		// the survey makes them
+		for ( const [ key, own ] of landmarks ) if ( own.at ) {
+
+			const b = this.list.find( ( b ) => inRing( b.ring, own.at[ 0 ], own.at[ 1 ] ) );
+			if ( ! b ) throw new Error( `the model ${ own.model } is to stand at ${ own.at }, and no footprint is there` );
+			b.landmark = key;
+			if ( own.plan ) plant( b, own, places.roads, cE, cN );
+
+		}
+
 		for ( const record of seen ) {
 
 			const b = this.list.find( ( b ) => inRing( b.ring, record.at[ 0 ], record.at[ 1 ] ) );
@@ -133,14 +145,14 @@ export class Buildings {
 	}
 
 	// roads: the Site's Roads; ground( x, z ): the dry ground's height; landmarks: the buildings that
-	// have a model, as Map( name, lower case -> { faces: the name of the street it fronts } )
+	// have a model, as Map( key -> { faces: the name of the street it fronts } )
 	settle( { roads, ground, landmarks } ) {
 
 		for ( const b of this.list ) {
 
 			// the street it faces: the nearest one (a landmark's own, if it says which), and the local
 			// axis that points at it becomes +z
-			const own = landmarks.get( ( b.name || '' ).toLowerCase() );
+			const own = b.landmark && landmarks.get( b.landmark );
 			const f = roads.nearest( b.x, b.z, FRONTAGE_REACH, ( r ) => r.street && ( ! own || r.name === own.faces ) );
 			b.frontage = f;
 			// ( a planned landmark was faced when its plan was set down )
@@ -154,8 +166,7 @@ export class Buildings {
 
 		for ( const b of this.list ) {
 
-			const key = ( b.name || '' ).toLowerCase();
-			b.kind = landmarks.has( key ) ? 'landmark'
+			b.kind = b.landmark ? 'landmark'
 				: b.class === 'church' ? 'church'
 				: b.seen.is === 'hall' ? 'hall'
 				: b.area >= HALL_AREA && 2 * Math.min( b.pieces[ 0 ].hu, b.pieces[ 0 ].hv ) >= HALL_SPAN ? 'hall'
@@ -389,7 +400,7 @@ function plant( b, own, roads, cE, cN ) {
 
 	}
 
-	if ( ! near || d > FRONTAGE_REACH ) throw new Error( `${ b.name } is said to face ${ own.faces }, and the map has no such street within ${ FRONTAGE_REACH } m of it` );
+	if ( ! near || d > FRONTAGE_REACH ) throw new Error( `${ b.name || own.model } is said to face ${ own.faces }, and the map has no such street within ${ FRONTAGE_REACH } m of it` );
 	face( b, near[ 0 ] - b.x, near[ 1 ] - b.z );
 	const P = own.plan, W = ( [ u, v ] ) => toWorld( b, u, v );
 	b.ring = P.outline.map( W );

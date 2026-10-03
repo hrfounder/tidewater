@@ -3,7 +3,7 @@ import { MeshBuilder } from './MeshBuilder.js';
 import { createVillageMaterial, SURFACE } from './VillageMaterial.js';
 import { archetypeOf, coverSeen, FENCES } from './Archetypes.js';
 import { gable, leanTo, hip, visible, onSlope, roofHeight } from './Roof.js';
-import { LANDMARKS } from '../Landmarks.js';
+import { LANDMARKS, keyOf } from '../Landmarks.js';
 import { buildBridges, LAMP_PAINT } from './Bridges.js';
 import { buildMarina } from './Marina.js';
 import { buildRailway } from './Railway.js';
@@ -101,7 +101,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 		const B = builder( b.x, b.z ), A = archetypeOf( b );
 		let top;
-		if ( b.kind === 'landmark' ) top = setDown( B, b, models.landmarks.get( b.name.toLowerCase() ) );
+		if ( b.kind === 'landmark' ) top = setDown( B, b, models.landmarks.get( b.landmark ) );
 		else if ( A ) top = raise( B, b, A, models.kit, terrain );
 		else { waiting.push( b ); continue; }
 		built[ b.kind ] = ( built[ b.kind ] || 0 ) + 1;
@@ -290,7 +290,7 @@ function frame( b ) {
 // a landmark's model, stood on its footprint
 function setDown( B, b, model ) {
 
-	const F = frame( b ), surfaces = LANDMARKS.find( ( l ) => l.name.toLowerCase() === b.name.toLowerCase() ).surfaces;
+	const F = frame( b ), surfaces = LANDMARKS.find( ( l ) => keyOf( l ) === b.landmark ).surfaces;
 	let top = b.floor;
 	for ( const part of model.parts ) {
 

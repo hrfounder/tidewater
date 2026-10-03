@@ -113,9 +113,7 @@ export const ADDED = [
 //   roof      its roof's colour, where it is not what the orthophoto has (a roof laid since): [ r, g, b ]
 //   source    where it was seen: the frame or the sheet
 export const SEEN = [
-	// the municipality of Andrijaševci on Vinkovačka ulica: two storeys of yellow render, white windows
-	// in rows; and the lower yellow wing north of it with the post office
-	{ at: [ 22.5, - 117.5 ], is: 'public', storeys: 2, walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone1 at 30-33 s; sheet opcina' },
+	// the lower yellow wing north of the municipality (the municipality itself is a model: Landmarks.js)
 	{ at: [ 18, - 131 ], is: 'public', storeys: 1, walls: [ 'render', [ 228, 186, 96 ] ], form: 'gable', source: 'drone1 at 30 s; sheet opcina' },
 	// the parish house on Vinkovačka ulica: two storeys, cream, a red tiled roof, its gable to the street
 	{ at: [ - 31, - 49 ], is: 'house', storeys: 2, walls: [ 'render', [ 236, 230, 214 ] ], form: 'gable', source: 'drone1 at 36 s' },

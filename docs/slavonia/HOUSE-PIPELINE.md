@@ -32,7 +32,7 @@ current: a lesson learned on a house goes in here, not only in the chat.
 | Declare | `src/regions/slavonia/Landmarks.js`: `{ at, faces, model, surfaces: HOUSE }` | the house stands on its footprint |
 | Checks | `node tools/checks/site.mjs` (also village, terrain, flora), `npm test` | must all pass before a commit |
 | Critic, above | `python tools/geodata/topdown.py <name> x,z [half]` | orthophoto beside the game from straight above |
-| Critic, street | `node test/world-slavonia.mjs <dir> --look=<n>:x,y,z:tx,ty,tz:fov` from a photo's GPS (y = ground + 1.7) | the game from where the photo was taken |
+| Critic, street | `python tools/geodata/fromphoto.py <name> <fetched dir> N [N ...]` | each photo beside the game rendered from its GPS spot and heading |
 
 ## Pass 1 for an area, in order
 
@@ -65,6 +65,14 @@ current: a lesson learned on a house goes in here, not only in the chat.
   well-exposed square-on face, and bring sunlit samples down about a quarter.
 
 ## Lessons from 642
+- **Yard walls and gates** on the street line: house.py `walls` (gates are leaves in the wall's line).
+  Keep a house's grounds (its `yard`) off the neighbours' footprints: the site check fails otherwise.
+- The village builds a **hipped roof only over a one-rectangle footprint**; an L-shaped building
+  (a corner shop) needs its own model to get its real roof.
+- SEEN `is` takes an archetype name (`shed`, `house`, `longhouse`, ...), not the village's kind
+  (`outbuilding`): the wrong one leaves the building unbuilt (village check).
+- A SEEN or MOVED `at` must lie inside the footprint *as the survey moved it*: places.json + the
+  survey's shifts (plan.mjs needs the world to load, so it cannot help while a record is wrong).
 
 - The front was **not flat**: the garage bay stands one brick back (house.py `recesses`). Look for
   the shadow line round a bay.

@@ -38,6 +38,9 @@ export const GONE = [
 // along the walls, and a paved yard's edge can outdo a roof's): `at` a point in the footprint where
 // the survey has it, `by` the metres [ east, south ] from there to where its roof is on the sheet.
 export const MOVED = [
+	// north-west of Ivan's house: the white house (646) stands 2.7 m from it, the passage between them
+	// closed by a grey metal gate (house shot 4); the map had it 1.6 m closer
+	{ at: [ - 200.7, 218.2 ], by: [ - 1.28, - 1.12 ], source: 'TerraFrame kolodvorsk-boso: house 4' },
 	// along Kolodvorska ulica (s 1378-1505): footprints that reached over the pavement, set back behind it
 	{ at: [ - 277.4, 162.6 ], by: [ 0.17, - 0.17 ], source: 'unrolled Kolodvorska ulica at 1381: behind its pavement' },
 	{ at: [ - 280.4, 202.9 ], by: [ - 1.85, 1.85 ], source: 'unrolled Kolodvorska ulica at 1395: behind its pavement' },
@@ -73,6 +76,9 @@ export const MOVED = [
 // tools/geodata/survey.py's own measure; the Site brings it to the game's brightness with the
 // survey's gain). SEEN says the rest of each by a point in it.
 export const ADDED = [
+	// the wayside shrine at the end of Kolodvorska ulica, by the junction (Ivan's TerraFrame photos,
+	// vicinity 13-19: where the views from beside it cross); its model is shrine-kolodvorska.glb
+	{ at: [ - 186.5, 269.0 ], size: [ 1.6, 1.6 ], turn: 36, roof: [ 52, 58, 60 ], source: 'TerraFrame kolodvorsk-boso: vicinity 13-19' },
 	// South of St Roch's the map has nothing between the churchyard and the yard of the shop, and
 	// there stand: the house on Vinkovačka ulica behind the church; the long row along the churchyard's
 	// south side and the house at its east end, on Ulica Stjepana Radića; behind the row a wing, a
@@ -131,6 +137,19 @@ export const ADDED = [
 //   roof      its roof's colour, where it is not what the orthophoto has (a roof laid since): [ r, g, b ]
 //   source    where it was seen: the frame or the sheet
 export const SEEN = [
+	// Kolodvorska ulica round Ivan's house (642), from his TerraFrame photos of 2026-10-03 (survey
+	// kolodvorsk-boso): first, rough pass. North-west of 642: one storey of white render under red tiles,
+	// grey surrounds to its windows, a pink plinth (vicinity shot 23, house shot 1)
+	{ at: [ - 200.7, 218.2 ], is: 'house', storeys: 1, walls: [ 'render', [ 236, 234, 228 ] ], form: 'hip', roof: [ 92, 50, 44 ], source: 'TerraFrame kolodvorsk-boso: vicinity 23, house 1' },
+	// south-east of 642, past its yard's wall and gates: the long white building along the pavement, a
+	// band of bare brick at its foot, brown tiles (vicinity 6, 7)
+	{ at: [ - 194, 246.5 ], is: 'longhouse', storeys: 1, walls: [ 'render', [ 232, 230, 222 ] ], form: 'gable', source: 'TerraFrame kolodvorsk-boso: vicinity 6, 7' },
+	// the corner shop (its door 'ČOP' on the cut corner to the junction): white render over a plinth of
+	// grey granite tiles, a brown hipped roof (vicinity 8-12, 16)
+	{ at: [ - 181.8, 255.2 ], is: 'house', storeys: 1, walls: [ 'render', [ 234, 232, 226 ] ], form: 'hip', source: 'TerraFrame kolodvorsk-boso: vicinity 8-12, 16' },
+	// the yard buildings behind 642: old, whitewashed, one storey, roofs of corrugated sheet (house shot 2)
+	{ at: [ - 198.4, 231.1 ], is: 'shed', storeys: 1, walls: [ 'render', [ 226, 224, 218 ] ], source: 'TerraFrame kolodvorsk-boso: house 2' },
+	{ at: [ - 195.7, 227.6 ], is: 'shed', storeys: 1, walls: [ 'render', [ 226, 224, 218 ] ], source: 'TerraFrame kolodvorsk-boso: house 2' },
 	// the parish house on Vinkovačka ulica: two storeys, cream, a red tiled roof, its gable to the street
 	{ at: [ - 31, - 49 ], is: 'house', storeys: 2, walls: [ 'render', [ 236, 230, 214 ] ], form: 'gable', source: 'drone1 at 36 s' },
 	// the restaurant by the bridge's south end: one storey of dark boards under a bright red roof laid
@@ -217,6 +236,14 @@ export const BESIDE = [
 	{ along: 'Kolodvorska ulica', from: [ - 294.1, 188.3 ], to: [ - 276.4, 206.0 ], out: [ 6.5, 7.5 ], of: 'paving', colour: [ 95, 92, 86 ], source: 'unrolled Kolodvorska ulica 1378-1403' },
 	{ along: 'Kolodvorska ulica', from: [ - 267.0, 215.2 ], to: [ - 235.2, 246.3 ], out: [ 6.5, 7.5 ], of: 'paving', colour: [ 90, 90, 84 ], source: 'unrolled Kolodvorska ulica 1416-1460' },
 	{ along: 'Kolodvorska ulica', from: [ - 235.2, 246.3 ], to: [ - 203.6, 277.4 ], out: [ 6.5, 7.5 ], of: 'paving', colour: [ 90, 90, 84 ], source: 'unrolled Kolodvorska ulica 1460-1505' },
+	// Ulica Matije Gupca past the corner shop by that junction (s 1222-1300): on the shop's side the
+	// marked bays across the verge and the pavement behind them, on the other a pale band at the kerb
+	{ along: 'Ulica Matije Gupca', from: [ - 180.6, 274.6 ], to: [ - 152.1, 249.5 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'unrolled Ulica Matije Gupca 1224-1262' },
+	{ along: 'Ulica Matije Gupca', from: [ - 152.1, 249.5 ], to: [ - 123.6, 224.4 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'unrolled Ulica Matije Gupca 1262-1300' },
+	{ along: 'Ulica Matije Gupca', from: [ - 182.9, 271.9 ], to: [ - 154.4, 246.8 ], out: [ 5.5, 7 ], of: 'paving', colour: [ 103, 102, 98 ], source: 'unrolled Ulica Matije Gupca 1224-1262' },
+	{ along: 'Ulica Matije Gupca', from: [ - 154.4, 246.8 ], to: [ - 125.9, 221.7 ], out: [ 5.5, 7 ], of: 'paving', colour: [ 103, 102, 98 ], source: 'unrolled Ulica Matije Gupca 1262-1300' },
+	{ along: 'Ulica Matije Gupca', from: [ - 175.2, 283.8 ], to: [ - 145.9, 258.1 ], out: [ 0.1, 1.5 ], of: 'paving', colour: [ 91, 90, 88 ], source: 'unrolled Ulica Matije Gupca 1222-1261' },
+	{ along: 'Ulica Matije Gupca', from: [ - 145.9, 258.1 ], to: [ - 116.6, 232.3 ], out: [ 0.1, 1.5 ], of: 'paving', colour: [ 91, 90, 88 ], source: 'unrolled Ulica Matije Gupca 1261-1300' },
 	// before St Andrew's: bays on the church's side of Ulica Matije Gupca, and the pavement along its fence
 	{ along: 'Ulica Matije Gupca', from: [ - 57, 180 ], to: [ - 41, 164 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'sheet andrew-ring1; drone5 f012' },
 	{ along: 'Ulica Matije Gupca', from: [ - 57, 180 ], to: [ - 41, 164 ], out: [ 5.5, 7.3 ], of: 'paving', source: 'sheet andrew-ring1; drone5 f012' },

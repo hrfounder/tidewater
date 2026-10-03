@@ -14,6 +14,8 @@ const ring = ( r ) => r.map( ( p ) => [ + p[ 0 ].toFixed( 2 ), + p[ 1 ].toFixed(
 const plan = {
 	center: readJSON( 'index.json' ).center,
 	buildings: site.buildings.list.map( ( b ) => ring( b.ring ) ),
+	// each one's index in places.json (as SEEN, MOVED and the sheets' labels know it), and its part
+	index: site.buildings.list.map( ( b ) => [ b.index, b.part || 0 ] ),
 	// the rectangles the game builds each building from, as it tests what stands on them: four corners each
 	pieces: site.buildings.list.map( ( b ) => b.pieces.map( ( p ) => ring( [ [ - 1, - 1 ], [ 1, - 1 ], [ 1, 1 ], [ - 1, 1 ] ].map( ( [ a, c ] ) => toWorld( b, p.u + a * p.hu, p.v + c * p.hv ) ) ) ) ),
 	grounds: site.buildings.list.filter( ( b ) => b.grounds ).map( ( b ) => ring( b.grounds.ring ) ),

@@ -27,6 +27,9 @@ the state orthophoto for the depth. The map's outline is not the house (Ivan): t
             ground floor on the north-west (left) side.
   back      one window upstairs with an air conditioner's unit beside it (shot 2); behind the
             garage no room but the open drive through to the yard (the "anfor", Ivan).
+  yard      its walls on the street line: south-east of the house 5.9 m of white render, up to the next house's wall,, the yard's
+            brown sheet gate and a gate of boards in it (house shots 2-4, vicinity 2-5); north-west,
+            the grey metal gate to the passage beside the neighbour (house shots 4, 8).
   later     the mailbox and the doorbell on the gate-side pier: the detail pass.
   colours   read off the sunlit photos and brought down to the surfaces' own: the brick, the tiles,
             the beige plinth, the brown garage door; the gutters galvanised.
@@ -50,6 +53,7 @@ SLAB = 3.2                             # the upper floor's slab: the concrete ba
 SPLIT = 4.4                            # the left (room's) part of the front, from its left corner
 POST = 0.34                            # the garage bay's concrete post at the right corner
 BAY = 0.12                             # how far the garage bay stands back: one brick (Ivan)
+YARD = 5.9                             # the yard's street wall, from the house's corner to the next house's (722's) wall
 UPPER = SLAB + 1.0                     # the upper windows' sills
 SHUT = dict( panes=[ 2, 1 ], kind='window', box=0.18 )
 ROOF = dict( form='hip', pitch=32, over=0.5, cover='tile', fascia=( 'gutter', 0.16 ), soffit='soffit' )
@@ -72,6 +76,10 @@ SPEC = dict(
 		'door': ( ( 110, 82, 66 ), 0.60, 0.1 ),          # the brown garage door (shot 4, sunlit 130 99 81)
 		'unit': ( ( 226, 226, 222 ), 0.50, 0.1 ),
 		'shade': ( ( 34, 32, 30 ), 0.95, 0.0 ),          # the drive-through's dark, seen from the yard
+		'render': ( ( 232, 230, 222 ), 0.92, 0.0 ),      # the yard wall's white render
+		'gate': ( ( 120, 72, 48 ), 0.60, 0.3 ),          # the brown sheet gate
+		'boards': ( ( 128, 100, 74 ), 0.85, 0.0 ),       # the gate of boards
+		'steel': ( ( 112, 118, 120 ), 0.50, 0.5 ),       # the grey metal gate
 	},
 	parts=dict( frame='frame', glass='glass', box='box', shutter='shutter', slat='slat', sill='sill' ),
 	blocks=[ dict( x=[ X0, X1 ], y=[ Y0, Y1 ], eave=EAVE, plinth=( 0.35, 'plinth' ), wall='brick', roof=ROOF,
@@ -96,6 +104,13 @@ SPEC = dict(
 	],
 	# the garage bay's concrete post at the right corner
 	strips=[ dict( block=0, side='front', at=W - POST / 2, w=POST, mat='stone', out=0.02 ) ],
+	# the yard's walls on the street line, a little behind the house's front
+	walls=[ dict( points=[ ( X1, Y0 + 0.15 ), ( X1 + YARD, Y0 + 0.15 ) ], height=2.1, thick=0.25, mat='render', cap='plinth',
+			gates=[ dict( at=1.9, w=3.1, h=2.0, mat='gate' ), dict( at=4.6, w=2.0, h=1.9, mat='boards' ) ] ),
+		dict( points=[ ( X0 - 2.9, Y0 + 0.15 ), ( X0, Y0 + 0.15 ) ], height=1.9, thick=0.25, mat='render', cap='plinth',
+			gates=[ dict( at=1.45, w=2.6, h=1.8, mat='steel' ) ] ) ],
+	# the ground it stands on: the house and the strip of yard behind those walls
+	yard=[ ( X0 - 2.9, Y0 ), ( X1 + YARD, Y0 ), ( X1 + YARD, Y0 + 1.0 ), ( X1, Y0 + 1.0 ), ( X1, Y1 ), ( X0, Y1 ), ( X0, Y0 + 1.0 ), ( X0 - 2.9, Y0 + 1.0 ) ],
 	chimneys=[ dict( x=X0 + 4.3, y=Y0 + 3.5, top=EAVE + 3.0, side=0.5, mat='brick' ) ],
 )
 # ( the doors' frames and leaves are the garage door's brown; a leaf names its part here )

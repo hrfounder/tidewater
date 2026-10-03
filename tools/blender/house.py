@@ -48,6 +48,10 @@ A SPEC is plain data:
                       thickness over the ground as the churches' are; material 'paving'
   fences              fences round its yard: { points: [ [ x, y ], ... ], style } in grounds.py's
                       fence style (its iron is the material 'iron')
+  walls               solid yard walls along the street: { points: [ [ x, y ], ... ], height, thick,
+                      mat, cap: the coping's material, gates: [ { at: its middle in metres along the
+                      wall from its first point, w, h, mat } ] }; a gate is a leaf in the wall's line,
+                      with nothing over it
   outline             the plan the game takes for the house, [ [ x, y ], ... ] (default: the rectangle round the blocks)
   yard                the ground the house and its things stand on (default: the outline)
 """
@@ -313,6 +317,24 @@ def build_house( S, spec ):
 			iron_fence( S, a, b, f[ 'style' ] )
 			runs.append( ( a, b, f[ 'style' ][ 'top' ] ) )
 		for x, y in f[ 'points' ]: S.post( x - 0.025, x + 0.025, y - 0.025, y + 0.025, - FOUNDED, f[ 'style' ][ 'top' ], 'iron' )
+	for wl in spec.get( 'walls', [] ):
+		along, th = 0.0, wl[ 'thick' ]
+		for a, b in zip( wl[ 'points' ], wl[ 'points' ][ 1: ] ):
+			L = math.hypot( b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ] ); ux, uy = ( b[ 0 ] - a[ 0 ] ) / L, ( b[ 1 ] - a[ 1 ] ) / L
+			# ( the wall's own frame: t along it from a, d out of its face to the right of its run )
+			W = lambda t, z, d, a=a, ux=ux, uy=uy: ( a[ 0 ] + ux * t + uy * d, a[ 1 ] + uy * t - ux * d, z )
+			gates = sorted( ( g[ 'at' ] - along - g[ 'w' ] / 2, g[ 'at' ] - along + g[ 'w' ] / 2, g ) for g in wl.get( 'gates', [] ) if 0 <= g[ 'at' ] - along <= L )
+			def make( T, L=L, gates=gates ):
+				t = 0.0
+				for g0, g1, g in gates + [ ( L, L, None ) ]:
+					if g0 - t > 1e-3:
+						T.box( t, g0, - th / 2, th / 2, - FOOT, wl[ 'height' ], wl[ 'mat' ] )
+						T.box( t - 0.02, g0 + 0.02, - th / 2 - 0.03, th / 2 + 0.03, wl[ 'height' ], wl[ 'height' ] + 0.06, wl.get( 'cap', wl[ 'mat' ] ) )
+					if g: T.box( g0, g1, - 0.02, 0.02, 0.0, g[ 'h' ], g[ 'mat' ] )
+					t = g1
+			on_wall( S, W, make )
+			runs.append( ( a, b, wl[ 'height' ] ) )
+			along += L
 	for c in spec.get( 'chimneys', [] ):
 		h = c[ 'side' ] / 2
 		S.post( c[ 'x' ] - h, c[ 'x' ] + h, c[ 'y' ] - h, c[ 'y' ] + h, blocks[ 0 ][ 'eave' ], c[ 'top' ], c[ 'mat' ] )

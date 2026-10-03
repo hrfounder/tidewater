@@ -155,9 +155,15 @@ export class Buildings {
 	// again on the ground under the walls, and the distance from the street it faces follows the move.
 	shift( moves, ground ) {
 
-		for ( const { b, dx, dz, yaw } of moves ) {
+		for ( const { b, dx, dz, yaw, pivot } of moves ) {
 
-			if ( yaw !== undefined ) { b.ring = turned( b, yaw ); b.yaw = yaw; }
+			if ( yaw !== undefined ) {
+
+				// ( turned about a pivot: the centre moves round it as the corners do )
+				const ring = turned( b, yaw, pivot ), [ cx, cz ] = turned( { ...b, ring: [ [ b.x, b.z ] ] }, yaw, pivot )[ 0 ];
+				b.ring = ring; b.x = cx; b.z = cz; b.yaw = yaw;
+
+			}
 			b.ring = b.ring.map( ( [ x, z ] ) => [ x + dx, z + dz ] );
 			b.x += dx; b.z += dz;
 			if ( b.frontage ) b.frontage = { ...b.frontage, d: Math.hypot( b.frontage.x - b.x, b.frontage.z - b.z ) };
@@ -320,15 +326,15 @@ export function insideBuilding( b, x, z, margin = 0 ) {
 
 }
 
-// a building's ring turned about its centre to face `yaw`: each corner where it stands in the building's
-// own frame, set down again in the turned one
-export function turned( b, yaw ) {
+// a building's ring turned to face `yaw`, about its centre or a `pivot` [ x, z ]: each corner where it
+// stands in the building's own frame about the pivot, set down again in the turned one
+export function turned( b, yaw, pivot = [ b.x, b.z ] ) {
 
 	const c = Math.cos( b.yaw ), s = Math.sin( b.yaw ), C = Math.cos( yaw ), S = Math.sin( yaw );
 	return b.ring.map( ( [ x, z ] ) => {
 
-		const dx = x - b.x, dz = z - b.z, u = dx * c - dz * s, v = dx * s + dz * c;
-		return [ b.x + u * C + v * S, b.z - u * S + v * C ];
+		const dx = x - pivot[ 0 ], dz = z - pivot[ 1 ], u = dx * c - dz * s, v = dx * s + dz * c;
+		return [ pivot[ 0 ] + u * C + v * S, pivot[ 1 ] - u * S + v * C ];
 
 	} );
 

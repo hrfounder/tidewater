@@ -391,7 +391,9 @@ function raise( B, b, A, kit, terrain ) {
 	const cover = { color: lin( seen || picked ), rough: 0.85, surface: seen ? coverSeen( seen ) : A.roof.cover[ 0 ], seed };
 	const infill = A.gable ? { color: lin( pick( A.gable[ 1 ] ) ), rough: 0.9, surface: A.gable[ 0 ], seed } : wall;
 	const paints = { ...KIT_PAINT, joinery, surround: trim, leaf: { color: lin( pick( A.doors ) ), rough: 0.6, surface: SURFACE.plain, seed } };
-	const plinth = { ...CONCRETE, seed };
+	// the plinth: as seen, or the archetype's colours (a pick made either way), or bare concrete
+	const plinthPicked = A.plinths ? pick( A.plinths ) : null;
+	const plinth = b.seen.plinth ? { ...CONCRETE, color: lin( b.seen.plinth ), seed } : plinthPicked ? { ...CONCRETE, color: lin( plinthPicked ), seed } : { ...CONCRETE, seed };
 
 	// ---- the roofs: a gable on every piece but the small ones that lean on a larger; a hip on a
 	// building of one piece whose archetype has one

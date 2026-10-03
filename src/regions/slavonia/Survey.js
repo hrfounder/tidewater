@@ -146,6 +146,7 @@ export const ADDED = [
 //   form      its roof's: 'gable' or 'hip'
 //   pitch     its roof's pitch (degrees), where it is not its kind's: a flat roof falls 3
 //   roof      its roof's colour, where it is not what the orthophoto has (a roof laid since): [ r, g, b ]
+//   plinth    its plinth's colour, where it is painted: [ r, g, b ]
 //   blank     the faces seen without a window or a door: [ 'street', 'side', 'back' ] (a yard building
 //             with its back wall on the pavement)
 //   source    where it was seen: the frame or the sheet
@@ -153,10 +154,10 @@ export const SEEN = [
 	// Kolodvorska ulica round Ivan's house (642), from his TerraFrame photos of 2026-10-03 (survey
 	// kolodvorsk-boso): first, rough pass. North-west of 642: one storey of white render under red tiles,
 	// grey surrounds to its windows, a pink plinth (vicinity shot 23, house shot 1)
-	{ at: [ - 213.4, 232.0 ], is: 'house', storeys: 1, walls: [ 'render', [ 236, 234, 228 ] ], form: 'hip', roof: [ 92, 50, 44 ], source: 'TerraFrame kolodvorsk-boso: vicinity 23, house 1' },
+	{ at: [ - 213.4, 232.0 ], is: 'house', storeys: 1, walls: [ 'render', [ 236, 234, 228 ] ], form: 'hip', roof: [ 92, 50, 44 ], plinth: [ 214, 160, 150 ], source: 'TerraFrame kolodvorsk-boso: vicinity 23, house 1' },
 	// south-east of 642, past its yard's wall and gates: the neighbours' yard building, its back a long
 	// blank white wall on the pavement with bare brick at its foot, under a flat roof (vicinity 4-7, Ivan)
-	{ at: [ - 194, 246.5 ], is: 'shed', storeys: 1, walls: [ 'render', [ 232, 230, 222 ] ], pitch: 3, blank: [ 'street', 'side' ], source: 'TerraFrame kolodvorsk-boso: vicinity 4-7; Ivan' },
+	{ at: [ - 194, 246.5 ], is: 'shed', storeys: 1, walls: [ 'render', [ 232, 230, 222 ] ], pitch: 3, plinth: [ 150, 98, 74 ], blank: [ 'street', 'side' ], source: 'TerraFrame kolodvorsk-boso: vicinity 4-7; Ivan' },
 	// the yard buildings behind 642: old, whitewashed, one storey, roofs of corrugated sheet (house shot 2)
 	{ at: [ - 198.4, 231.1 ], is: 'shed', storeys: 1, walls: [ 'render', [ 226, 224, 218 ] ], source: 'TerraFrame kolodvorsk-boso: house 2' },
 	{ at: [ - 195.7, 227.6 ], is: 'shed', storeys: 1, walls: [ 'render', [ 226, 224, 218 ] ], source: 'TerraFrame kolodvorsk-boso: house 2' },

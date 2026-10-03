@@ -41,6 +41,23 @@ current: a lesson learned on a house goes in here, not only in the chat.
 | Critic, above | `python tools/geodata/topdown.py <name> x,z [half]` | orthophoto beside the game from straight above |
 | Critic, street | `python tools/geodata/fromphoto.py <name> <fetched dir> N [N ...]` | each photo beside the game rendered from its GPS spot and heading |
 
+## Ivan's editor (manual corrections)
+
+`npm run editor` → http://localhost:5195. The town as the game builds it, over the state orthophoto:
+drag a building, Q/E to turn it, S to square it to its street, pick its type, storeys and roof, mark
+it removed, leave a note for the model pass (on a building, or N for a pin on the map). Save writes
+`public/world/<area>/edits.json`; the game applies it after the map and before the rules, and no rule
+moves an edited building again. **Edits are ground truth**: an agent never overrides them, and reads
+the notes before a detail pass (`site.notes`, and `note` on each edited building). Universal: a town
+is a region entry in `tools/editor/server.mjs` (its world, its orthophoto service).
+
+## The village-wide rules (Streets.js)
+
+Wherever a street was not surveyed: a pavement 1.1 m wide in front of the median line of each side's
+house fronts; every house within 4 m of the line is brought onto it, turned square about its mass
+centre if within 20°, unless where it would go is taken. What the rules cannot place, Ivan places in
+the editor.
+
 ## Pass 1 for an area, in order
 
 1. **Fetch** the photos; open `contact.jpg` and `map.jpg`. Note which photo shows which building

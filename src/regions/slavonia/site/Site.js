@@ -16,6 +16,7 @@ import { layStreets } from './Streets.js';
 // (docs/slavonia/DESIGN.md, section 2).
 //
 //   center, datum   where the patch sits on the map grid, and the level of its water above the sea
+//   notes           Ivan's notes from the editor (edits.json): [ { at: [ x, z ], text } ], for the passes to come
 //   water           every body of water, the current, and what a fishing float lies in (Water.js)
 //   roads           the road graph: nodes, and roads between them with their class and level (Roads.js)
 //   rails           the railway: each track's line and level, and its bridges (Rails.js)
@@ -44,19 +45,21 @@ export { waterDatum };
 // ground( x, z ): the height of the dry ground, before anything is cut into it;
 // landmarks: the buildings that have a model of their own, by name in lower case (Landmarks.js),
 // each with the plan its model carries (build/Models.js), if it has one
-export function buildSite( { index, water, places, survey, seen, parted, added, moved, gone, roadsSeen, courts, paths, beside, open, areas, trees, marinas, decks, props, ground, datum, landmarks } ) {
+export function buildSite( { index, water, places, survey, seen, parted, added, moved, gone, roadsSeen, courts, paths, beside, open, areas, trees, marinas, decks, props, ground, datum, landmarks, edits = {} } ) {
 
 	const center = index.center;
 	const buildings = new Buildings( places, { center, landmarks, survey, seen, parted, added, moved, gone } );
 	const rails = new Rails( places, { center, ground, survey } );
 	const roads = new Roads( places, { center, ground, walls: buildings, survey, rails, seen: roadsSeen } );
 	buildings.settle( { roads, ground, landmarks } );
+	// Ivan's corrections (the editor's edits.json), before the rules: what he set stays as he set it
+	buildings.applyEdits( edits, ground );
 	// the street section: the surveyed strips, then the rule's along the rest, which brings the street
 	// fronts onto their pavements; the plots are drawn again from where the houses then stand
 	const surveyed = layBeside( roads, beside );
 	const streets = layStreets( { roads, buildings, plots: buildPlots( buildings, roads, open ), beside: surveyed, ground } );
 	return {
-		center, datum,
+		center, datum, notes: edits.notes || [],
 		water: new Water( water, { center, datum } ),
 		roads, rails, buildings,
 		beside: [ ...surveyed, ...streets.strips ],

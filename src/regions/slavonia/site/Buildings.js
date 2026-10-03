@@ -150,6 +150,33 @@ export class Buildings {
 
 	}
 
+	// Ivan's corrections from the editor (tools/editor, public/world/<area>/edits.json), over what the
+	// map and the rules have: { buildings: { 'index.part': { x, z, yaw, is, storeys, form, gone, note } } }.
+	// x, z: where the building's centre stands; yaw: the way it faces (degrees, as `yaw` here); the rest
+	// as Survey.js SEEN has them. An edited building is the editor's: no rule moves it after (`edited`).
+	// A landmark stands where its model says and is not edited here.
+	applyEdits( edits, ground ) {
+
+		const moves = [], gone = new Set();
+		for ( const b of this.list ) {
+
+			const e = edits.buildings && edits.buildings[ b.index + '.' + ( b.part || 0 ) ];
+			if ( ! e || b.landmark ) continue;
+			b.edited = true;
+			if ( e.gone ) { gone.add( b ); continue; }
+			for ( const k of [ 'is', 'storeys', 'form' ] ) if ( e[ k ] !== undefined ) b.seen[ k ] = e[ k ];
+			if ( e.note ) b.note = e.note;
+			if ( e.x !== undefined || e.yaw !== undefined ) moves.push( { b, dx: ( e.x ?? b.x ) - b.x, dz: ( e.z ?? b.z ) - b.z, yaw: e.yaw !== undefined ? e.yaw * Math.PI / 180 : undefined } );
+
+		}
+
+		if ( gone.size ) this.list = this.list.filter( ( b ) => ! gone.has( b ) );
+		this.shift( moves, ground );
+		// ( a building made a hall in the editor is one: the kinds were found before the edits )
+		for ( const b of this.list ) if ( b.edited && b.seen.is === 'hall' ) b.kind = 'hall';
+
+	}
+
 	// Move settled buildings: [ { b, dx, dz, yaw } ] (the street front squared and brought up to its
 	// pavement, Streets.js): turned about its centre to `yaw` (if given), then moved. The floor is found
 	// again on the ground under the walls, and the distance from the street it faces follows the move.

@@ -68,12 +68,14 @@ export async function loadWorld( read = fetchFile() ) {
 	const tile = ( file ) => read( TILES + file );
 	const json = async ( file ) => JSON.parse( new TextDecoder().decode( await tile( file ) ) );
 	const index = await json( 'index.json' );
+	// ( edits.json: Ivan's corrections from the editor, tools/editor; none yet is none )
+	const edits = json( 'edits.json' ).catch( () => ( {} ) );
 	const [ water, places, survey, models ] = await Promise.all( [ json( index.water ), json( 'places.json' ), json( 'survey.json' ), loadModels( read ) ] );
 	const datum = waterDatum( water, index.center );
 	const terrain = await TileTerrain.load( { index, readFile: tile, size: DOMAIN, datum } );
 	// each landmark as it is declared, with what its model says of itself on the ground
 	const landmarks = new Map( LANDMARKS.map( ( l ) => [ keyOf( l ), { ...l, plan: models.landmarks.get( keyOf( l ) ).plan } ] ) );
-	const site = buildSite( { index, water, places, survey, seen: SEEN, parted: PARTED, added: ADDED, moved: MOVED, gone: GONE, roadsSeen: ROADS, courts: COURTS, paths: PATHS, beside: BESIDE, open: OPEN, areas: AREAS, trees: TREES, marinas: MARINAS, decks: DECKS, props: PROPS, datum, landmarks, ground: ( x, z ) => terrain.heightAt( x, z ) } );
+	const site = buildSite( { index, water, places, survey, seen: SEEN, parted: PARTED, added: ADDED, moved: MOVED, gone: GONE, roadsSeen: ROADS, courts: COURTS, paths: PATHS, beside: BESIDE, open: OPEN, areas: AREAS, trees: TREES, marinas: MARINAS, decks: DECKS, props: PROPS, datum, landmarks, edits: await edits, ground: ( x, z ) => terrain.heightAt( x, z ) } );
 	gradeTerrain( terrain, site );
 	occupy( site, terrain, models.kit );
 	return { site, terrain, models };

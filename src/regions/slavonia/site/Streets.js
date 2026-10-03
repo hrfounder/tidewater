@@ -87,6 +87,7 @@ export function layStreets( { roads, buildings, plots, beside, ground } ) {
 			// the houses within FLUSH of the line, squared to the street and onto the line
 			for ( const p of run ) {
 
+				if ( p.house.edited ) continue;
 				const b = p.house, s = b.frontage.s, [ ax, az ] = pointAt( road, s, 0, side ), [ bx, bz ] = pointAt( road, s, 1, side );
 				// ( the street's way at the house: its local +z, the side that faces the street, along it )
 				const square = Math.atan2( ax - bx, az - bz );

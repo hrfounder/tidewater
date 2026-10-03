@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Town editor</title>
+<style>
+	:root { --bg: #14181a; --panel: #1d2326; --ink: #e8ecea; --muted: #9aa5a0; --accent: #c2ed89; --warn: #ff8a6b; --line: #33403b; }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--ink); font: 13px system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+	#map { flex: 1; position: relative; cursor: grab; }
+	canvas { display: block; width: 100%; height: 100%; }
+	#side { width: 320px; background: var(--panel); border-left: 1px solid var(--line); padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+	h1 { font-size: 15px; margin: 0; }
+	h2 { font-size: 12px; margin: 0 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+	label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0; }
+	select, textarea, input[type=number] { background: #0f1214; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px; font: inherit; }
+	textarea { width: 100%; min-height: 70px; resize: vertical; }
+	button { background: #2a3430; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+	button.primary { background: var(--accent); color: #14181a; border: none; font-weight: 600; }
+	button:disabled { opacity: .4; cursor: default; }
+	.row { display: flex; gap: 6px; flex-wrap: wrap; }
+	.muted { color: var(--muted); }
+	.keys { color: var(--muted); font-size: 12px; line-height: 1.6; }
+	.keys b { color: var(--ink); font-weight: 600; }
+	#status { min-height: 18px; }
+	.dirty { color: var(--warn); }
+	#notes div { padding: 4px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+	@media (max-width: 760px) { body { flex-direction: column; } #side { width: 100%; height: 45vh; border-left: none; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div id="map"><canvas id="c"></canvas></div>
+<div id="side">
+	<h1>Town editor</h1>
+	<div id="status" class="muted">Loading the town…</div>
+	<div class="row">
+		<button id="save" class="primary" disabled>Save (Ctrl+S)</button>
+		<button id="reload">Rebuild town</button>
+	</div>
+	<div>
+		<h2>Building</h2>
+		<div id="sel" class="muted">Click a building on the map.</div>
+		<div id="form" hidden>
+			<label>Type <select id="is"></select></label>
+			<label>Storeys <select id="storeys"><option value="">as built</option><option>1</option><option>2</option><option>3</option></select></label>
+			<label>Roof <select id="form-roof"><option value="">as built</option><option>gable</option><option>hip</option></select></label>
+			<label>Removed (not there) <input type="checkbox" id="gone"></label>
+			<div class="row"><button id="square">Square to street (S)</button><button id="undo">Reset this building</button></div>
+			<h2 style="margin-top:10px">Note for the model pass</h2>
+			<textarea id="note" placeholder="What is wrong with this house, what it really looks like…"></textarea>
+		</div>
+	</div>
+	<div>
+		<h2>Show</h2>
+		<div class="row">
+			<label><input type="checkbox" id="showOrtho" checked> orthophoto</label>
+			<label><input type="checkbox" id="showBuildings" checked> buildings</label>
+			<label><input type="checkbox" id="showStreets" checked> streets</label>
+		</div>
+	</div>
+	<div>
+		<h2>Notes on the map</h2>
+		<div id="notes" class="muted">N: drop a note where the mouse is.</div>
+		<div id="noteEdit" hidden><textarea id="noteText"></textarea><div class="row"><button id="noteDelete">Delete note</button></div></div>
+	</div>
+	<div class="keys">
+		<b>Drag</b> a building to move it · <b>drag empty</b> ground to pan · <b>wheel</b> to zoom<br>
+		<b>Q / E</b> turn 1° (Shift: 5°) · <b>arrows</b> nudge 10 cm (Shift: 1 m)<br>
+		<b>S</b> square to street · <b>Del</b> removed / back · <b>N</b> note · <b>Esc</b> deselect<br>
+		Green: edited by you · purple: modelled house · red: removed.<br>
+		Save writes the edits; <b>Rebuild town</b> shows them as the game builds the town (pavements follow).
+	</div>
+</div>
+<script>
+const $ = ( id ) => document.getElementById( id );
+const canvas = $( 'c' ), ctx = canvas.getContext( '2d' );
+let W = null;                         // the town from /api/world
+let edits = { buildings: {}, notes: [] }, dirty = false;
+let view = { x: - 203, z: 236, s: 6 };  // the middle of the view (town metres) and pixels a metre
+let sel = null, selNote = null, drag = null, mouse = [ 0, 0 ];
+const tiles = new Map();
+const TILE = 50;                      // an orthophoto tile's side (m)
+// The service stamps its mark across the middle of every picture it sends: a tile is asked for as the
+// corner of a picture SPAN tiles across, and only that corner is drawn
+const SPAN = 4;
+
+// ---- the town
+async function loadWorld() {
+
+	$( 'status' ).textContent = 'Building the town as the game does (a few seconds)…';
+	const r = await fetch( '/api/world' );
+	if ( ! r.ok ) { $( 'status' ).textContent = 'Could not build the town: ' + await r.text(); return; }
+	W = await r.json();
+	edits = W.edits; edits.buildings = edits.buildings || {}; edits.notes = edits.notes || [];
+	$( 'is' ).innerHTML = '<option value="">as built</option>' + W.archetypes.map( ( a ) => `<option>${ a }</option>` ).join( '' );
+	setDirty( false ); refreshNotes(); select( sel && W.buildings.find( ( b ) => b.key === sel.key ) );
+	$( 'status' ).textContent = `${ W.buildings.length } buildings · ${ Object.keys( edits.buildings ).length } edited · ${ edits.notes.length } notes`;
+	draw();
+
+}
+
+function setDirty( d ) { dirty = d; $( 'save' ).disabled = ! d; $( 'save' ).classList.toggle( 'dirty', d ); }
+function editOf( b ) { return edits.buildings[ b.key ] || ( edits.buildings[ b.key ] = {} ); }
+function cleanEdit( b ) { const e = edits.buildings[ b.key ]; if ( e && ! Object.keys( e ).length ) delete edits.buildings[ b.key ]; }
+
+// a building's ring where the edits put it: turned about its centre to the edit's yaw, then moved
+function ringOf( b ) {
+
+	const e = edits.buildings[ b.key ] || {};
+	const x = e.x ?? b.x, z = e.z ?? b.z, yaw = ( e.yaw ?? b.yaw ) * Math.PI / 180, y0 = b.yaw * Math.PI / 180;
+	const c = Math.cos( y0 ), s = Math.sin( y0 ), C = Math.cos( yaw ), S = Math.sin( yaw );
+	return b.ring.map( ( [ px, pz ] ) => {
+
+		const dx = px - b.x, dz = pz - b.z, u = dx * c - dz * s, v = dx * s + dz * c;
+		return [ x + u * C + v * S, z - u * S + v * C ];
+
+	} );
+
+}
+
+// ---- the view
+const toScreen = ( x, z ) => [ ( x - view.x ) * view.s + canvas.width / 2, ( z - view.z ) * view.s + canvas.height / 2 ];
+const toTown = ( px, py ) => [ ( px - canvas.width / 2 ) / view.s + view.x, ( py - canvas.height / 2 ) / view.s + view.z ];
+
+function resize() { const r = canvas.getBoundingClientRect(); canvas.width = r.width * devicePixelRatio; canvas.height = r.height * devicePixelRatio; draw(); }
+
+function tile( i, j, px ) {
+
+	const key = `${ i }_${ j }_${ px }`;
+	if ( ! tiles.has( key ) ) {
+
+		const img = new Image(); img.onload = () => draw();
+		img.src = `/api/ortho?x0=${ i * TILE }&z0=${ j * TILE }&x1=${ ( i + SPAN ) * TILE }&z1=${ ( j + SPAN ) * TILE }&px=${ px * SPAN }`;
+		tiles.set( key, img );
+
+	}
+
+	return tiles.get( key );
+
+}
+
+function polygon( ring ) { ctx.beginPath(); ring.forEach( ( [ x, z ], k ) => { const [ a, b ] = toScreen( x, z ); k ? ctx.lineTo( a, b ) : ctx.moveTo( a, b ); } ); ctx.closePath(); }
+
+function draw() {
+
+	if ( ! canvas.width ) return;
+	ctx.fillStyle = '#0c0f10'; ctx.fillRect( 0, 0, canvas.width, canvas.height );
+	const [ x0, z0 ] = toTown( 0, 0 ), [ x1, z1 ] = toTown( canvas.width, canvas.height );
+	if ( $( 'showOrtho' ).checked ) {
+
+		// ( a picture's pixels about the screen's: 0.4 m down to 5 cm )
+		const mpp = [ 0.4, 0.2, 0.1, 0.0625 ].find( ( m ) => m <= 1.5 / view.s ) || 0.0625;
+		const px = Math.round( TILE / mpp );
+		for ( let j = Math.floor( z0 / TILE ); j <= Math.floor( z1 / TILE ); j ++ ) for ( let i = Math.floor( x0 / TILE ); i <= Math.floor( x1 / TILE ); i ++ ) {
+
+			const img = tile( i, j, px ), [ a, b ] = toScreen( i * TILE, j * TILE );
+			if ( img.complete && img.naturalWidth ) ctx.drawImage( img, 0, 0, img.naturalWidth / SPAN, img.naturalHeight / SPAN, a, b, TILE * view.s + 1, TILE * view.s + 1 );
+
+		}
+
+	}
+
+	if ( ! W ) return;
+	if ( $( 'showStreets' ).checked ) {
+
+		ctx.fillStyle = 'rgba(120,200,255,0.35)';
+		for ( const p of W.pavements ) { polygon( p.ring ); ctx.fill(); }
+		ctx.strokeStyle = 'rgba(255,200,60,0.7)'; ctx.lineWidth = 1;
+		for ( const r of W.roads ) { ctx.beginPath(); r.pts.forEach( ( [ x, z ], k ) => { const [ a, b ] = toScreen( x, z ); k ? ctx.lineTo( a, b ) : ctx.moveTo( a, b ); } ); ctx.stroke(); }
+
+	}
+
+	if ( $( 'showBuildings' ).checked ) for ( const b of W.buildings ) {
+
+		const e = edits.buildings[ b.key ] || {};
+		const ring = ringOf( b );
+		polygon( ring );
+		const col = e.gone ? '255,90,70' : b.landmark ? '190,130,255' : ( b.edited || Object.keys( e ).length ) ? '140,240,120' : b.kind === 'outbuilding' ? '200,200,200' : '255,235,80';
+		ctx.fillStyle = `rgba(${ col },${ b === sel ? 0.35 : 0.12 })`; ctx.fill();
+		ctx.setLineDash( e.gone ? [ 6, 4 ] : [] );
+		ctx.strokeStyle = b === sel ? '#ff3b30' : `rgb(${ col })`; ctx.lineWidth = b === sel ? 3 : 1.5; ctx.stroke(); ctx.setLineDash( [] );
+		if ( e.note || b.note ) { const [ a, c ] = toScreen( e.x ?? b.x, e.z ?? b.z ); ctx.fillStyle = '#ffd60a'; ctx.font = `${ 14 * devicePixelRatio }px system-ui`; ctx.fillText( '✎', a - 5, c + 5 ); }
+
+	}
+
+	for ( const n of edits.notes ) {
+
+		const [ a, b ] = toScreen( ...n.at );
+		ctx.fillStyle = n === selNote ? '#ff3b30' : '#ffd60a'; ctx.beginPath(); ctx.arc( a, b, 7 * devicePixelRatio, 0, 7 ); ctx.fill();
+		ctx.fillStyle = '#000'; ctx.font = `bold ${ 10 * devicePixelRatio }px system-ui`; ctx.fillText( 'N', a - 3.5 * devicePixelRatio, b + 3.5 * devicePixelRatio );
+
+	}
+
+}
+
+// ---- picking
+function inside( ring, x, z ) { let c = false; for ( let i = 0, j = ring.length - 1; i < ring.length; j = i ++ ) { const a = ring[ j ], b = ring[ i ]; if ( ( a[ 1 ] <= z ) !== ( b[ 1 ] <= z ) && x < a[ 0 ] + ( b[ 0 ] - a[ 0 ] ) * ( z - a[ 1 ] ) / ( b[ 1 ] - a[ 1 ] ) ) c = ! c; } return c; }
+function area( ring ) { let a = 0; ring.forEach( ( p, i ) => { const q = ring[ ( i + 1 ) % ring.length ]; a += p[ 0 ] * q[ 1 ] - q[ 0 ] * p[ 1 ]; } ); return Math.abs( a ) / 2; }
+function pick( x, z ) {
+
+	const hits = W.buildings.filter( ( b ) => inside( ringOf( b ), x, z ) );
+	return hits.sort( ( a, b ) => area( a.ring ) - area( b.ring ) )[ 0 ] || null;
+
+}
+function pickNote( px, py ) { return edits.notes.find( ( n ) => { const [ a, b ] = toScreen( ...n.at ); return Math.hypot( a - px, b - py ) < 10 * devicePixelRatio; } ) || null; }
+
+// ---- the selected building's form
+function select( b ) {
+
+	sel = b || null;
+	$( 'form' ).hidden = ! sel;
+	if ( ! sel ) { $( 'sel' ).textContent = 'Click a building on the map.'; draw(); return; }
+	const e = edits.buildings[ sel.key ] || {};
+	$( 'sel' ).innerHTML = `<b>${ sel.key }</b> · ${ sel.kind }${ sel.landmark ? ' · modelled: ' + sel.landmark.split( '/' ).pop() + ' (move it in its script)' : '' }`;
+	$( 'is' ).value = e.is ?? ''; $( 'storeys' ).value = e.storeys ?? ''; $( 'form-roof' ).value = e.form ?? '';
+	$( 'gone' ).checked = !! e.gone; $( 'note' ).value = e.note ?? sel.note ?? '';
+	for ( const id of [ 'is', 'storeys', 'form-roof', 'gone', 'square' ] ) $( id ).disabled = !! sel.landmark;
+	draw();
+
+}
+
+function setField( key, value ) {
+
+	if ( ! sel ) return;
+	const e = editOf( sel );
+	if ( value === '' || value === false || value === undefined ) delete e[ key ]; else e[ key ] = value;
+	cleanEdit( sel ); setDirty( true ); draw();
+
+}
+
+$( 'is' ).onchange = () => setField( 'is', $( 'is' ).value );
+$( 'storeys' ).onchange = () => setField( 'storeys', $( 'storeys' ).value ? Number( $( 'storeys' ).value ) : '' );
+$( 'form-roof' ).onchange = () => setField( 'form', $( 'form-roof' ).value );
+$( 'gone' ).onchange = () => setField( 'gone', $( 'gone' ).checked );
+$( 'note' ).oninput = () => setField( 'note', $( 'note' ).value.trim() ? $( 'note' ).value : '' );
+$( 'undo' ).onclick = () => { if ( sel ) { delete edits.buildings[ sel.key ]; setDirty( true ); select( sel ); } };
+
+function place( b, dx, dz, dyaw ) {
+
+	if ( b.landmark ) return;
+	const e = editOf( b );
+	e.x = Math.round( ( ( e.x ?? b.x ) + dx ) * 100 ) / 100; e.z = Math.round( ( ( e.z ?? b.z ) + dz ) * 100 ) / 100;
+	if ( dyaw ) e.yaw = Math.round( ( ( e.yaw ?? b.yaw ) + dyaw ) * 100 ) / 100;
+	setDirty( true ); draw();
+
+}
+
+// the street a building faces: the nearest street's centreline; its local +z turned toward it
+function square( b ) {
+
+	if ( ! b || b.landmark ) return;
+	const e = editOf( b ), cx = e.x ?? b.x, cz = e.z ?? b.z;
+	let best = null;
+	for ( const r of W.roads ) {
+
+		if ( ! r.street ) continue;
+		for ( let k = 0; k + 1 < r.pts.length; k ++ ) {
+
+			const [ ax, az ] = r.pts[ k ], [ bx, bz ] = r.pts[ k + 1 ], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+			const t = Math.max( 0, Math.min( 1, ( ( cx - ax ) * dx + ( cz - az ) * dz ) / l2 ) ), fx = ax + dx * t, fz = az + dz * t, d = Math.hypot( cx - fx, cz - fz );
+			if ( ! best || d < best.d ) best = { d, fx, fz, dx, dz };
+
+		}
+
+	}
+
+	if ( ! best ) return;
+	// ( square: the street's normal toward the building's centre, reversed; of the four ways the
+	// building can face square to it, the one nearest the way it faces now )
+	const l = Math.hypot( best.dx, best.dz ), side = Math.sign( - best.dz * ( best.fx - cx ) + best.dx * ( best.fz - cz ) ) || 1;
+	// ( the street's normal pointing from the building at it; the building's +z along it: yaw = atan2( x, z ) )
+	const nx = - best.dz / l * side, nz = best.dx / l * side;
+	const toward = Math.atan2( nx, nz ) * 180 / Math.PI;
+	const now = e.yaw ?? b.yaw;
+	let yaw = toward; for ( const q of [ 0, 90, 180, 270 ] ) { const y = toward + q, d = ( ( y - now ) % 360 + 540 ) % 360 - 180, bd = ( ( yaw - now ) % 360 + 540 ) % 360 - 180; if ( Math.abs( d ) < Math.abs( bd ) ) yaw = y; }
+	e.yaw = Math.round( ( ( yaw % 360 ) + 360 ) % 360 * 100 ) / 100;
+	setDirty( true ); draw();
+
+}
+$( 'square' ).onclick = () => square( sel );
+
+// ---- notes on the map
+function refreshNotes() {
+
+	$( 'notes' ).innerHTML = edits.notes.length ? edits.notes.map( ( n, k ) => `<div data-k="${ k }">${ ( n.text || '(empty)' ).slice( 0, 60 ) }</div>` ).join( '' ) : 'N: drop a note where the mouse is.';
+	for ( const d of $( 'notes' ).querySelectorAll( 'div' ) ) d.onclick = () => { const n = edits.notes[ d.dataset.k ]; view.x = n.at[ 0 ]; view.z = n.at[ 1 ]; selectNote( n ); };
+	$( 'noteEdit' ).hidden = ! selNote;
+
+}
+function selectNote( n ) { selNote = n; $( 'noteEdit' ).hidden = ! n; if ( n ) { $( 'noteText' ).value = n.text; $( 'noteText' ).focus(); } draw(); }
+$( 'noteText' ).oninput = () => { if ( selNote ) { selNote.text = $( 'noteText' ).value; setDirty( true ); refreshNotes(); } };
+$( 'noteDelete' ).onclick = () => { edits.notes = edits.notes.filter( ( n ) => n !== selNote ); selectNote( null ); setDirty( true ); refreshNotes(); };
+
+// ---- saving
+async function save() {
+
+	if ( ! dirty ) return;
+	for ( const b of W.buildings ) cleanEdit( b );
+	const r = await fetch( '/api/edits', { method: 'POST', body: JSON.stringify( edits ) } );
+	if ( r.ok ) { setDirty( false ); $( 'status' ).textContent = `Saved · ${ Object.keys( edits.buildings ).length } edited · ${ edits.notes.length } notes. Rebuild town to see the rules follow.`; }
+	else $( 'status' ).textContent = 'Not saved: ' + await r.text();
+
+}
+$( 'save' ).onclick = save;
+$( 'reload' ).onclick = async () => { if ( dirty ) await save(); await loadWorld(); };
+for ( const id of [ 'showOrtho', 'showBuildings', 'showStreets' ] ) $( id ).onchange = draw;
+window.onbeforeunload = ( ev ) => { if ( dirty ) { ev.preventDefault(); return ''; } };
+
+// ---- the mouse and the keys
+canvas.onmousedown = ( ev ) => {
+
+	const px = ev.offsetX * devicePixelRatio, py = ev.offsetY * devicePixelRatio, [ x, z ] = toTown( px, py );
+	const n = pickNote( px, py );
+	if ( n ) { selectNote( n ); drag = { note: n, x, z }; return; }
+	const b = W && $( 'showBuildings' ).checked ? pick( x, z ) : null;
+	if ( b ) { select( b ); drag = { b, x, z }; } else { drag = { pan: true, px, py, vx: view.x, vz: view.z }; }
+
+};
+window.onmousemove = ( ev ) => {
+
+	const r = canvas.getBoundingClientRect(), px = ( ev.clientX - r.left ) * devicePixelRatio, py = ( ev.clientY - r.top ) * devicePixelRatio;
+	mouse = toTown( px, py );
+	if ( ! drag ) return;
+	if ( drag.pan ) { view.x = drag.vx - ( px - drag.px ) / view.s; view.z = drag.vz - ( py - drag.py ) / view.s; draw(); return; }
+	const [ x, z ] = mouse;
+	if ( drag.note ) { drag.note.at = [ Math.round( x * 100 ) / 100, Math.round( z * 100 ) / 100 ]; setDirty( true ); draw(); return; }
+	place( drag.b, x - drag.x, z - drag.z, 0 ); drag.x = x; drag.z = z;
+
+};
+window.onmouseup = () => { drag = null; };
+canvas.addEventListener( 'wheel', ( ev ) => {
+
+	ev.preventDefault();
+	const [ x, z ] = toTown( ev.offsetX * devicePixelRatio, ev.offsetY * devicePixelRatio );
+	view.s = Math.min( 60, Math.max( 0.3, view.s * Math.exp( - ev.deltaY * 0.0015 ) ) );
+	const [ x2, z2 ] = toTown( ev.offsetX * devicePixelRatio, ev.offsetY * devicePixelRatio );
+	view.x += x - x2; view.z += z - z2; draw();
+
+}, { passive: false } );
+window.onkeydown = ( ev ) => {
+
+	if ( ev.target.tagName === 'TEXTAREA' || ev.target.tagName === 'SELECT' ) return;
+	if ( ( ev.ctrlKey || ev.metaKey ) && ev.key === 's' ) { ev.preventDefault(); save(); return; }
+	const k = ev.key.toLowerCase(), big = ev.shiftKey;
+	if ( k === 'n' ) { const n = { at: mouse.map( ( v ) => Math.round( v * 100 ) / 100 ), text: '' }; edits.notes.push( n ); setDirty( true ); refreshNotes(); selectNote( n ); return; }
+	if ( k === 'escape' ) { select( null ); selectNote( null ); return; }
+	if ( ! sel ) return;
+	if ( k === 'q' ) place( sel, 0, 0, big ? - 5 : - 1 );
+	else if ( k === 'e' ) place( sel, 0, 0, big ? 5 : 1 );
+	else if ( k === 's' ) square( sel );
+	else if ( k === 'delete' || k === 'backspace' ) { setField( 'gone', ! ( editOf( sel ).gone ) ); select( sel ); }
+	else if ( k.startsWith( 'arrow' ) ) { const d = big ? 1 : 0.1; place( sel, k === 'arrowleft' ? - d : k === 'arrowright' ? d : 0, k === 'arrowup' ? - d : k === 'arrowdown' ? d : 0, 0 ); }
+	else return;
+	ev.preventDefault();
+
+};
+
+window.onresize = resize;
+resize();
+loadWorld();
+</script>
+</body>
+</html>

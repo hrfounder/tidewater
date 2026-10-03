@@ -14,6 +14,14 @@
       "name": "preview",
       "port": 5193,
       "url": "http://127.0.0.1:5193"
+    },
+    {
+      "name": "editor",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/editor/server.mjs"
+      ],
+      "port": 5195
     }
   ]
 }

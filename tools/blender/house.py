@@ -164,6 +164,13 @@ def door( T, o, mats ):
 			T.panel( l0, l1, y + 0.04, z0, top, mats[ o[ 'leaf' ] ] )
 
 
+def roof_face( S, q, mat ):
+	"""A roof's face, wound so that its covered side faces up (the game draws the other side as the
+	underside): reversed if its normal (Newell's) points down."""
+	nz = sum( ( q[ i ][ 0 ] - q[ ( i + 1 ) % len( q ) ][ 0 ] ) * ( q[ i ][ 1 ] + q[ ( i + 1 ) % len( q ) ][ 1 ] ) for i in range( len( q ) ) )
+	S.shell( q if nz > 0 else q[ ::- 1 ], [ tuple( range( len( q ) ) ) ], mat )
+
+
 def hip( S, b, r ):
 	"""A hipped roof over a block: its eaves' rectangle out by the overhang, the ridge along the
 	longer side, every slope at the pitch; the fascia round the eaves and the soffit under them."""
@@ -179,7 +186,7 @@ def hip( S, b, r ):
 	E = [ ( X0, Y0, ze ), ( X1, Y0, ze ), ( X1, Y1, ze ), ( X0, Y1, ze ) ]
 	if X1 - X0 >= Y1 - Y0: slopes = [ [ E[ 0 ], E[ 1 ], C, A ], [ E[ 1 ], E[ 2 ], C ], [ E[ 2 ], E[ 3 ], A, C ], [ E[ 3 ], E[ 0 ], A ] ]
 	else: slopes = [ [ E[ 0 ], E[ 1 ], A ], [ E[ 1 ], E[ 2 ], C, A ], [ E[ 2 ], E[ 3 ], C ], [ E[ 3 ], E[ 0 ], A, C ] ]
-	for q in slopes: S.shell( q, [ tuple( range( len( q ) ) ) ], r[ 'cover' ] )
+	for q in slopes: roof_face( S, q, r[ 'cover' ] )
 	eaves( S, b, r, ( X0, X1, Y0, Y1 ), ze )
 	return zr
 
@@ -193,14 +200,28 @@ def gable( S, b, r ):
 	along_x = r.get( 'ridge', 'x' ) == 'x'
 	if along_x:
 		half = ( y1 - y0 ) / 2; zr = b[ 'eave' ] + half * tan; ym = ( y0 + y1 ) / 2
-		S.shell( [ ( x0 - v, y0 - o, ze ), ( x1 + v, y0 - o, ze ), ( x1 + v, ym, zr ), ( x0 - v, ym, zr ) ], [ ( 0, 1, 2, 3 ) ], r[ 'cover' ] )
-		S.shell( [ ( x1 + v, y1 + o, ze ), ( x0 - v, y1 + o, ze ), ( x0 - v, ym, zr ), ( x1 + v, ym, zr ) ], [ ( 0, 1, 2, 3 ) ], r[ 'cover' ] )
+		roof_face( S, [ ( x0 - v, y0 - o, ze ), ( x1 + v, y0 - o, ze ), ( x1 + v, ym, zr ), ( x0 - v, ym, zr ) ], r[ 'cover' ] )
+		roof_face( S, [ ( x1 + v, y1 + o, ze ), ( x0 - v, y1 + o, ze ), ( x0 - v, ym, zr ), ( x1 + v, ym, zr ) ], r[ 'cover' ] )
 		for x, s in ( ( x0, - 1 ), ( x1, 1 ) ): S.shell( [ ( x, y0, b[ 'eave' ] ), ( x, y1, b[ 'eave' ] ), ( x, ym, zr ) ][ ::s ], [ ( 0, 1, 2 ) ], b[ 'wall' ] )
 		eaves( S, b, r, ( x0 - v, x1 + v, y0 - o, y1 + o ), ze, sides=( 'front', 'back' ) )
 	else:
 		half = ( x1 - x0 ) / 2; zr = b[ 'eave' ] + half * tan; xm = ( x0 + x1 ) / 2
-		S.shell( [ ( x0 - o, y1 + v, ze ), ( x0 - o, y0 - v, ze ), ( xm, y0 - v, zr ), ( xm, y1 + v, zr ) ], [ ( 0, 1, 2, 3 ) ], r[ 'cover' ] )
-		S.shell( [ ( x1 + o, y0 - v, ze ), ( x1 + o, y1 + v, ze ), ( xm, y1 + v, zr ), ( xm, y0 - v, zr ) ], [ ( 0, 1, 2, 3 ) ], r[ 'cover' ] )
+		w = r.get( 'well' )
+		if not w:
+			roof_face( S, [ ( x0 - o, y1 + v, ze ), ( x0 - o, y0 - v, ze ), ( xm, y0 - v, zr ), ( xm, y1 + v, zr ) ], r[ 'cover' ] )
+		else:
+			# the -x slope round its well: the parts before and after it, and beside it toward the eaves
+			# and toward the ridge; then the well's four walls from its floor up to the roof
+			( a, c ), ( d, e ), fl = w[ 'x' ], w[ 'y' ], w[ 'floor' ]
+			zx = lambda x: ze + ( x - ( x0 - o ) ) * tan
+			for ( p, q ), ( s0, s1 ) in ( ( ( x0 - o, xm ), ( y0 - v, d ) ), ( ( x0 - o, xm ), ( e, y1 + v ) ), ( ( x0 - o, a ), ( d, e ) ), ( ( c, xm ), ( d, e ) ) ):
+				if q - p > 1e-3 and s1 - s0 > 1e-3: roof_face( S, [ ( p, s1, zx( p ) ), ( p, s0, zx( p ) ), ( q, s0, zx( q ) ), ( q, s1, zx( q ) ) ], r[ 'cover' ] )
+			S.shell( [ ( a, d, fl ), ( a, e, fl ), ( a, e, zx( a ) ), ( a, d, zx( a ) ) ], [ ( 0, 1, 2, 3 ) ], w[ 'wall' ] )
+			S.shell( [ ( c, e, fl ), ( c, d, fl ), ( c, d, zx( c ) ), ( c, e, zx( c ) ) ], [ ( 0, 1, 2, 3 ) ], w[ 'wall' ] )
+			S.shell( [ ( c, d, fl ), ( a, d, fl ), ( a, d, zx( a ) ), ( c, d, zx( c ) ) ], [ ( 0, 1, 2, 3 ) ], w[ 'wall' ] )
+			S.shell( [ ( a, e, fl ), ( c, e, fl ), ( c, e, zx( c ) ), ( a, e, zx( a ) ) ], [ ( 0, 1, 2, 3 ) ], w[ 'wall' ] )
+			S.shell( [ ( a, d, fl ), ( c, d, fl ), ( c, e, fl ), ( a, e, fl ) ], [ ( 0, 1, 2, 3 ) ], w[ 'bottom' ] )
+		roof_face( S, [ ( x1 + o, y0 - v, ze ), ( x1 + o, y1 + v, ze ), ( xm, y1 + v, zr ), ( xm, y0 - v, zr ) ], r[ 'cover' ] )
 		for y, s in ( ( y0, 1 ), ( y1, - 1 ) ): S.shell( [ ( x0, y, b[ 'eave' ] ), ( x1, y, b[ 'eave' ] ), ( xm, y, zr ) ][ ::s ], [ ( 0, 1, 2 ) ], b[ 'wall' ] )
 		eaves( S, b, r, ( x0 - o, x1 + o, y0 - v, y1 + v ), ze, sides=( 'left', 'right' ) )
 	return zr
@@ -291,7 +312,7 @@ def build( spec, out ):
 	mats = make_materials( spec[ 'materials' ] )
 	S = Shells()
 	plan = build_house( S, spec )
-	ob = S.object( spec[ 'name' ], mats, scene.collection, plan )
+	ob = S.object( spec[ 'name' ], mats, scene.collection, plan, up={ b[ 'roof' ][ 'cover' ] for b in spec[ 'blocks' ] } )
 	os.makedirs( os.path.dirname( out ), exist_ok=True )
 	export_glb( scene, out )
 	me = ob.data

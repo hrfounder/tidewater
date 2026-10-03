@@ -57,6 +57,8 @@ const STRAIGHT = 0.3;
 // rails, which stand RAIL_PROUD out of the road, and the nodes within RAMP of the crossing rise
 // with it, the less the further off: the junction beside a crossing lies on the ramp up to it (m).
 const RAMP = 40, RAIL_PROUD = 0.02;
+// a record of Survey.js ROADS names the road within this of its point (m)
+const TOLD_REACH = 5;
 // side of the buckets the segments are sorted into for `nearest` (m)
 const BUCKET = 32;
 
@@ -69,13 +71,25 @@ export class Roads {
 	// center ( east, north ); ground( x, z ): the dry ground's height;
 	// walls: the Site's buildings, for `crossings` and `gap` (Buildings.js); rails: the Site's
 	// railway, for the level crossings (Rails.js)
-	constructor( places, { center, ground, walls, survey, rails } ) {
+	// seen: the records of Survey.js ROADS, a road's surface or width where the map has it wrong
+	constructor( places, { center, ground, walls, survey, rails, seen: seenRoads = [] } ) {
 
 		const [ cE, cN ] = center;
 		this.nodes = survey.nodes.map( ( [ e, n ] ) => ( { x: e - cE, z: cN - n, y: 0, roads: [] } ) );
 		for ( const n of this.nodes ) n.y = ground( n.x, n.z );
 		this.roads = [];
 		this.skipped = {};
+		// each record of what was seen, to the road whose surveyed line passes nearest its point
+		const told = new Map();
+		for ( const t of seenRoads ) {
+
+			let best = - 1, far = Infinity;
+			survey.roads.forEach( ( s, k ) => s.pts.forEach( ( [ e, n ], i ) => { if ( ! i ) return; const [ pe, pn ] = s.pts[ i - 1 ]; const a = [ pe - cE, cN - pn ], b = [ e - cE, cN - n ]; const dx = b[ 0 ] - a[ 0 ], dz = b[ 1 ] - a[ 1 ], u = Math.max( 0, Math.min( 1, ( ( t.at[ 0 ] - a[ 0 ] ) * dx + ( t.at[ 1 ] - a[ 1 ] ) * dz ) / ( dx * dx + dz * dz || 1 ) ) ), d = Math.hypot( a[ 0 ] + dx * u - t.at[ 0 ], a[ 1 ] + dz * u - t.at[ 1 ] ); if ( d < far ) { far = d; best = k; } } ) );
+			if ( far > TOLD_REACH ) throw new Error( `the survey says of a road at ${ t.at } (${ t.source }), and none passes within ${ TOLD_REACH } m` );
+			told.set( best, t );
+
+		}
+
 		places.roads.forEach( ( r, k ) => {
 
 			const cls = ROAD_CLASSES[ r.class ];
@@ -85,9 +99,9 @@ export class Roads {
 			if ( line.length < 2 ) return;
 			const road = {
 				index: this.roads.length, class: r.class, name: r.name, bridge: r.bridge, a: r.a, b: r.b,
-				half: ( seen.width || cls.width ) / 2, surface: r.surface || cls.surface, street: cls.street && ! r.bridge,
+				half: ( ( told.get( k ) || {} ).width || seen.width || cls.width ) / 2, surface: ( told.get( k ) || {} ).surface || r.surface || cls.surface, street: cls.street && ! r.bridge,
 				// the gravel beside a paved carriageway (none where walls leave it no room: `clear`)
-				shoulder: ( r.surface || cls.surface ) === 'paved' ? SHOULDER : 0,
+				shoulder: ( ( told.get( k ) || {} ).surface || r.surface || cls.surface ) === 'paved' ? SHOULDER : 0,
 				pts: rounded( line ), // [ x, z, y, distance along the road ]
 				length: 0,
 			};

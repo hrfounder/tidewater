@@ -40,6 +40,10 @@ const MADE = {
 	brick: { kerb: 0.3, colour: [ 156, 86, 60 ], surface: SURFACE.brick },
 };
 const PAVING = MADE.paving;
+// a court's ball-stop fence (m): its posts this far apart, its mesh's uprights this far apart and this thick
+const COURT_FENCE = { post: 2.5, wire: 0.15, thread: 0.012 };
+// by eye: galvanised posts, the mesh darker (the orthophoto has it as a dark line)
+const FENCE_STEEL = [ 150, 154, 156 ], FENCE_MESH = [ 70, 76, 74 ];
 // half the thickness of the wall round a landmark's grounds, as the player meets it (m)
 const WALL_HALF = 0.15;
 // the steps up to a door: this deep, a tread's width wider than the door on each side (m)
@@ -229,8 +233,9 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 	// made ground: each a flat slab at its area's level, its sides closed down to the ground
 	for ( const area of site.areas ) {
 
-		const M = MADE[ area.of ], B = builder( area.ring[ 0 ][ 0 ], area.ring[ 0 ][ 1 ] ), y = area.level + M.kerb;
-		B.paint( { color: lin( M.colour ), rough: 0.9, surface: M.surface, seed: 0.35 } );
+		// ( an area may carry its own colour and stand a little over the one under it: a court's markings )
+		const M = MADE[ area.of ], B = builder( area.ring[ 0 ][ 0 ], area.ring[ 0 ][ 1 ] ), y = area.level + M.kerb + ( area.lift || 0 );
+		B.paint( { color: lin( area.colour || M.colour ), rough: 0.9, surface: M.surface, seed: 0.35 } );
 		// ( wound so that its top faces up whichever way the ring was written )
 		let turn = 0;
 		area.ring.forEach( ( p, i ) => { const q = area.ring[ ( i + 1 ) % area.ring.length ]; turn += p[ 0 ] * q[ 1 ] - q[ 0 ] * p[ 1 ]; } );
@@ -242,6 +247,30 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 			B.polygon( [ [ q[ 0 ], area.level - FOOTING, q[ 1 ] ], [ p[ 0 ], area.level - FOOTING, p[ 1 ] ], [ p[ 0 ], y, p[ 1 ] ], [ q[ 0 ], y, q[ 1 ] ] ], [ [ 0, 0 ], [ len, 0 ], [ len, M.kerb + FOOTING ], [ 0, M.kerb + FOOTING ] ] );
 
 		} );
+
+	}
+
+	// the courts' ball-stop fences: posts, a rail along the top and the foot, and the mesh drawn as its
+	// uprights (from a few metres off a mesh is its wires' shimmer and its frame)
+	const courtFences = { runs: 0, triangles: 0 };
+	for ( const f of site.courtFences ) for ( const [ a, b ] of f.runs ) {
+
+		const l = Math.hypot( b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ] ), t = [ ( b[ 0 ] - a[ 0 ] ) / l, ( b[ 1 ] - a[ 1 ] ) / l ], n = [ - t[ 1 ], t[ 0 ] ];
+		const B = builder( a[ 0 ], a[ 1 ] ), before = B.triangles, y0 = Math.min( terrain.heightAt( ...a ), terrain.heightAt( ...b ) );
+		const bar = ( s0, s1, w, z0, z1 ) => box( B, ( s, y, o ) => [ a[ 0 ] + t[ 0 ] * s + n[ 0 ] * o, y, a[ 1 ] + t[ 1 ] * s + n[ 1 ] * o ], s0, s1, - w / 2, w / 2, z0, z1 );
+		B.paint( { color: lin( FENCE_STEEL ), rough: 0.5, metal: 0.7, surface: SURFACE.plain, seed: 0.2 } );
+		for ( let k = 0, m = Math.max( 1, Math.round( l / COURT_FENCE.post ) ); k <= m; k ++ ) bar( l * k / m - 0.03, l * k / m + 0.03, 0.06, y0 - FOOTING, y0 + f.height );
+		for ( const z of [ 0.1, f.height - 0.05 ] ) bar( 0, l, 0.04, y0 + z - 0.02, y0 + z + 0.02 );
+		B.paint( { color: lin( FENCE_MESH ), rough: 0.6, metal: 0.5, surface: SURFACE.plain, seed: 0.2 } );
+		for ( let s = COURT_FENCE.wire; s < l; s += COURT_FENCE.wire ) {
+
+			const p = [ a[ 0 ] + t[ 0 ] * s, a[ 1 ] + t[ 1 ] * s ], h = COURT_FENCE.thread / 2;
+			B.polygon( [ [ p[ 0 ] - t[ 0 ] * h, y0, p[ 1 ] - t[ 1 ] * h ], [ p[ 0 ] + t[ 0 ] * h, y0, p[ 1 ] + t[ 1 ] * h ], [ p[ 0 ] + t[ 0 ] * h, y0 + f.height, p[ 1 ] + t[ 1 ] * h ], [ p[ 0 ] - t[ 0 ] * h, y0 + f.height, p[ 1 ] - t[ 1 ] * h ] ], [ [ 0, 0 ], [ 1, 0 ], [ 1, 1 ], [ 0, 1 ] ] );
+
+		}
+
+		if ( colliders ) colliders.addBox( new Vector3( ( a[ 0 ] + b[ 0 ] ) / 2, y0 + f.height / 2, ( a[ 1 ] + b[ 1 ] ) / 2 ), new Vector3( WALL_HALF, f.height / 2, l / 2 ), Math.atan2( t[ 0 ], t[ 1 ] ), { tag: 'fence' } );
+		courtFences.runs ++; courtFences.triangles += B.triangles - before;
 
 	}
 
@@ -272,7 +301,7 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	}
 
-	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, pavements, marina, railway, triangles };
+	return { meshes, material, built, waiting, bridges, platforms: site.park.platforms.length, fences, pavements, marina, railway, courtFences, triangles };
 
 }
 

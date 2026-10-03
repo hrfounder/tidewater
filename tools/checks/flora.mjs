@@ -23,7 +23,7 @@ const trees = [ ...records.willow, ...records.poplar, ...records.oak ];
 	// a trunk keeps clear of walls and carriageways by what its habitat asks
 	const least = Math.min( ...Object.values( HABITATS ).filter( ( h ) => PLANTS[ h.plant ] ).map( ( h ) => h.clear ) );
 	const close = trees.filter( ( r ) => site.occupancy.within( r.x, r.z, least ) > YARD );
-	check( close.length === 0, `trees within ${ least } m of a road, a building or the water`, `${ close.length }` );
+	check( close.length === 0, `trees within ${ least } m of a road, a building or the water`, `${ close.length }${ close.length ? ': ' + close.slice( 0, 5 ).map( ( r ) => `${ r.x.toFixed( 1 ) },${ r.z.toFixed( 1 ) }` ).join( '; ' ) : '' }` );
 
 }
 

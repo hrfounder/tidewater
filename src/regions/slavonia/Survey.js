@@ -207,6 +207,9 @@ export const BESIDE = [
 	{ along: 'Vinkovačka ulica', from: [ 6.5, - 133.5 ], to: [ 4.6, - 90.5 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet opcina' },
 	{ along: 'Vinkovačka ulica', from: [ 6, - 125 ], to: [ 4.6, - 90.5 ], out: [ 5, 6.4 ], of: 'paving', source: 'sheet opcina; drone1 at 30 s' },
 	{ along: 'Vinkovačka ulica', from: [ - 7.7, - 122.5 ], to: [ - 12, - 87.4 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet opcina' },
+	// the school's front: the parking bays across the road from it, the pavement on its side
+	{ along: null, from: [ 96.8, 38.6 ], to: [ 71.1, 62.4 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'sheet schoolturn' },
+	{ along: null, from: [ 114.8, 40.4 ], to: [ 74.8, 77.4 ], out: [ 0, 1.4 ], of: 'paving', source: 'sheet schoolturn' },
 	// the walk outside the churchyard's fence along Ulica Vladimira Nazora, a grass verge between it and the road
 	{ along: 'Ulica Vladimira Nazora', from: [ - 60, 191 ], to: [ - 24, 222 ], out: [ 3.5, 4.7 ], of: 'paving', source: 'orthophoto at 5 cm; drone5 f002' },
 ];
@@ -249,9 +252,28 @@ export const AREAS = [
 	{ ring: [ [ 105, 35 ], [ 110, 35 ], [ 110, 40 ], [ 105, 40 ] ], of: 'gravel', source: 'drone2 at 45 s' },
 	// the school's sports ground: the running track, the basketball court, the handball court, the sand court
 	{ ring: [ [ 180.4, 75.2 ], [ 184.6, 71.2 ], [ 263.4, 156 ], [ 259.2, 160 ] ], of: 'track', source: 'sheet sport' },
-	{ ring: [ [ 191.8, 121 ], [ 204.2, 107.8 ], [ 226.4, 129.2 ], [ 213.2, 142.4 ] ], of: 'court', source: 'sheet sport' },
-	{ ring: [ [ 165.7, 147.2 ], [ 181.4, 131.7 ], [ 211.4, 162.2 ], [ 195.9, 177.7 ] ], of: 'court', source: 'sheet sport' },
 	{ ring: [ [ 215.3, 196.4 ], [ 230.5, 183.2 ], [ 238.2, 192.9 ], [ 223.6, 206.8 ] ], of: 'sand', source: 'sheet sport' },
+];
+
+// The courts: each by its four corners in order round it (its long sides are its length), its kind,
+// its colours as the orthophoto has them at the survey's gain (site/Courts.js draws the markings),
+// and the ball-stop fence round it if it has one: how far out, how high, and where its gate is.
+const COURT = { line: [ 214, 216, 216 ] };
+export const COURTS = [
+	// the basketball court: a pale field in a darker blue surround, the keys in that blue
+	{ kind: 'basketball', corners: [ [ 191.8, 121 ], [ 204.2, 107.8 ], [ 226.4, 129.2 ], [ 213.2, 142.4 ] ],
+		colours: { surround: [ 76, 92, 100 ], field: [ 106, 114, 122 ], key: [ 76, 92, 100 ], ...COURT }, source: 'sheet schoolgrounds; orthophoto read at 1 m' },
+	// the handball court: a blue field in a pale grey surround, the goal areas pale; a tall fence of
+	// mesh round it, its gate at the north-west corner where the path from the school comes
+	{ kind: 'handball', corners: [ [ 165.7, 147.2 ], [ 181.4, 131.7 ], [ 211.4, 162.2 ], [ 195.9, 177.7 ] ],
+		colours: { surround: [ 97, 103, 105 ], field: [ 72, 92, 104 ], key: [ 105, 114, 120 ], ...COURT },
+		fence: { out: 1.0, height: 4.0, gap: 2.5, at: [ 166, 141 ] }, source: 'sheet schoolgrounds; orthophoto read at 1 m' },
+];
+
+// Roads whose surface or width the map has wrong, each by a point on it.
+export const ROADS = [
+	// the road along the school's front and its parking: asphalt, not a track (sheet schoolfront)
+	{ at: [ 91, 57.5 ], surface: 'paved', width: 5.0, source: 'sheet schoolfront' },
 ];
 
 // Trees that were seen where they stand: [ x, z, height ]. The place is the middle of the crown on the
@@ -262,8 +284,8 @@ export const TREES = [
 	// the park on the south bank ( sheets park and school )
 	[ 87.6, 40.2, 15 ], [ 63, 54.6, 15 ], [ 102.4, 9.2, 11 ], [ 116.8, 25, 14 ], [ 125.2, 21.6, 14 ], [ 133.7, 24.1, 13 ],
 	[ 140.4, 18.2, 12 ], [ 144.7, 25, 13 ], [ 159.9, 24.1, 15 ], [ 161.5, 29.6, 12 ], [ 186.9, 20.4, 14 ],
-	// round the school
-	[ 176.5, 66.5, 13 ], [ 152.3, 83.8, 14 ], [ 133.8, 96.5, 13 ], [ 159.2, 96.5, 12 ], [ 110.7, 111.5, 12 ], [ 185.7, 96.5, 12 ],
+	// round the school ( the two that stood on the schoolyard's paving are out: the yard is paved there, Ivan )
+	[ 176.5, 66.5, 13 ], [ 152.3, 83.8, 14 ], [ 159.2, 96.5, 12 ], [ 185.7, 96.5, 12 ],
 	// the bank behind the marina ( sheet marina; the game's water lies some metres further up this bank
 	// than the orthophoto's, and the trees nearest it are set back from it )
 	[ - 71.2, 52, 14 ], [ - 60.8, 54, 15 ], [ - 50.3, 51, 14 ], [ - 39.8, 52.2, 15 ], [ - 29.3, 49, 14 ], [ - 22.8, 56.1, 13 ], [ - 81.7, 58.7, 14 ], [ - 73.8, 58.5, 13 ], [ - 37.2, 58.5, 14 ], [ - 13.6, 58.7, 12 ],

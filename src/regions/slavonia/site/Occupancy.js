@@ -49,6 +49,8 @@ export class Occupancy {
 		// a deck and a pontoon take the water under them: no reed grows up through the boards
 		for ( const d of site.decks ) fillPolygon( grid, d.ring, ( k ) => claim( k, BUILDING ) );
 		for ( const m of site.marinas ) fillPolygon( grid, strip( m.from, m.to, m.width + 2 * m.fingers.length ), ( k ) => claim( k, BUILDING ) );
+		// a court's fence takes its line
+		for ( const f of site.courtFences ) for ( const [ a, b ] of f.runs ) fillPolygon( grid, strip( a, b, WALL_STRIP ), ( k ) => claim( k, BUILDING ) );
 		// made ground is built on: nothing grows on a court
 		for ( const area of site.areas ) fillPolygon( grid, area.ring, ( k ) => claim( k, BUILDING ) );
 		// what was surveyed beside the roads: parking is road, a pavement is built on

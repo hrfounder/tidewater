@@ -34,7 +34,9 @@ OUT = os.path.join( ROOT, 'public', 'models', 'slavonia', 'houses', 'school.glb'
 # the footprint's corners in this frame (model x, y)
 WING = dict( x=[ - 17.07, 6.15 ], y=[ - 39.85, 13.45 ] )
 LINK = dict( x=[ - 8.37, 0.5 ], y=[ 13.45, 25.8 ] )
-LOBBY = dict( x=[ 0.5, 6.15 ], y=[ 13.45, 16.3 ] )
+# ( the map leaves out the low block in the corner between the wing, the link and the hall: it is a
+# building, Ivan says, and the orthophoto's grey roof there agrees )
+LOBBY = dict( x=[ 0.5, 6.15 ], y=[ 13.45, 23.5 ] )
 HALL = dict( x=[ - 14.44, 17.13 ], y=[ 23.5, 39.85 ] )
 # The front, read off Ivan's two photographs by proportion (the near one: the eaves 7.2 m over the
 # ground take 550 px, so 78 px a metre): six sections between the brown downpipes, three window units
@@ -56,6 +58,8 @@ PIER = BAY / 3 - UNIT[ 'w' ]                            # between two units
 ENTRANCE = SECTIONS - 3
 AT = ( ENTRANCE + 0.5 ) * BAY                           # the entrance's middle along the front
 Y_AT = WING[ 'y' ][ 1 ] - AT                            # ... and its y
+ENTRY = 0.75 * BAY / 2                                 # half the canopy's and the path's width: three quarters of the section, in its middle (Ivan); the glass screen is the section's full width
+DOORS = 2.6                                            # the doors in the middle of the screen; a unit's width of fixed glass each side
 
 def bays( side, skip=() ):
 	"""Three units in every section of a long face, on both storeys (only upstairs in those skipped)."""
@@ -90,7 +94,11 @@ SPEC = dict(
 	},
 	parts=dict( frame='frame', glass='glass', box='box', shutter='shutter', slat='slat', sill='sill' ),
 	blocks=[
-		dict( WING, eave=EAVE, plinth=( 0.35, 'plinth' ), wall='wall', roof=dict( form='gable', ridge='y', pitch=12, over=0.7, verge=0.4, cover='sheet', fascia=( 'fascia', 0.3 ), soffit='soffit' ) ),
+		# ( the dark strip along the roof by its ridge is not panels but a light well open to the sky, as
+		# such schools have (Ivan): on the sheet schoolturn it runs from x -10 to the ridge and from y -21
+		# to 6, its floor the roof of the ground floor )
+		dict( WING, eave=EAVE, plinth=( 0.35, 'plinth' ), wall='wall', roof=dict( form='gable', ridge='y', pitch=12, over=0.7, verge=0.4, cover='sheet', fascia=( 'fascia', 0.3 ), soffit='soffit',
+			well=dict( x=[ - 10.0, - 5.8 ], y=[ - 21.0, 6.0 ], floor=STOREY + 0.4, wall='wall', bottom='plinth' ) ) ),
 		dict( LINK, eave=3.8, plinth=( 0.35, 'plinth' ), wall='wall', roof=dict( form='hip', pitch=3, over=0.4, cover='sheet', fascia=( 'fascia', 0.4 ), soffit='soffit' ) ),
 		dict( LOBBY, eave=3.8, plinth=( 0.35, 'plinth' ), wall='wall', roof=dict( form='hip', pitch=3, over=0.4, cover='sheet', fascia=( 'fascia', 0.4 ), soffit='soffit' ) ),
 		dict( HALL, eave=7.6, plinth=( 0.35, 'plinth' ), wall='wall', roof=dict( form='gable', ridge='x', pitch=15, over=0.6, verge=0.3, cover='sheet', fascia=( 'fascia', 0.3 ), soffit='soffit' ) ),
@@ -99,8 +107,8 @@ SPEC = dict(
 		# the front, to the road: three units in every section but the entrance's ground floor, where a
 		# glass screen stands under the canopy: the doors in the middle, fixed glass each side
 		bays( 'left', skip=( ENTRANCE, ) )
-		+ [ dict( block=0, side='left', at=AT, sill=0, w=2.6, h=3.0, kind='door', leaves=2, leaf='glass', transom=0.55 ) ]
-		+ [ dict( block=0, side='left', at=AT + d * BAY / 3, sill=0.3, w=2.6, h=2.7, panes=[ 2, 1 ], transom=0.55, kind='window' ) for d in ( - 1, 1 ) ]
+		+ [ dict( block=0, side='left', at=AT, sill=0, w=DOORS, h=3.0, kind='door', leaves=2, leaf='glass', transom=0.55 ) ]
+		+ [ dict( block=0, side='left', at=AT + d * BAY / 3, sill=0.3, w=UNIT[ 'w' ], h=2.7, panes=[ 2, 1 ], transom=0.55, kind='window' ) for d in ( - 1, 1 ) ]
 		# the park face (not seen: as the front)
 		+ bays( 'right' )
 		# the ends: two windows a storey at the south-west end
@@ -111,7 +119,7 @@ SPEC = dict(
 		+ [ dict( block=1, side='right', at=6.0, sill=0, w=2.4, h=2.6, kind='door', leaves=2, leaf='glass', transom=0.4 ) ]
 	),
 	# ( the entrance's canopy is held from the wall: no posts )
-	canopies=[ dict( x=[ WING[ 'x' ][ 0 ] - 3.0, WING[ 'x' ][ 0 ] ], y=[ Y_AT - BAY / 2, Y_AT + BAY / 2 ], z=LOW_SILL + 2.4 + 0.15, thick=0.4, mat='soffit', fascia='fascia' ) ],
+	canopies=[ dict( x=[ WING[ 'x' ][ 0 ] - 3.0, WING[ 'x' ][ 0 ] ], y=[ Y_AT - ENTRY, Y_AT + ENTRY ], z=LOW_SILL + 2.4 + 0.15, thick=0.4, mat='soffit', fascia='fascia' ) ],
 	# the air conditioners' units: stacked in the band between the floors, on a pier, clear of the windows
 	# (two by the entrance, as in the near photograph; one more in each of the next sections)
 	# ( the entrance's own section has its canopy in the band: its unit is upstairs, on the pier beside the
@@ -126,22 +134,22 @@ SPEC = dict(
 	chimneys=[ dict( x=- 14.3, y=- 0.7, top=12.5, side=1.2, mat='brick' ) ],
 	# ( the map's ring has the hall's west end 2.3 m short of its east end's line: the orthophoto shows one
 	# rectangle, and the hall is taken whole )
-	outline=[ ( - 17.07, - 39.85 ), ( 6.15, - 39.85 ), ( 6.15, 16.3 ), ( 0.5, 16.3 ), ( 0.5, 23.5 ), ( 17.13, 23.5 ), ( 17.13, 39.85 ), ( - 14.44, 39.85 ), ( - 14.44, 23.5 ), ( - 8.37, 23.5 ), ( - 8.37, 13.45 ), ( - 17.07, 13.45 ) ],
+	outline=[ ( - 17.07, - 39.85 ), ( 6.15, - 39.85 ), ( 6.15, 23.5 ), ( 17.13, 23.5 ), ( 17.13, 39.85 ), ( - 14.44, 39.85 ), ( - 14.44, 23.5 ), ( - 8.37, 23.5 ), ( - 8.37, 13.45 ), ( - 17.07, 13.45 ) ],
 	# Its grounds, read off the sheet turned to this frame (sheet schoolturn: x across, y up the sheet):
 	# the front lawn from the façade to the pavement of Školska ulica, behind a white railing, the
 	# concrete forecourt before the entrance and its path out to the pavement; behind, the paved
 	# schoolyard by the south-west half of the park face and the walk along the rest of it; the
 	# entrance court between the wing, the link and the hall.
 	# ( the forecourt: the concrete the orthophoto shows, carried on under the whole canopy )
-	paved=[ [ ( - 30.0, - 28.0 ), ( - 17.07, - 28.0 ), ( - 17.07, - 12.8 ), ( - 20.07, - 12.8 ), ( - 20.07, - 15.5 ), ( - 30.0, - 15.5 ) ],
-		[ ( - 37.0, - 23.0 ), ( - 30.0, - 23.0 ), ( - 30.0, - 19.0 ), ( - 37.0, - 19.0 ) ],
-		# ( the schoolyard's trees stand at its south-west edge, on the lawn: the paving stops short of them )
-		[ ( 6.15, - 34.0 ), ( 18.0, - 34.0 ), ( 18.0, - 15.0 ), ( 6.15, - 15.0 ) ],
-		[ ( 6.15, - 15.0 ), ( 8.2, - 15.0 ), ( 8.2, 13.45 ), ( 6.15, 13.45 ) ],
-		[ ( 0.5, 16.3 ), ( 17.13, 16.3 ), ( 17.13, 23.5 ), ( 0.5, 23.5 ) ] ],
+	# ( the entrance's path: as wide as its glass screen, from the doors straight out to the pavement;
+	# behind, the schoolyard paved in one piece from the park face out to the line of the sports hall's
+	# end, the length of the wing, as Ivan says: the orthophoto's trees break it up )
+	paved=[ [ ( - 35.9, Y_AT - ENTRY ), ( WING[ 'x' ][ 0 ], Y_AT - ENTRY ), ( WING[ 'x' ][ 0 ], Y_AT + ENTRY ), ( - 35.9, Y_AT + ENTRY ) ],
+		[ ( WING[ 'x' ][ 1 ], WING[ 'y' ][ 0 ] ), ( HALL[ 'x' ][ 1 ], WING[ 'y' ][ 0 ] ), ( HALL[ 'x' ][ 1 ], HALL[ 'y' ][ 0 ] ), ( WING[ 'x' ][ 1 ], HALL[ 'y' ][ 0 ] ) ] ],
 	# ( the railing along the pavement, open where the forecourt's path comes out to it )
-	fences=[ dict( points=[ ( - 36.5, 14.0 ), ( - 36.5, - 18.8 ) ], style=RAILING ), dict( points=[ ( - 36.5, - 23.2 ), ( - 36.5, - 40.5 ) ], style=RAILING ) ],
-	yard=[ ( - 37.0, - 40.6 ), ( 18.0, - 40.6 ), ( 18.0, - 15.0 ), ( 8.2, - 15.0 ), ( 8.2, 16.3 ), ( 17.13, 16.3 ), ( 17.13, 39.85 ), ( - 14.44, 39.85 ), ( - 14.44, 23.5 ), ( - 8.37, 23.5 ), ( - 8.37, 14.5 ), ( - 37.0, 14.5 ) ],
+	# ( behind the pavement: the road's middle is at x -40 on the sheet, 5 m of it and 1.4 m of pavement )
+	fences=[ dict( points=[ ( - 35.9, 14.0 ), ( - 35.9, Y_AT + ENTRY ) ], style=RAILING ), dict( points=[ ( - 35.9, Y_AT - ENTRY ), ( - 35.9, - 40.5 ) ], style=RAILING ) ],
+	yard=[ ( - 35.9, WING[ 'y' ][ 0 ] - 0.75 ), ( HALL[ 'x' ][ 1 ], WING[ 'y' ][ 0 ] - 0.75 ), ( HALL[ 'x' ][ 1 ], HALL[ 'y' ][ 1 ] ), ( HALL[ 'x' ][ 0 ], HALL[ 'y' ][ 1 ] ), ( HALL[ 'x' ][ 0 ], HALL[ 'y' ][ 0 ] ), ( LINK[ 'x' ][ 0 ], HALL[ 'y' ][ 0 ] ), ( LINK[ 'x' ][ 0 ], 14.5 ), ( - 35.9, 14.5 ) ],
 )
 
 result = build( SPEC, OUT )

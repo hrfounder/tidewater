@@ -123,8 +123,10 @@ class Shells:
 		self.shell( ring( *profile[ 0 ] ), [ tuple( range( seg - 1, - 1, - 1 ) ) ], mat )
 		self.shell( ring( *profile[ - 1 ] ), [ tuple( range( seg ) ) ], mat )
 
-	def object( self, name, materials, collection, props=None ):
-		"""The collected shells as an object named `name`; props become its custom properties."""
+	def object( self, name, materials, collection, props=None, up=() ):
+		"""The collected shells as an object named `name`; props become its custom properties. The
+		faces' normals are made consistent; those of the materials in `up` (a roof's cover: an open
+		shell, which that cannot orient) are then turned to face up."""
 		used = sorted( set( self.mats ), key=lambda m: list( materials ).index( m ) )
 		me = bpy.data.meshes.new( name )
 		me.from_pydata( self.verts, [], self.faces )
@@ -134,6 +136,9 @@ class Shells:
 			poly.use_smooth = smooth
 		bm = bmesh.new(); bm.from_mesh( me )
 		bmesh.ops.recalc_face_normals( bm, faces=bm.faces )
+		ups = { used.index( m ) for m in up if m in used }
+		down = [ f for f in bm.faces if f.material_index in ups and f.normal.z < 0 ]
+		if down: bmesh.ops.reverse_faces( bm, faces=down )
 		bm.to_mesh( me ); bm.free()
 		ob = bpy.data.objects.new( name, me )
 		for k, v in ( props or {} ).items(): ob[ k ] = v

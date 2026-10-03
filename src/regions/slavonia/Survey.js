@@ -14,7 +14,7 @@
 export const PARTED = [
 	// north-west of Ivan's house: the map's one outline (646) is the white house beside his gate, 9 m on
 	// the street (s 1462-1471 of Kolodvorska ulica, photo vicinity 23), and the buildings beyond it
-	{ at: [ - 213.4, 232.0 ], cuts: [ [ [ - 222.7, 232.8 ], [ - 194.7, 204.2 ] ] ], source: 'TerraFrame kolodvorsk-boso: vicinity 23; unrolled Kolodvorska ulica 1440-1490' },
+	{ at: [ - 213.4, 232.0 ], cuts: [ [ [ - 222.3, 233.1 ], [ - 194.3, 204.5 ] ] ], source: 'TerraFrame kolodvorsk-boso: vicinity 23; unrolled Kolodvorska ulica 1440-1490' },
 	// north-east of St Andrew's: the ochre house on Ulica Matije Gupca, and the long brick row behind it
 	// along the churchyard (the roofs change 9.5 m from the street end)
 	{ at: [ - 12, 169 ], cuts: [ [ [ - 14.1, 156.6 ], [ - 24.9, 168.4 ] ] ], source: 'sheet 1414; drone5 f001, f002' },
@@ -42,12 +42,12 @@ export const GONE = [
 // the survey has it, `by` the metres [ east, south ] from there to where its roof is on the sheet.
 export const MOVED = [
 	// north-west of Ivan's house: the white house (646) stands 2.7 m from it, the passage between them
-	// closed by a grey metal gate (house shot 4); the map had it 1.6 m closer
-	{ at: [ - 200.7, 218.2 ], by: [ - 1.28, - 1.12 ], source: 'TerraFrame kolodvorsk-boso: house 4' },
+	// closed by the grey metal gate (house shot 4, vicinity 23); the map had it 1.3 m further off
+	{ at: [ - 200.7, 218.2 ], by: [ 0.98, 0.86 ], source: 'TerraFrame kolodvorsk-boso: house 4, vicinity 23' },
 	// along Kolodvorska ulica (s 1378-1505): the houses stand in a line on the pavement, both sides
 	// (Ivan): footprints over it set back, those a little behind it brought up to it
 	{ at: [ - 237.2, 196.9 ], by: [ - 2.40, 2.45 ], source: 'unrolled Kolodvorska ulica at 1427: up to its pavement' },
-	{ at: [ - 202.0, 217.1 ], by: [ - 1.42, 1.45 ], source: 'unrolled Kolodvorska ulica at 1467: up to its pavement' },
+	{ at: [ - 199.7, 219.1 ], by: [ - 1.42, 1.45 ], source: 'unrolled Kolodvorska ulica at 1467: up to its pavement' },
 	{ at: [ - 229.3, 202.9 ], by: [ - 2.19, 2.23 ], source: 'unrolled Kolodvorska ulica at 1431: up to its pavement' },
 	{ at: [ - 277.4, 162.6 ], by: [ 0.17, - 0.17 ], source: 'unrolled Kolodvorska ulica at 1381: behind its pavement' },
 	{ at: [ - 304.3, 191.7 ], by: [ 0.93, - 0.93 ], source: 'unrolled Kolodvorska ulica at 1379: up to its pavement' },
@@ -327,6 +327,8 @@ export const OPEN = [
 //   of   'concrete' (a paved terrace), 'gravel' (a playground's ground), 'track' (red rubber),
 //        'court' (blue acrylic), 'sand', 'brick' (a low brick edge)
 export const AREAS = [
+	// the gravel drive across the verge to Ivan's garage, where his car stands (Kolodvorska ulica 642)
+	{ ring: [ [ - 213.2, 248.0 ], [ - 210.5, 250.7 ], [ - 206.5, 246.5 ], [ - 209.2, 243.9 ] ], of: 'gravel', source: 'TerraFrame kolodvorsk-boso: house 1, 4' },
 	// the playground behind the marina's bank: red rubber in a shape of lobes, here the ring round
 	// them (its blue and green patches and its apparatus are not built)
 	{ ring: [ [ - 81.3, 90.2 ], [ - 72.9, 88.4 ], [ - 65.8, 94.0 ], [ - 66.5, 102.2 ], [ - 71.9, 106.7 ], [ - 78.9, 108.5 ], [ - 84.4, 105.6 ], [ - 87.2, 98.3 ], [ - 85.4, 93.3 ] ], of: 'track', source: 'sheet kg' },

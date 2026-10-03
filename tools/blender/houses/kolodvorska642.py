@@ -56,6 +56,7 @@ SLAB = 3.2                             # the upper floor's slab: the concrete ba
 SPLIT = 4.4                            # the left (room's) part of the front, from its left corner
 POST = 0.34                            # the garage bay's concrete post at the right corner
 BAY = 0.12                             # how far the garage bay stands back: one brick (Ivan)
+PASSAGE = 3.0                          # the passage behind the grey gate, between the house and the white one: its own
 YARD = 5.9                             # the yard's street wall, from the house's corner to the next house's (722's) wall
 UPPER = SLAB + 1.0                     # the upper windows' sills
 SHUT = dict( panes=[ 2, 1 ], kind='window', box=0.18 )
@@ -113,7 +114,7 @@ SPEC = dict(
 		dict( points=[ ( X0 - 2.9, Y0 + 0.15 ), ( X0, Y0 + 0.15 ) ], height=1.9, thick=0.25, mat='render', cap='plinth',
 			gates=[ dict( at=1.45, w=2.6, h=1.8, mat='steel' ) ] ) ],
 	# the ground it stands on: the house and the strip of yard behind those walls
-	yard=[ ( X0 - 2.9, Y0 ), ( X1 + YARD, Y0 ), ( X1 + YARD, Y0 + 1.0 ), ( X1, Y0 + 1.0 ), ( X1, Y1 ), ( X0, Y1 ), ( X0, Y0 + 1.0 ), ( X0 - 2.9, Y0 + 1.0 ) ],
+	yard=[ ( X0 - 2.9, Y0 ), ( X1 + YARD, Y0 ), ( X1 + YARD, Y0 + 1.0 ), ( X1, Y0 + 1.0 ), ( X1, Y1 ), ( X0, Y1 ), ( X0, Y0 + PASSAGE ), ( X0 - 2.6, Y0 + PASSAGE ), ( X0 - 2.6, Y0 + 1.0 ), ( X0 - 2.9, Y0 + 1.0 ) ],
 	chimneys=[ dict( x=X0 + 4.3, y=Y0 + 3.5, top=EAVE + 3.0, side=0.5, mat='brick' ) ],
 )
 # ( the doors' frames and leaves are the garage door's brown; a leaf names its part here )

@@ -5,14 +5,16 @@ Run inside Blender as the other house scripts (tools/blender/houses/opcina.py). 
 public/models/slavonia/houses/school.glb. It stands on footprint 1319, which the map draws as the
 whole school; its frame faces Školska ulica at the south-west end, so in this file:
 
-  the main wing    two storeys, 53.3 m long (along y) by 23.2 m, its long face to the park at +x
-                   (the face in Ivan's two photographs) and to the road at -x
+  the main wing    two storeys, 53.3 m long (along y) by 23.2 m, its long front to the road at -x
+                   (the face in Ivan's two photographs, with the entrance) and its back to the park
+                   at +x
   the link         one storey under a flat roof at the main wing's north-east end, the entrance
                    court beside it
   the hall         across the north-east end, 31.6 m by 16.3 m, under its own roof
 
-The corners are the footprint's (the survey sheet school agrees with the map here). What the
-photographs give the park face: two tall windows to a bay upstairs and down, each of two lights under a top light,
+The corners are the footprint's (the survey sheet school agrees with the map here). The entrance is
+on the front, toward Školska ulica and its parking: Ivan's correction, and the orthophoto's paved
+forecourt there, 40 m from the north-east end. What the photographs give the front: two tall windows to a bay upstairs and down, each of two lights under a top light,
 the bays parted by brown strips that run the full height; a band of the wall's cream between the
 storeys; the entrance with its glass doors under a flat canopy with a dark fascia, the flags over it
 and the ramp up to it; air conditioners' units on the wall. Measured on Ivan's photograph: the wall
@@ -21,7 +23,7 @@ that hue, as bright as pale render is); the roof as the survey read it. The orth
 sunset video (its frames over the park) give the roofs: a low gable along the main wing with a
 brick chimney on its road side, the hall's own gable, the link's flat roof.
 
-Not seen, and built by the same rule as the park face: the road face and the ends of the main wing,
+Not seen, and built by the same rule as the front: the park face and the ends of the main wing,
 and the hall's walls (a band of high windows, as a school's hall has). Ivan can send Street View.
 """
 import os
@@ -35,9 +37,11 @@ LINK = dict( x=[ - 8.37, 0.5 ], y=[ 13.45, 25.8 ] )
 LOBBY = dict( x=[ 0.5, 6.15 ], y=[ 13.45, 16.3 ] )
 HALL = dict( x=[ - 14.44, 17.13 ], y=[ 23.5, 39.85 ] )
 STOREY, EAVE = 3.4, 7.0
-BAY = ( WING[ 'y' ][ 1 ] - WING[ 'y' ][ 0 ] ) / 11       # eleven bays along the wing's park face
+BAY = ( WING[ 'y' ][ 1 ] - WING[ 'y' ][ 0 ] ) / 11       # eleven bays along the wing's long faces
 UNIT = dict( w=1.95, h=2.05, panes=[ 2, 1 ], transom=0.55, kind='window' )   # two to a bay, nearly a storey high
-ENTRANCE = 8                                            # the bay of the entrance, counted from the south-west end
+ENTRANCE = 8                                            # the bay of the entrance, counted along the front from its north-east end
+AT = ( ENTRANCE + 0.5 ) * BAY                           # the entrance's middle along the front
+Y_AT = WING[ 'y' ][ 1 ] - AT                            # ... and its y (the front runs from +y to -y, seen from outside)
 
 def bays( side, skip=() ):
 	"""Two windows in every bay of a long face, on both storeys (only upstairs in the bays skipped)."""
@@ -76,11 +80,11 @@ SPEC = dict(
 		dict( HALL, eave=7.6, plinth=( 0.35, 'plinth' ), wall='wall', roof=dict( form='gable', ridge='x', pitch=15, over=0.6, verge=0.3, cover='sheet', fascia=( 'fascia', 0.3 ), soffit='soffit' ) ),
 	],
 	openings=(
-		# the park face: a group in every bay but the entrance's; the entrance's glass under its canopy
-		bays( 'right', skip=( ENTRANCE, ) )
-		+ [ dict( block=0, side='right', at=( ENTRANCE + 0.5 ) * BAY, sill=0, w=4.4, h=2.8, kind='door', leaves=4, leaf='glass', transom=0.5 ) ]
-		# the road face (not seen: as the park face)
-		+ bays( 'left' )
+		# the front, to the road: two windows in every bay but the entrance's; the entrance's glass under its canopy
+		bays( 'left', skip=( ENTRANCE, ) )
+		+ [ dict( block=0, side='left', at=AT, sill=0, w=4.4, h=2.8, kind='door', leaves=4, leaf='glass', transom=0.5 ) ]
+		# the park face (not seen: as the front)
+		+ bays( 'right' )
 		# the ends: two windows a storey at the south-west end
 		+ [ dict( block=0, side='front', at=t, sill=s, w=1.6, h=1.55, panes=[ 2, 1 ], kind='window' ) for t in ( 7.0, 16.2 ) for s in ( 0.9, STOREY + 0.9 ) ]
 		# the hall: a band of high windows along each long side (not seen)
@@ -89,19 +93,19 @@ SPEC = dict(
 		+ [ dict( block=1, side='right', at=6.0, sill=0, w=2.4, h=2.6, kind='door', leaves=2, leaf='glass', transom=0.4 ) ]
 	),
 	# ( the entrance's canopy is held from the wall: no posts )
-	canopies=[ dict( x=[ WING[ 'x' ][ 1 ], WING[ 'x' ][ 1 ] + 3.0 ], y=[ WING[ 'y' ][ 0 ] + ( ENTRANCE + 0.5 ) * BAY - 3.6, WING[ 'y' ][ 0 ] + ( ENTRANCE + 0.5 ) * BAY + 3.6 ], z=3.1, thick=0.4, mat='soffit', fascia='fascia' ) ],
-	units=[ dict( block=0, side='right', at=( ENTRANCE - 1 ) * BAY + 0.4, z=STOREY + 1.2, size=[ 0.8, 0.55, 0.3 ], mat='unit' ),
-		dict( block=0, side='right', at=( ENTRANCE - 1 ) * BAY + 0.4, z=1.6, size=[ 0.8, 0.55, 0.3 ], mat='unit' ),
-		dict( block=0, side='right', at=( ENTRANCE + 2 ) * BAY - 0.4, z=STOREY + 1.2, size=[ 0.8, 0.55, 0.3 ], mat='unit' ) ],
-	# the brown strips between the bays, full height, as thin boxes on the park face
-	strips=[ dict( block=0, side='right', at=k * BAY, w=0.3, mat='strip' ) for k in range( 1, 11 ) ],
+	canopies=[ dict( x=[ WING[ 'x' ][ 0 ] - 3.0, WING[ 'x' ][ 0 ] ], y=[ Y_AT - 3.6, Y_AT + 3.6 ], z=3.1, thick=0.4, mat='soffit', fascia='fascia' ) ],
+	units=[ dict( block=0, side='left', at=( ENTRANCE - 1 ) * BAY + 0.4, z=STOREY + 1.2, size=[ 0.8, 0.55, 0.3 ], mat='unit' ),
+		dict( block=0, side='left', at=( ENTRANCE - 1 ) * BAY + 0.4, z=1.6, size=[ 0.8, 0.55, 0.3 ], mat='unit' ),
+		dict( block=0, side='left', at=( ENTRANCE + 2 ) * BAY - 0.4, z=STOREY + 1.2, size=[ 0.8, 0.55, 0.3 ], mat='unit' ) ],
+	# the brown strips between the bays, full height, as thin boxes on the front
+	strips=[ dict( block=0, side='left', at=k * BAY, w=0.3, mat='strip' ) for k in range( 1, 11 ) ],
 	chimneys=[ dict( x=- 14.3, y=- 0.7, top=12.5, side=1.2, mat='brick' ) ],
 	# ( the map's ring has the hall's west end 2.3 m short of its east end's line: the orthophoto shows one
 	# rectangle, and the hall is taken whole )
 	outline=[ ( - 17.07, - 39.85 ), ( 6.15, - 39.85 ), ( 6.15, 16.3 ), ( 0.5, 16.3 ), ( 0.5, 23.5 ), ( 17.13, 23.5 ), ( 17.13, 39.85 ), ( - 14.44, 39.85 ), ( - 14.44, 23.5 ), ( - 8.37, 23.5 ), ( - 8.37, 13.45 ), ( - 17.07, 13.45 ) ],
-	# the ground it stands on: the building, the strip before the park face under the canopy, and the
+	# the ground it stands on: the building, the strip before the front under the canopy, and the
 	# entrance court between the wing, the link and the hall
-	yard=[ ( - 17.07, - 39.85 ), ( 9.35, - 39.85 ), ( 9.35, 16.3 ), ( 17.13, 16.3 ), ( 17.13, 39.85 ), ( - 14.44, 39.85 ), ( - 14.44, 23.5 ), ( - 8.37, 23.5 ), ( - 8.37, 13.45 ), ( - 17.07, 13.45 ) ],
+	yard=[ ( - 20.27, - 39.85 ), ( 6.15, - 39.85 ), ( 6.15, 16.3 ), ( 17.13, 16.3 ), ( 17.13, 39.85 ), ( - 14.44, 39.85 ), ( - 14.44, 23.5 ), ( - 8.37, 23.5 ), ( - 8.37, 13.45 ), ( - 20.27, 13.45 ) ],
 )
 
 result = build( SPEC, OUT )

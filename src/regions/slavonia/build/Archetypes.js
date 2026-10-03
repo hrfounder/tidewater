@@ -34,6 +34,8 @@ const ROUGH_RENDER = [ [ 176, 172, 164 ], [ 198, 190, 172 ], [ 214, 206, 188 ] ]
 const CLAY = [ [ 170, 96, 64 ], [ 156, 86, 60 ] ];
 const WEATHERED_BOARDS = [ [ 112, 96, 78 ], [ 96, 86, 74 ], [ 128, 104, 78 ] ];
 const WHITE_TRIM = [ [ 242, 240, 232 ] ];
+// the post-war house's window surrounds: white, or the grey render many have (TerraFrame kolodvorsk-boso, vicinity 23)
+const HOUSE_TRIM = [ [ 242, 240, 232 ], [ 150, 150, 146 ], [ 150, 150, 146 ] ];
 const JOINERY = [ [ 238, 236, 228 ], [ 92, 64, 44 ], [ 58, 84, 62 ], [ 60, 66, 74 ] ];
 const DOORS = [ [ 92, 64, 44 ], [ 70, 50, 36 ], [ 58, 84, 62 ], [ 110, 40, 36 ] ];
 
@@ -58,8 +60,9 @@ export const ARCHETYPES = {
 		roof: { form: 'hip', pitch: 30, eave: 0.6, verge: 0.35, cover: [ SURFACE.tile, TILE_ROOFS ] },
 		walls: [ [ SURFACE.render, RENDER, 4 ], [ SURFACE.block, CLAY, 1 ] ],
 		gable: null,
-		trim: WHITE_TRIM, joinery: JOINERY, doors: DOORS,
-		windows: { street: [ 'window_plain', 2.8, 0.9 ], side: [ 'window_plain', 3.4, 0.9 ], back: [ 'window_plain', 3.6, 0.9 ] },
+		trim: HOUSE_TRIM, joinery: JOINERY, doors: DOORS,
+		// roller-shuttered windows, as on almost every house built since the war (Ivan)
+		windows: { street: [ 'window_shutter', 2.8, 0.9 ], side: [ 'window_shutter', 3.4, 0.9 ], back: [ 'window_plain', 3.6, 0.9 ] },
 		door: [ 'door_house', 'street' ],
 		fence: [ [ 'low', 3 ], [ 'boards', 1 ] ],
 		vent: false, chimneys: [ 1, 1 ],

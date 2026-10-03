@@ -56,6 +56,7 @@ const KIT_PAINT = {
 	sill: CONCRETE,
 	plank: { color: lin( [ 112, 96, 78 ] ), rough: 0.9, surface: SURFACE.boards },
 	iron: { color: lin( [ 40, 40, 42 ] ), rough: 0.6, metal: 0.8, surface: SURFACE.plain },
+	shutter: { color: lin( [ 214, 214, 208 ] ), rough: 0.6, surface: SURFACE.plain },
 };
 
 // is the point inside the ring?

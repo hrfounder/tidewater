@@ -36,6 +36,7 @@ MATERIALS = {
 	'surround': ( ( 240, 236, 226 ), 0.90, 0.0 ),   # moulded plaster round an opening
 	'glass': ( ( 38, 44, 52 ), 0.08, 0.0 ),
 	'sill': ( ( 168, 164, 156 ), 0.90, 0.0 ),       # concrete sills and steps
+	'shutter': ( ( 214, 214, 208 ), 0.60, 0.0 ),    # a roller shutter's white-grey PVC and its box
 	'plank': ( ( 112, 92, 70 ), 0.85, 0.0 ),        # bare weathered boards
 	'iron': ( ( 40, 40, 42 ), 0.60, 0.8 ),
 	'railing': ( ( 52, 96, 150 ), 0.50, 0.3 ),      # a railing (the game paints it: galvanised on the bridge, white on the landing)
@@ -85,6 +86,24 @@ def window_plain():
 	S = Shells()
 	glazed( S, w, h, depth )
 	S.ledge( - w / 2 - 0.04, w / 2 + 0.04, - 0.05, depth, - 0.05, 0, 'sill' )
+	return S, dict( w=w, h=h, depth=depth )
+
+
+def window_shutter():
+	"""The window of the post-war village house (Ivan: the common type round Kolodvorska ulica): white
+	PVC in two lights, a roller shutter half down in front of them with its box at the head, the opening
+	framed by a band of render in the house's trim colour standing proud of the wall (grey on many),
+	a concrete sill. TerraFrame kolodvorsk-boso, vicinity 23."""
+	w, h, depth = 1.30, 1.30, 0.14
+	S = Shells()
+	glazed( S, w, h, depth )
+	face = depth - 0.04
+	S.box( - w / 2, w / 2, face - 0.08, face - 0.02, h - 0.2, h, 'shutter', back=False )          # the box
+	S.panel( - w / 2 + 0.02, w / 2 - 0.02, face - 0.05, h * 0.45, h - 0.2, 'shutter' )              # the shutter, half down
+	band = 0.15
+	for x0, x1, z0, z1 in ( ( - w / 2 - band, - w / 2, 0, h ), ( w / 2, w / 2 + band, 0, h ), ( - w / 2 - band, w / 2 + band, h, h + band ) ):
+		S.box( x0, x1, - 0.025, 0, z0, z1, 'surround', back=False )
+	S.ledge( - w / 2 - band, w / 2 + band, - 0.06, depth, - 0.06, 0, 'sill' )
 	return S, dict( w=w, h=h, depth=depth )
 
 
@@ -325,7 +344,7 @@ def gate_yard():
 	return S, dict( w=w, h=h, depth=0 )
 
 
-PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, bench=bench, park_lamp=park_lamp, gym_bars=gym_bars, gym_station=gym_station, crossbuck=crossbuck, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_small=window_small,
+PIECES = dict( railing=railing, lamp=lamp, platform=platform, skiff=skiff, excursion=excursion, bench=bench, park_lamp=park_lamp, gym_bars=gym_bars, gym_station=gym_station, crossbuck=crossbuck, gate_yard=gate_yard, window_street=window_street, window_plain=window_plain, window_shutter=window_shutter, window_small=window_small,
 	door_house=door_house, door_plank=door_plank, door_barn=door_barn, vent=vent )
 
 

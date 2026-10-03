@@ -130,8 +130,14 @@ export class Buildings {
 
 		}
 
+		this.index();
+
+	}
+
+	// the buckets `near` looks in, and how far a wall can be from its building's centre
+	index() {
+
 		this.buckets = new Map();
-		// how far a wall can be from its building's centre
 		this.radius = 0;
 		for ( const b of this.list ) {
 
@@ -141,6 +147,25 @@ export class Buildings {
 			for ( const [ x, z ] of bounds( b ) ) this.radius = Math.max( this.radius, Math.hypot( x - b.x, z - b.z ) );
 
 		}
+
+	}
+
+	// Move settled buildings: [ { b, dx, dz, yaw } ] (the street front squared and brought up to its
+	// pavement, Streets.js): turned about its centre to `yaw` (if given), then moved. The floor is found
+	// again on the ground under the walls, and the distance from the street it faces follows the move.
+	shift( moves, ground ) {
+
+		for ( const { b, dx, dz, yaw } of moves ) {
+
+			if ( yaw !== undefined ) { b.ring = turned( b, yaw ); b.yaw = yaw; }
+			b.ring = b.ring.map( ( [ x, z ] ) => [ x + dx, z + dz ] );
+			b.x += dx; b.z += dz;
+			if ( b.frontage ) b.frontage = { ...b.frontage, d: Math.hypot( b.frontage.x - b.x, b.frontage.z - b.z ) };
+			b.floor = Math.max( ...b.ring.map( ( [ x, z ] ) => ground( x, z ) ) );
+
+		}
+
+		this.index();
 
 	}
 
@@ -292,6 +317,20 @@ export function insideBuilding( b, x, z, margin = 0 ) {
 	const u = dx * c - dz * s, v = dx * s + dz * c;
 	for ( const p of b.pieces ) if ( Math.abs( u - p.u ) <= p.hu + margin && Math.abs( v - p.v ) <= p.hv + margin ) return true;
 	return false;
+
+}
+
+// a building's ring turned about its centre to face `yaw`: each corner where it stands in the building's
+// own frame, set down again in the turned one
+export function turned( b, yaw ) {
+
+	const c = Math.cos( b.yaw ), s = Math.sin( b.yaw ), C = Math.cos( yaw ), S = Math.sin( yaw );
+	return b.ring.map( ( [ x, z ] ) => {
+
+		const dx = x - b.x, dz = z - b.z, u = dx * c - dz * s, v = dx * s + dz * c;
+		return [ b.x + u * C + v * S, b.z - u * S + v * C ];
+
+	} );
 
 }
 

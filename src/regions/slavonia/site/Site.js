@@ -9,6 +9,7 @@ import { layFences } from './Fences.js';
 import { layBeside } from './Beside.js';
 import { courtAreas, courtFence } from './Courts.js';
 import { pathAreas } from './Paths.js';
+import { layStreets } from './Streets.js';
 
 // The Site: one plain-data model of the place, made once from the map data of the block. Every
 // system reads the Site. None reads the map files, and none asks another system what it did
@@ -20,7 +21,8 @@ import { pathAreas } from './Paths.js';
 //   rails           the railway: each track's line and level, and its bridges (Rails.js)
 //   buildings       the footprints: true ring, the rectangles it is made of, the street it faces,
 //                   what kind of building it is, and a landmark's grounds (Buildings.js)
-//   beside          the parking and the pavements along the roads, where they were surveyed (Beside.js)
+//   beside          the parking and the pavements along the roads: where they were surveyed (Beside.js),
+//                   and elsewhere the village's street section, the houses on their pavement (Streets.js)
 //   open, areas, trees   as surveyed (Survey.js): open ground the land cover calls a wood, made
 //                   ground (a track, a court, a terrace), and trees where they were seen to stand
 //   marinas, decks  what floats and what stands over the water, as surveyed (build/Marina.js)
@@ -49,11 +51,15 @@ export function buildSite( { index, water, places, survey, seen, parted, added, 
 	const rails = new Rails( places, { center, ground, survey } );
 	const roads = new Roads( places, { center, ground, walls: buildings, survey, rails, seen: roadsSeen } );
 	buildings.settle( { roads, ground, landmarks } );
+	// the street section: the surveyed strips, then the rule's along the rest, which brings the street
+	// fronts onto their pavements; the plots are drawn again from where the houses then stand
+	const surveyed = layBeside( roads, beside );
+	const streets = layStreets( { roads, buildings, plots: buildPlots( buildings, roads, open ), beside: surveyed, ground } );
 	return {
 		center, datum,
 		water: new Water( water, { center, datum } ),
 		roads, rails, buildings,
-		beside: layBeside( roads, beside ),
+		beside: [ ...surveyed, ...streets.strips ],
 		// ( a court is made ground in layers, after the rest: Courts.js )
 		open, areas: [ ...areas, ...paths.flatMap( pathAreas ), ...courts.flatMap( courtAreas ) ], courtFences: courts.map( courtFence ).filter( Boolean ), trees: trees.map( ( [ x, z, height ] ) => ( { x, z, height } ) ),
 		marinas, decks, props,

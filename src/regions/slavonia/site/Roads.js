@@ -116,9 +116,25 @@ export class Roads {
 
 			} );
 			road.length = along;
-			this.nodes[ r.a ].roads.push( road.index );
-			this.nodes[ r.b ].roads.push( road.index );
 			this.roads.push( road );
+
+		} );
+
+		// The map draws many a street's pavement as a footway of its own beside it; the village's pavements
+		// are laid with the street (Beside.js, Streets.js), so such a footway is left out
+		const streets = this.roads.filter( ( r ) => r.street );
+		this.roads = this.roads.filter( ( r ) => {
+
+			if ( r.class !== 'footway' || ! sidewalk( r, streets ) ) return true;
+			this.skipped.sidewalk = ( this.skipped.sidewalk || 0 ) + 1;
+			return false;
+
+		} );
+		this.roads.forEach( ( road, i ) => {
+
+			road.index = i;
+			this.nodes[ road.a ].roads.push( i );
+			this.nodes[ road.b ].roads.push( i );
 
 		} );
 
@@ -204,6 +220,26 @@ export class Roads {
 		return best;
 
 	}
+
+}
+
+// A footway that runs alongside a street (a pavement the map drew on its own): most of its points lie
+// within SIDEWALK of a street's centreline, along it (their directions within ALONG of each other)
+const SIDEWALK = [ 2, 16 ], ALONG = Math.cos( 25 * Math.PI / 180 ), MOSTLY = 0.7;
+function sidewalk( road, streets ) {
+
+	const P = road.pts;
+	let along = 0;
+	for ( let i = 0; i + 1 < P.length; i ++ ) {
+
+		const x = ( P[ i ][ 0 ] + P[ i + 1 ][ 0 ] ) / 2, z = ( P[ i ][ 1 ] + P[ i + 1 ][ 1 ] ) / 2;
+		const dx = P[ i + 1 ][ 0 ] - P[ i ][ 0 ], dz = P[ i + 1 ][ 1 ] - P[ i ][ 1 ], l = Math.hypot( dx, dz ) || 1;
+		const f = streets.map( ( r ) => project( r, x, z ) ).reduce( ( a, b ) => ( ! a || b.d < a.d ? b : a ), null );
+		if ( f && f.d >= SIDEWALK[ 0 ] && f.d <= SIDEWALK[ 1 ] && Math.abs( ( dx * f.tx + dz * f.tz ) / l ) >= ALONG ) along ++;
+
+	}
+
+	return along >= MOSTLY * ( P.length - 1 );
 
 }
 

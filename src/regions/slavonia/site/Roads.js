@@ -71,7 +71,8 @@ export class Roads {
 	// center ( east, north ); ground( x, z ): the dry ground's height;
 	// walls: the Site's buildings, for `crossings` and `gap` (Buildings.js); rails: the Site's
 	// railway, for the level crossings (Rails.js)
-	// seen: the records of Survey.js ROADS, a road's surface or width where the map has it wrong
+	// seen: the records of Survey.js ROADS, a road's surface or width where the map has it wrong, or
+	// a road that is not one of its own (a street's pavement, laid beside the street: Beside.js)
 	constructor( places, { center, ground, walls, survey, rails, seen: seenRoads = [] } ) {
 
 		const [ cE, cN ] = center;
@@ -94,6 +95,7 @@ export class Roads {
 
 			const cls = ROAD_CLASSES[ r.class ];
 			if ( ! cls ) { this.skipped[ r.class ] = ( this.skipped[ r.class ] || 0 ) + 1; return; }
+			if ( ( told.get( k ) || {} ).gone ) { this.skipped.gone = ( this.skipped.gone || 0 ) + 1; return; }
 			// the surveyed line's corners
 			const seen = survey.roads[ k ], line = corners( seen.pts.map( ( [ e, n ] ) => [ e - cE, cN - n ] ) );
 			if ( line.length < 2 ) return;

@@ -6,6 +6,7 @@ import { project, pointAt } from './Roads.js';
 //
 //   site.beside = [ { of, road, side, inner: [ [ x, z ], ... ], outer: [ ... ], ring } ]
 //     of      'asphalt' or 'paving'
+//     colour  a pavement's own colour, if it was measured
 //     inner   the strip's edge nearer the road, a point every STEP metres along it; outer the other
 //     ring    the two edges as one outline
 
@@ -33,7 +34,7 @@ export function layBeside( roads, strips ) {
 			const n = Math.ceil( ( s1 - s0 ) / STEP );
 			const edge = ( d ) => Array.from( { length: n + 1 }, ( _, k ) => pointAt( road, s0 + ( s1 - s0 ) * k / n, road.half + d, m.side ) );
 			const inner = edge( strip.out[ 0 ] ), outer = edge( strip.out[ 1 ] );
-			laid.push( { of: strip.of, road, side: m.side, inner, outer, ring: [ ...inner, ...outer.slice().reverse() ] } );
+			laid.push( { of: strip.of, colour: strip.colour, road, side: m.side, inner, outer, ring: [ ...inner, ...outer.slice().reverse() ] } );
 
 		}
 

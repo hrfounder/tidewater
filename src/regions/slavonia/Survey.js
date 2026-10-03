@@ -44,6 +44,19 @@ export const MOVED = [
 	// the house behind the gravel lot south of the municipality: the survey set it on the shadow north
 	// of it; its two slopes lie 4.6 m further south
 	{ at: [ 31.9, - 62.5 ], by: [ 0, 4.6 ], source: 'sheet 1542' },
+	// along Vinkovačka ulica, set on their roofs as the street unrolled shows them: on the west side
+	// the survey stopped short of the eaves and put the fronts over the pavement; on the east side it
+	// took the houses' shadows, which fall toward the street there, for their walls
+	{ at: [ 115.3, - 379.9 ], by: [ - 1.2, - 1.0 ], source: 'unrolled Vinkovačka ulica at 2200' },
+	{ at: [ 154.0, - 429.1 ], by: [ - 1.5, - 1.3 ], source: 'unrolled Vinkovačka ulica at 2137' },
+	{ at: [ 102.0, - 375.2 ], by: [ - 1.1, - 1.0 ], source: 'unrolled Vinkovačka ulica at 2212' },
+	{ at: [ 98.3, - 364.4 ], by: [ - 0.4, - 0.3 ], source: 'unrolled Vinkovačka ulica at 2223' },
+	{ at: [ 30.6, - 296.7 ], by: [ - 0.6, - 0.5 ], source: 'unrolled Vinkovačka ulica at 2317' },
+	{ at: [ 7.8, - 222.8 ], by: [ - 1.0, - 0.3 ], source: 'unrolled Vinkovačka ulica at 2386' },
+	{ at: [ 335.6, - 678.0 ], by: [ - 0.9, - 0.7 ], source: 'unrolled Vinkovačka ulica at 1829' },
+	{ at: [ 310.0, - 613.8 ], by: [ - 0.2, - 0.2 ], source: 'unrolled Vinkovačka ulica at 1895' },
+	{ at: [ 254.8, - 497.7 ], by: [ 3.1, 2.5 ], source: 'unrolled Vinkovačka ulica at 2020' },
+	{ at: [ 246.8, - 484.8 ], by: [ 4.2, 3.5 ], source: 'unrolled Vinkovačka ulica at 2035' },
 	// at the block's north-east edge: a long building end-on to a lane, which the survey set across the
 	// lane. Its pale slab under the trees lies 5 m further from it.
 	{ at: [ 754, - 1083 ], by: [ 4.0, 3.1 ], source: 'sheet 754' },
@@ -186,6 +199,8 @@ export const SEEN = [
 //   out       [ nearest, farthest ]: the strip lies between these distances from the carriageway's edge (m)
 //   of        'asphalt' (parking bays, a widening: the road's own surface carried out) or 'paving'
 //             (a pavement of setts or concrete, a kerb's height above the road)
+//   colour    a pavement's colour, sRGB 0-255 at the game's brightness, as the orthophoto has it
+//             (tools/geodata/unroll.py measures it); without one, the red-grey setts of St Andrew's
 //   source    where it was seen
 export const BESIDE = [
 	// before St Andrew's: bays on the church's side of Ulica Matije Gupca, and the pavement along its fence
@@ -207,6 +222,38 @@ export const BESIDE = [
 	{ along: 'Vinkovačka ulica', from: [ 6.5, - 133.5 ], to: [ 4.6, - 90.5 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet opcina' },
 	{ along: 'Vinkovačka ulica', from: [ 6, - 125 ], to: [ 4.6, - 90.5 ], out: [ 5, 6.4 ], of: 'paving', source: 'sheet opcina; drone1 at 30 s' },
 	{ along: 'Vinkovačka ulica', from: [ - 7.7, - 122.5 ], to: [ - 12, - 87.4 ], out: [ 0, 5 ], of: 'asphalt', source: 'sheet opcina' },
+	// Vinkovačka ulica from where the houses begin (Ratarska ulica) to the bridge, read off the street
+	// unrolled (tools/geodata/unroll.py), s in metres along it from its south-east end. The west side:
+	// a grass verge, then the pavement along the garden fences; where cars stand across the verge, the
+	// pavement behind them. The east side: the rows of cars stood across the verge. ( The east side's
+	// pavement lies in the houses' shadows on the orthophoto and is left as the map has it. The west
+	// pavement is left out at 1793-1817, 1969-1985 and 2394-2400, where the map's outline of a house
+	// takes in its yard and the next houses and reaches over the verge: until those are traced. )
+{ along: 'Vinkovačka ulica', from: [ 443.7, - 768.3 ], to: [ 422.1, - 742.0 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 102, 99, 93 ], source: 'unrolled Vinkovačka ulica 1690-1724' },
+	{ along: 'Vinkovačka ulica', from: [ 422.1, - 742.0 ], to: [ 400.2, - 715.5 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 102, 99, 93 ], source: 'unrolled Vinkovačka ulica 1724-1759' },
+	{ along: 'Vinkovačka ulica', from: [ 400.2, - 715.5 ], to: [ 380.4, - 691.3 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 102, 99, 93 ], source: 'unrolled Vinkovačka ulica 1759-1793' },
+	{ along: 'Vinkovačka ulica', from: [ 361.3, - 668.3 ], to: [ 339.4, - 641.3 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 99, 97, 92 ], source: 'unrolled Vinkovačka ulica 1817-1855' },
+	{ along: 'Vinkovačka ulica', from: [ 339.4, - 641.3 ], to: [ 314.7, - 612.5 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 99, 97, 92 ], source: 'unrolled Vinkovačka ulica 1855-1893' },
+	{ along: 'Vinkovačka ulica', from: [ 314.7, - 612.5 ], to: [ 289.4, - 584.0 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 99, 97, 92 ], source: 'unrolled Vinkovačka ulica 1893-1931' },
+	{ along: 'Vinkovačka ulica', from: [ 289.4, - 584.0 ], to: [ 266.0, - 554.2 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 99, 97, 92 ], source: 'unrolled Vinkovačka ulica 1931-1969' },
+	{ along: 'Vinkovačka ulica', from: [ 255.9, - 541.8 ], to: [ 229.0, - 509.1 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 94, 92, 86 ], source: 'unrolled Vinkovačka ulica 1985-2027' },
+	{ along: 'Vinkovačka ulica', from: [ 229.0, - 509.1 ], to: [ 202.1, - 476.3 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 94, 92, 86 ], source: 'unrolled Vinkovačka ulica 2027-2070' },
+	{ along: 'Vinkovačka ulica', from: [ 202.1, - 476.3 ], to: [ 175.2, - 443.5 ], out: [ 4.7, 6.1 ], of: 'paving', colour: [ 94, 92, 86 ], source: 'unrolled Vinkovačka ulica 2070-2112' },
+	{ along: 'Vinkovačka ulica', from: [ 159.7, - 424.1 ], to: [ 129.4, - 388.6 ], out: [ 4.6, 6.1 ], of: 'paving', colour: [ 95, 92, 86 ], source: 'unrolled Vinkovačka ulica 2137-2184' },
+	{ along: 'Vinkovačka ulica', from: [ 129.4, - 388.6 ], to: [ 99.1, - 352.6 ], out: [ 4.6, 6.1 ], of: 'paving', colour: [ 95, 92, 86 ], source: 'unrolled Vinkovačka ulica 2184-2231' },
+	{ along: 'Vinkovačka ulica', from: [ 99.1, - 352.6 ], to: [ 68.6, - 316.8 ], out: [ 4.6, 6.1 ], of: 'paving', colour: [ 95, 92, 86 ], source: 'unrolled Vinkovačka ulica 2231-2278' },
+	{ along: 'Vinkovačka ulica', from: [ 68.6, - 316.8 ], to: [ 38.2, - 279.0 ], out: [ 4.6, 6.1 ], of: 'paving', colour: [ 95, 92, 86 ], source: 'unrolled Vinkovačka ulica 2278-2325' },
+	{ along: 'Vinkovačka ulica', from: [ 28.1, - 253.9 ], to: [ 15.6, - 211.8 ], out: [ 4.5, 6.1 ], of: 'paving', colour: [ 101, 99, 94 ], source: 'unrolled Vinkovačka ulica 2350-2394' },
+	{ along: 'Vinkovačka ulica', from: [ 13.9, - 206.1 ], to: [ 11.4, - 194.4 ], out: [ 4.5, 6.1 ], of: 'paving', colour: [ 92, 92, 88 ], source: 'unrolled Vinkovačka ulica 2400-2412' },
+	{ along: 'Vinkovačka ulica', from: [ 13.6, - 193.7 ], to: [ 3.0, - 158.4 ], out: [ 0, 6 ], of: 'asphalt', source: 'unrolled Vinkovačka ulica 2412-2448' },
+	{ along: 'Vinkovačka ulica', from: [ 3.0, - 158.4 ], to: [ - 5.0, - 122.8 ], out: [ 0, 6 ], of: 'asphalt', source: 'unrolled Vinkovačka ulica 2448-2485' },
+	{ along: 'Vinkovačka ulica', from: [ 10.1, - 194.8 ], to: [ - 0.6, - 159.3 ], out: [ 6, 7.4 ], of: 'paving', colour: [ 94, 93, 89 ], source: 'unrolled Vinkovačka ulica 2412-2448' },
+	{ along: 'Vinkovačka ulica', from: [ - 0.6, - 159.3 ], to: [ - 8.6, - 123.6 ], out: [ 6, 7.4 ], of: 'paving', colour: [ 94, 93, 89 ], source: 'unrolled Vinkovačka ulica 2448-2485' },
+	{ along: 'Vinkovačka ulica', from: [ - 8.1, - 123.5 ], to: [ - 15.7, - 88.2 ], out: [ 5, 7.4 ], of: 'paving', colour: [ 96, 95, 92 ], source: 'unrolled Vinkovačka ulica 2485-2521' },
+	{ along: 'Vinkovačka ulica', from: [ - 12.6, - 87.6 ], to: [ - 16.2, - 63.1 ], out: [ 0, 6 ], of: 'asphalt', source: 'unrolled Vinkovačka ulica 2521-2545' },
+	{ along: 'Vinkovačka ulica', from: [ - 16.2, - 88.3 ], to: [ - 19.9, - 63.4 ], out: [ 6, 7.4 ], of: 'paving', colour: [ 90, 90, 85 ], source: 'unrolled Vinkovačka ulica 2521-2545' },
+	{ along: 'Vinkovačka ulica', from: [ 256.8, - 519.0 ], to: [ 227.6, - 483.5 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'unrolled Vinkovačka ulica 2002-2048' },
+	{ along: 'Vinkovačka ulica', from: [ 1.6, - 91.7 ], to: [ - 3.2, - 61.9 ], out: [ 0, 6 ], of: 'asphalt', source: 'unrolled Vinkovačka ulica 2514-2545' },
 	// the school's front: the parking bays across the road from it, the pavement on its side
 	{ along: null, from: [ 96.8, 38.6 ], to: [ 71.1, 62.4 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'sheet schoolturn' },
 	{ along: null, from: [ 114.8, 40.4 ], to: [ 74.8, 77.4 ], out: [ 0, 1.4 ], of: 'paving', source: 'sheet schoolturn' },
@@ -276,10 +323,16 @@ export const PATHS = [
 	{ points: [ [ 114, 117 ], [ 118, 118 ], [ 129.5, 122 ], [ 137, 127 ], [ 141.5, 131 ], [ 148, 135 ], [ 155.5, 140 ], [ 164.5, 146 ] ], width: 2.6, of: 'concrete', source: 'sheet path' },
 ];
 
-// Roads whose surface or width the map has wrong, each by a point on it.
+// Roads whose surface or width the map has wrong, each by a point on it; `gone`: a way the map draws
+// that is a street's pavement, laid beside the street instead (BESIDE), where it is seen to run.
 export const ROADS = [
 	// the road along the school's front and its parking: asphalt, not a track (sheet schoolfront)
 	{ at: [ 91, 57.5 ], surface: 'paved', width: 5.0, source: 'sheet schoolfront' },
+	// the map's footways along the west side of Vinkovačka ulica: its pavement, laid beside it (BESIDE)
+	{ at: [ 315.1, - 610.1 ], gone: true, source: 'unrolled Vinkovačka ulica 1690-2112' },
+	{ at: [ 103.6, - 354.6 ], gone: true, source: 'unrolled Vinkovačka ulica 2137-2325' },
+	{ at: [ 27.7, - 251.6 ], gone: true, source: 'unrolled Vinkovačka ulica 2350-2412' },
+	{ at: [ - 1.1, - 150.1 ], gone: true, source: 'unrolled Vinkovačka ulica 2412-2545' },
 ];
 
 // Trees that were seen where they stand: [ x, z, height ]. The place is the middle of the crown on the

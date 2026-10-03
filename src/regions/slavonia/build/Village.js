@@ -189,12 +189,12 @@ export function buildVillage( { site, terrain, models }, { scene, colliders } ) 
 
 	// the pavements beside the roads: each a slab a kerb's height over the ground it lies on, its two
 	// long edges and its ends closed down to the ground
-	const paving = { color: lin( PAVING.colour ), rough: 0.9, surface: SURFACE.concrete, seed: 0.35 };
 	let pavements = 0;
 	for ( const strip of site.beside ) {
 
 		if ( strip.of !== 'paving' ) continue;
 		pavements ++;
+		const paving = { color: lin( strip.colour || PAVING.colour ), rough: 0.9, surface: SURFACE.concrete, seed: 0.35 };
 		const top = ( [ x, z ] ) => [ x, terrain.heightAt( x, z ) + PAVING.kerb, z ], foot = ( [ x, z ] ) => [ x, terrain.heightAt( x, z ) - FOOTING, z ];
 		const n = strip.inner.length, width = Math.hypot( strip.outer[ 0 ][ 0 ] - strip.inner[ 0 ][ 0 ], strip.outer[ 0 ][ 1 ] - strip.inner[ 0 ][ 1 ] );
 		let along = 0;

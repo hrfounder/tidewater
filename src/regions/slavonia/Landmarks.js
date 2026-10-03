@@ -32,4 +32,6 @@ export const LANDMARKS = [
 	{ at: [ 21, - 117.6 ], faces: 'Vinkovačka ulica', model: 'models/slavonia/houses/opcina.glb', surfaces: HOUSE },
 	{ at: [ 18.3, - 130.5 ], faces: 'Vinkovačka ulica', model: 'models/slavonia/houses/posta.glb', surfaces: HOUSE },
 	{ at: [ 129.3, 76.7 ], faces: 'Školska ulica', model: 'models/slavonia/houses/school.glb', surfaces: HOUSE },
+	// Kolodvorska 642, Ivan's house: from his TerraFrame photos of 2026-10-03 (first, rough pass)
+	{ at: [ - 203.5, 235.75 ], faces: 'Kolodvorska ulica', model: 'models/slavonia/houses/kolodvorska642.glb', surfaces: HOUSE },
 ];

@@ -38,6 +38,11 @@ export const GONE = [
 // along the walls, and a paved yard's edge can outdo a roof's): `at` a point in the footprint where
 // the survey has it, `by` the metres [ east, south ] from there to where its roof is on the sheet.
 export const MOVED = [
+	// along Kolodvorska ulica (s 1378-1505): footprints that reached over the pavement, set back behind it
+	{ at: [ - 277.4, 162.6 ], by: [ 0.17, - 0.17 ], source: 'unrolled Kolodvorska ulica at 1381: behind its pavement' },
+	{ at: [ - 280.4, 202.9 ], by: [ - 1.85, 1.85 ], source: 'unrolled Kolodvorska ulica at 1395: behind its pavement' },
+	{ at: [ - 231.5, 269.4 ], by: [ - 0.28, 0.29 ], source: 'unrolled Kolodvorska ulica at 1461: behind its pavement' },
+	{ at: [ - 218.6, 266.5 ], by: [ - 1.89, 1.94 ], source: 'unrolled Kolodvorska ulica at 1484: behind its pavement' },
 	// the station house of Andrijaševci: the survey took the edge of the concrete before it for its
 	// south wall. Its roof (the shaded north slope and the lit south one) lies 6.2 m further north.
 	{ at: [ - 862, - 273 ], by: [ 0, - 6.2 ], source: 'sheet station' },
@@ -203,6 +208,15 @@ export const SEEN = [
 //             (tools/geodata/unroll.py measures it); without one, the red-grey setts of St Andrew's
 //   source    where it was seen
 export const BESIDE = [
+	// Kolodvorska ulica past Ivan's house (642) to the junction by the shrine, read off the street
+	// unrolled (s 1378-1505): on both sides a grass verge with young trees, then the pavement along the
+	// house fronts. First, rough pass of the area (2026-10-03); the driveways across the verges later.
+	{ along: 'Kolodvorska ulica', from: [ - 279.5, 173.7 ], to: [ - 249.5, 203.5 ], out: [ 6.1, 7.2 ], of: 'paving', colour: [ 99, 96, 89 ], source: 'unrolled Kolodvorska ulica 1378-1420' },
+	{ along: 'Kolodvorska ulica', from: [ - 249.5, 203.5 ], to: [ - 219.3, 233.1 ], out: [ 6.1, 7.2 ], of: 'paving', colour: [ 99, 96, 89 ], source: 'unrolled Kolodvorska ulica 1420-1463' },
+	{ along: 'Kolodvorska ulica', from: [ - 219.3, 233.1 ], to: [ - 188.9, 262.8 ], out: [ 6.1, 7.2 ], of: 'paving', colour: [ 99, 96, 89 ], source: 'unrolled Kolodvorska ulica 1463-1505' },
+	{ along: 'Kolodvorska ulica', from: [ - 294.1, 188.3 ], to: [ - 276.4, 206.0 ], out: [ 6.5, 7.5 ], of: 'paving', colour: [ 95, 92, 86 ], source: 'unrolled Kolodvorska ulica 1378-1403' },
+	{ along: 'Kolodvorska ulica', from: [ - 267.0, 215.2 ], to: [ - 235.2, 246.3 ], out: [ 6.5, 7.5 ], of: 'paving', colour: [ 90, 90, 84 ], source: 'unrolled Kolodvorska ulica 1416-1460' },
+	{ along: 'Kolodvorska ulica', from: [ - 235.2, 246.3 ], to: [ - 203.6, 277.4 ], out: [ 6.5, 7.5 ], of: 'paving', colour: [ 90, 90, 84 ], source: 'unrolled Kolodvorska ulica 1460-1505' },
 	// before St Andrew's: bays on the church's side of Ulica Matije Gupca, and the pavement along its fence
 	{ along: 'Ulica Matije Gupca', from: [ - 57, 180 ], to: [ - 41, 164 ], out: [ 0, 5.5 ], of: 'asphalt', source: 'sheet andrew-ring1; drone5 f012' },
 	{ along: 'Ulica Matije Gupca', from: [ - 57, 180 ], to: [ - 41, 164 ], out: [ 5.5, 7.3 ], of: 'paving', source: 'sheet andrew-ring1; drone5 f012' },

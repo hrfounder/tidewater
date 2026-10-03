@@ -18,6 +18,9 @@ A SPEC is plain data:
       eave            the walls' height to the eaves, over the floor (m)
       plinth          how far the plinth runs up the walls from the ground (m), and its material
       wall            the walls' material
+      recesses        stretches of a wall set back into the house, the full height (a garage bay one
+                      brick deep, a loggia): [ { side, from, to: metres along the wall as its
+                      openings' `at` are, depth (m) } ]; the openings within one stand in it
       roof            { form: 'gable' | 'hip', ridge: 'x' | 'y' (gable: the way the ridge runs),
                       pitch: degrees, over: the eaves' overhang (m), verge: the overhang at a gable
                       end (m), cover: material, fascia: the board along the eaves and its depth
@@ -249,18 +252,35 @@ def build_house( S, spec ):
 		mine = [ o for o in spec.get( 'openings', [] ) if o[ 'block' ] == k ]
 		for side in ( 'front', 'right', 'back', 'left' ):
 			W, L = wall_frame( b, side )
-			ours = [ o for o in mine if o[ 'side' ] == side ]
-			holes = [ ( o[ 'at' ] - o[ 'w' ] / 2, o[ 'at' ] + o[ 'w' ] / 2, o[ 'sill' ], o[ 'sill' ] + o[ 'h' ] ) for o in ours ]
 			plinth, pmat = b.get( 'plinth', ( 0.3, b[ 'wall' ] ) )
-			def make( T, ours=ours, holes=holes, L=L, plinth=plinth, pmat=pmat, b=b ):
-				holed( T, 0, L, - FOOT, plinth, holes, pmat, reveals=False )
-				holed( T, 0, L, plinth, b[ 'eave' ], [ ( ta, tb, max( za, plinth ), zb ) for ta, tb, za, zb in holes if zb > plinth ], b[ 'wall' ], reveals=False )
+			recesses = [ r for r in b.get( 'recesses', [] ) if r[ 'side' ] == side ]
+			inside = lambda o, r: r[ 'from' ] <= o[ 'at' ] <= r[ 'to' ]
+			def make( T, ours, holes, t0, t1, L=L, plinth=plinth, pmat=pmat, b=b ):
+				holed( T, t0, t1, - FOOT, plinth, holes, pmat, reveals=False )
+				holed( T, t0, t1, plinth, b[ 'eave' ], [ ( ta, tb, max( za, plinth ), zb ) for ta, tb, za, zb in holes if zb > plinth ], b[ 'wall' ], reveals=False )
 				for ta, tb, za, zb in holes:
+					if zb - za >= b[ 'eave' ] + FOOT - 1e-6: continue          # ( a recess's opening in the outer wall: no reveal )
 					for q in ( [ ( ta, 0, za ), ( ta, 0, zb ), ( ta, SET_BACK, zb ), ( ta, SET_BACK, za ) ], [ ( tb, 0, zb ), ( tb, 0, za ), ( tb, SET_BACK, za ), ( tb, SET_BACK, zb ) ],
 							[ ( ta, 0, zb ), ( tb, 0, zb ), ( tb, SET_BACK, zb ), ( ta, SET_BACK, zb ) ], [ ( tb, 0, za ), ( ta, 0, za ), ( ta, SET_BACK, za ), ( tb, SET_BACK, za ) ] ):
 						T.shell( q, [ ( 0, 1, 2, 3 ) ], b[ 'wall' ] )
 				for o in ours: door( T, o, spec.get( 'door_parts', mats ) ) if o[ 'kind' ] == 'door' else window( T, o, mats )
-			on_wall( S, W, make )
+			ours = [ o for o in mine if o[ 'side' ] == side and not any( inside( o, r ) for r in recesses ) ]
+			holes = [ ( o[ 'at' ] - o[ 'w' ] / 2, o[ 'at' ] + o[ 'w' ] / 2, o[ 'sill' ], o[ 'sill' ] + o[ 'h' ] ) for o in ours ]
+			# ( the outer wall is open the full height where a recess is )
+			holes += [ ( r[ 'from' ], r[ 'to' ], - FOOT, b[ 'eave' ] ) for r in recesses ]
+			on_wall( S, W, lambda T, ours=ours, holes=holes: make( T, ours, holes, 0, L ) )
+			for r in recesses:
+				d = r[ 'depth' ]
+				Wr = lambda t, z, out, W=W, d=d: W( t, z, out - d )
+				ins = [ o for o in mine if o[ 'side' ] == side and inside( o, r ) ]
+				on_wall( S, Wr, lambda T, ins=ins, r=r: make( T, ins, [ ( o[ 'at' ] - o[ 'w' ] / 2, o[ 'at' ] + o[ 'w' ] / 2, o[ 'sill' ], o[ 'sill' ] + o[ 'h' ] ) for o in ins ], r[ 'from' ], r[ 'to' ] ) )
+				# its two returns, from the outer wall's face back to the recess's, and its head under the eaves
+				def returns( T, r=r, d=d, b=b, plinth=plinth, pmat=pmat ):
+					for z0, z1, m in ( ( - FOOT, plinth, pmat ), ( plinth, b[ 'eave' ], b[ 'wall' ] ) ):
+						T.shell( [ ( r[ 'from' ], 0, z0 ), ( r[ 'from' ], 0, z1 ), ( r[ 'from' ], d, z1 ), ( r[ 'from' ], d, z0 ) ], [ ( 0, 1, 2, 3 ) ], m )
+						T.shell( [ ( r[ 'to' ], 0, z1 ), ( r[ 'to' ], 0, z0 ), ( r[ 'to' ], d, z0 ), ( r[ 'to' ], d, z1 ) ], [ ( 0, 1, 2, 3 ) ], m )
+					T.shell( [ ( r[ 'from' ], 0, b[ 'eave' ] ), ( r[ 'to' ], 0, b[ 'eave' ] ), ( r[ 'to' ], d, b[ 'eave' ] ), ( r[ 'from' ], d, b[ 'eave' ] ) ], [ ( 0, 1, 2, 3 ) ], b[ 'wall' ] )
+				on_wall( S, W, returns )
 		r = b[ 'roof' ]
 		tops.append( ( hip if r[ 'form' ] == 'hip' else gable )( S, b, r ) )
 	for c in spec.get( 'canopies', [] ):

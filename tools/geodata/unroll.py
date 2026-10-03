@@ -8,6 +8,8 @@ eye: its pavements, its rows of parking, the aprons before the gates (Survey.js 
                                          (strips read off the sheets: from 210 to 262 m along, on the
                                           left, 0 to 1.6 m out from the carriageway, paving unless
                                           said -> their BESIDE entries, a paving one with its colour)
+        ... add the word push: also the Survey.js MOVED records that set the footprints standing over
+        those strips back behind them
     python3 tools/geodata/unroll.py "Vinkovačka ulica" move 1830:1.6 ...
                                          (footprint 1830 of plan.json set 1.6 m further from the
                                           street, onto its roof -> its Survey.js MOVED record)
@@ -32,6 +34,8 @@ HALF = 16.0                  # metres shown each side of the middle
 PX = 0.05                    # metres to a pixel of the sheet
 LIT = ( 60, 90 )             # the percentiles of brightness between which a strip's colour is taken
 PIECE = 50.0                 # a strip is written in pieces no longer than this (m)
+AWAY = 0.1                   # a footprint pushed back from a pavement stands this far behind it (m)
+MOST = 4.0                   # no footprint is pushed further than this: more is a different fault (m)
 CHAIN = 3.0                  # stretches whose ends lie within this of each other chain (m)
 
 
@@ -158,6 +162,27 @@ def entry( street, name, s0, s1, side, o0, o1, of, colour ):
     return f"{{ along: '{name}', from: [ {a[ 0 ]:.1f}, {a[ 1 ]:.1f} ], to: [ {b[ 0 ]:.1f}, {b[ 1 ]:.1f} ], out: [ {o0:g}, {o1:g} ], of: '{of}'{paint}, source: 'unrolled {name} {s0:.0f}-{s1:.0f}' }},"
 
 
+def behind( street, plan, s0, s1, side, outer, moved ):
+    """The footprints that reach over a strip ( s0..s1 on `side`, out to `outer` from the carriageway ):
+    for each, how far it goes back from the street to stand behind it, by AWAY more (no house stands on
+    the pavement; a footprint there is the map's or the survey's error). Into `moved`: index ->
+    ( metres, a point inside it, the way away from the street, s )."""
+    sign = 1 if side == 'L' else - 1
+    for i, ring in enumerate( plan[ 'buildings' ] ):
+        if len( ring ) < 3: continue
+        reach = 0.0; at = None
+        # ( the corners of its outline and of the rectangles the game builds it from )
+        for x, z in ring + [ c for piece in plan.get( 'pieces', [ [] ] * len( plan[ 'buildings' ] ) )[ i ] for c in piece ]:
+            v, o = street.place( x, z )
+            if not s0 - 1 <= v <= s1 + 1 or o * sign <= 0: continue
+            need = street.half_at( v ) + outer + AWAY - o * sign
+            if need > reach: reach, at = need, v
+        if at is None or reach <= 0 or reach > MOST: continue
+        n = street.frame( at )[ 1 ] * sign
+        point = Polygon( ring ).representative_point().coords[ 0 ]
+        if i not in moved or moved[ i ][ 0 ] < reach: moved[ i ] = ( round( reach, 2 ), point, n, at )
+
+
 def colour_of( street, ortho, cx, cy, gain, s0, s1, side, o0, o1 ):
     """The median colour of a strip's ground on the pictures, at the game's brightness (survey.py)."""
     sign = 1 if side == 'L' else - 1
@@ -181,7 +206,10 @@ def main():
     if sys.argv[ 2:3 ] == [ 'at' ]:
         # one strip a word: s0,s1,side,o0,o1[,of]
         gain = json.load( open( os.path.join( S.ROOT, 'public', 'world', 'bosut', 'survey.json' ), encoding='utf-8' ) )[ 'gain' ]
+        push = 'push' in sys.argv[ 3: ]
+        moved = {}
         for word in sys.argv[ 3: ]:
+            if word == 'push': continue
             f = word.split( ',' )
             s0, s1, o0, o1, side, of = float( f[ 0 ] ), float( f[ 1 ] ), float( f[ 3 ] ), float( f[ 4 ] ), f[ 2 ], f[ 5 ] if len( f ) > 5 else 'paving'
             c = colour_of( street, ortho, cx, cy, gain, s0, s1, side, o0, o1 ) if of == 'paving' else None
@@ -189,6 +217,9 @@ def main():
             # which on a long strip round a bend could lie across the road )
             n = max( 1, math.ceil( ( s1 - s0 ) / PIECE ) )
             for k in range( n ): print( '	' + entry( street, name, s0 + ( s1 - s0 ) * k / n, s0 + ( s1 - s0 ) * ( k + 1 ) / n, side, o0, o1, of, c ) )
+            if push: behind( street, plan, s0, s1, side, o1, moved )
+        for i, ( d, point, normal, s ) in sorted( moved.items() ):
+            print( f"	{{ at: [ {point[ 0 ]:.1f}, {point[ 1 ]:.1f} ], by: [ {normal[ 0 ] * d:.2f}, {normal[ 1 ] * d:.2f} ], source: 'unrolled {name} at {s:.0f}: behind its pavement' }}," )
         return
     if sys.argv[ 2:3 ] == [ 'move' ]:
         # one footprint a word: its index in plan.json, and how far it goes away from the street (m)

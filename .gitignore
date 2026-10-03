@@ -3,3 +3,5 @@ dist
 .DS_Store
 *.log
 .deploy
+# scratch scripts beside the checks
+tools/checks/_*.mjs
